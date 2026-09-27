@@ -182,12 +182,22 @@ try {
   await sendDialog.screenshot({ path: assetIconScreenshotPath });
   await sendDialog.getByRole('button', { name: /USD Coin.*USDC.*7개 네트워크/ }).click();
   const sendNetworkDialog = walletFrame.getByRole('dialog', { name: /어떤 네트워크에서.*보낼까요/ });
+  const sendChainIcons = sendNetworkDialog.locator('img[src^="/assets/chains/"]');
+  if (await sendChainIcons.count() !== 7) {
+    throw new Error('USDC send network selection must render seven chain logos instead of the asset logo.');
+  }
+  const incompleteChainIcons = await sendChainIcons.evaluateAll((images) => images
+    .filter((image) => !image.complete || image.naturalWidth === 0)
+    .map((image) => image.getAttribute('src')));
+  if (incompleteChainIcons.length > 0) {
+    throw new Error(`Local chain icons failed to load: ${incompleteChainIcons.join(', ')}`);
+  }
   await sendNetworkDialog.getByRole('button', { name: /Ethereum.*0 USDC/ }).click();
   const amountDialog = walletFrame.getByRole('dialog', { name: /얼마를.*보낼까요/ });
-  await amountDialog.getByLabel('보낼 금액 USDC').waitFor();
-  await amountDialog.getByText('현재 보낼 수 있는 금액은 0원이에요.').waitFor();
-  await amountDialog.getByRole('button', { name: '원화로 입력' }).click();
   await amountDialog.getByLabel('보낼 금액 원화').waitFor();
+  await amountDialog.getByText('현재 보낼 수 있는 금액은 0원이에요.').waitFor();
+  await amountDialog.getByRole('button', { name: 'USDC로 입력' }).click();
+  await amountDialog.getByLabel('보낼 금액 USDC').waitFor();
   if (!await amountDialog.getByRole('button', { name: '보낼 잔액이 없어요' }).isDisabled()) {
     throw new Error('Zero-balance send must keep the form visible while blocking progression.');
   }

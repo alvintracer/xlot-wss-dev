@@ -29,6 +29,7 @@ import type {
   WalletReceiveAssetView,
 } from '@took-wss/contracts';
 import { AssetIcon } from './AssetIcon';
+import { ChainIcon } from './ChainIcon';
 
 export type WalletActionMode = 'receive' | 'send' | 'exchange';
 type SendStep = 'asset' | 'network' | 'amount' | 'recipient-method' | 'recipient' | 'review' | 'success';
@@ -191,7 +192,7 @@ function NetworkPicker({ networks, onSelect }: { networks: WalletNetworkView[]; 
           disabled={network.addressStatus !== 'ready'}
           onClick={() => onSelect(network)}
         >
-          <AssetIcon className="kw-transfer-asset-mark" symbol={network.nativeSymbol} iconAssetId={`coin:${network.nativeSymbol.toLowerCase()}`} />
+          <ChainIcon className="kw-transfer-asset-mark" chainId={network.chainId} />
           <span>
             <strong>{nativeName(network)}</strong>
             <small>{network.network}{network.addressStatus !== 'ready' ? ' · 주소 준비 중' : ''}</small>
@@ -241,7 +242,7 @@ function AssetNetworkPicker({
           : `${asset.balanceDisplay} ${asset.symbol}`;
         return (
           <button className="kw-transfer-choice" type="button" key={asset.assetId} disabled={!canSelect} onClick={() => onSelect(asset)}>
-            <AssetIcon className="kw-transfer-asset-mark" symbol={asset.symbol} iconAssetId={asset.iconAssetId} />
+            <ChainIcon className="kw-transfer-asset-mark" chainId={asset.chainId} />
             <span>
               <strong>{asset.network}</strong>
               <small>{asset.canonical ? '공식 발행 자산' : '브리지 자산'}{!canSelect ? ` · ${asset.transferUnavailableReason ?? '보내기 연결 준비 중'}` : ''}</small>
@@ -373,7 +374,7 @@ function SendFlow({
   const [step, setStep] = useState<SendStep>('asset');
   const [selectedGroup, setSelectedGroup] = useState<AssetGroup>();
   const [asset, setAsset] = useState<WalletReceiveAssetView>();
-  const [amountMode, setAmountMode] = useState<AmountInputMode>('token');
+  const [amountMode, setAmountMode] = useState<AmountInputMode>('krw');
   const [recipientMode, setRecipientMode] = useState<RecipientMode>('address');
   const [recipient, setRecipient] = useState('');
   const [destinationTag, setDestinationTag] = useState('');
@@ -436,7 +437,7 @@ function SendFlow({
     setRecipient('');
     setDestinationTag('');
     setAmount('');
-    setAmountMode('token');
+    setAmountMode('krw');
     setRecipientMode('address');
     setPrepared(null);
     setStep('amount');
