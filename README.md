@@ -40,6 +40,12 @@ npm run dev
 
 The host starts with the Kiwoom tenant and can request took SAR, Thirdweb User Wallet, or FSL MPC. The browser-to-BFF session call is a local reference flow only. In production, a financial institution backend creates the session and gives the short-lived token to its native app.
 
+When `.env.local` contains the isolated development Session pooler URL plus
+independent WSS session and subject-HMAC secrets, the BFF persists profiles,
+wallet slots, public address rows, encrypted SAR envelopes, and audit events in
+`xlot-wss-dev`. The Reference Host's compiled institution key is deliberately a
+loopback-only demo credential; it is never a production integration pattern.
+
 ## Verification
 
 ```bash

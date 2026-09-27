@@ -18,14 +18,34 @@
   session itself
 - exact local development origin allowlist and `development` deployment mode
   configured as Function secrets
+- randomly generated local WSS session and subject-HMAC secrets stored only in
+  `.env.local`; the session secret is synchronized to the Edge Function
+- Session pooler runtime connection verified from the Institution BFF
 
-## Local-only configuration still required
+## Verified persistent vertical slice
 
-- replace the placeholder database password in `.env.local` `DATABASE_URL` so
-  the Institution BFF can use the Session pooler at runtime;
-- add a randomly generated `WSS_SESSION_SECRET` of at least 32 characters and
-  set the identical value in the Edge Function secret store;
-- add separate random `WSS_SUBJECT_HASH_SECRET` and
-  `WSS_INSTITUTION_API_KEY` values to `.env.local`.
+- actual customer-side SAR wallet derivation and all-pairs Shamir 2-of-3
+  verification completed through the Kiwoom browser flow;
+- one WSS profile and institution identity persisted;
+- two independent wallet slots persisted: one took SAR and one FSL MPC;
+- nine network account rows persisted for the SAR wallet, grouped as five
+  customer-visible address groups;
+- one SAR recovery profile and three distinct AES-256-GCM ciphertext envelopes
+  persisted;
+- two wallet-provisioned audit events persisted;
+- after an Institution BFF restart, bootstrap restored both wallet slots and
+  selected-wallet queries restored all five SAR public-address groups;
+- the deployed Edge Function returned factors 1, 2, and 3 for the owned SAR
+  wallet and rejected the owned FSL wallet with `wallet_not_found`;
+- allowed preflight returned 204, an untrusted origin returned 403, and an
+  unauthenticated request returned 401.
+
+## Deliberate development limitation
+
+The Reference Host still uses the explicit loopback-only development
+institution key compiled into its local browser demo. That key is not an
+institution integration credential and must never be deployed. A real tenant
+host backend supplies its private institution credential and creates the WSS
+session server-to-server.
 
 No secret value belongs in this document, Git, a browser bundle, or chat.
