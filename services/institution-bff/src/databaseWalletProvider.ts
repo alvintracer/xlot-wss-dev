@@ -1,6 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 import type {
+  CreatePhoneChallengeResponse,
+  CreateRegistrationIntentRequest,
+  CreateRegistrationIntentResponse,
+  IdentityAssuranceLevel,
   ProvisionWalletRequest,
   ProvisionWalletResponse,
   ReadyWalletHomePayload,
@@ -8,8 +12,22 @@ import type {
   WalletNetworkView,
   WalletProfileSummary,
   WssSessionClaims,
+  VerifyPhoneChallengeResponse,
+  WssIdentityState,
 } from '@took-wss/contracts';
-import type { WalletProvisioningProvider, WalletQueryProvider } from '@took-wss/provider-adapters';
+import type { IdentityRegistrationProvider, WalletProvisioningProvider, WalletQueryProvider } from '@took-wss/provider-adapters';
+import {
+  RegistrationError,
+  consentEvidenceHash,
+  encryptPrivateAttribute,
+  encryptionKeyFromHex,
+  generateOtp,
+  normalizeRegistrationInput,
+  otpMac,
+  phoneLookupHash,
+  sessionIdHash,
+  verifyOtpMac,
+} from './phoneRegistration.js';
 
 type Session = Omit<WssSessionClaims, 'nonce'>;
 
@@ -60,13 +78,25 @@ function absentHome(manifest: TenantManifest) {
   } as const;
 }
 
-export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, WalletProvisioningProvider {
+export interface RegistrationSecurityConfig {
+  piiEncryptionKeyHex: string;
+  phoneLookupSecret: string;
+  otpMacSecret: string;
+}
+
+export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, WalletProvisioningProvider, IdentityRegistrationProvider {
   readonly id = 'development-postgres-wallet-provider';
   readonly #sql: ReturnType<typeof postgres>;
+  readonly #piiEncryptionKey: Buffer;
+  readonly #phoneLookupSecret: string;
+  readonly #otpMacSecret: string;
   #boundaryChecked = false;
 
-  constructor(databaseUrl: string) {
+  constructor(databaseUrl: string, security: RegistrationSecurityConfig) {
     this.#sql = postgres(databaseUrl, { max: 5, prepare: false, idle_timeout: 20 });
+    this.#piiEncryptionKey = encryptionKeyFromHex(security.piiEncryptionKeyHex);
+    this.#phoneLookupSecret = security.phoneLookupSecret;
+    this.#otpMacSecret = security.otpMacSecret;
   }
 
   async #assertDevelopmentBoundary(): Promise<void> {
@@ -87,8 +117,41 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
     this.#boundaryChecked = true;
   }
 
-  async #resolveProfile(session: Session): Promise<string> {
+  async #findProfile(session: Session): Promise<{ profileId: string; assuranceLevel: IdentityAssuranceLevel } | null> {
     await this.#assertDevelopmentBoundary();
+    const existing = await this.#sql<{ user_profile_id: string; assurance_level: string }[]>`
+      SELECT identity.user_profile_id, profile.assurance_level
+      FROM wss_external_identities identity
+      JOIN wss_user_profiles profile
+        ON profile.tenant_id = identity.tenant_id AND profile.id = identity.user_profile_id
+      WHERE identity.tenant_id = ${session.tenantId}
+        AND identity.issuer = 'institution-host'
+        AND identity.subject_version = ${session.subjectVersion}
+        AND identity.subject_hash = ${session.subject}
+        AND identity.revoked_at IS NULL
+        AND profile.status = 'active'
+      LIMIT 1
+    `;
+    return existing[0]
+      ? { profileId: existing[0].user_profile_id, assuranceLevel: existing[0].assurance_level as IdentityAssuranceLevel }
+      : null;
+  }
+
+  async #resolveProfile(session: Session, manifest: TenantManifest): Promise<string | null> {
+    const found = await this.#findProfile(session);
+    if (found) {
+      await this.#sql`
+        UPDATE wss_external_identities
+        SET last_seen_at = now()
+        WHERE tenant_id = ${session.tenantId}
+          AND issuer = 'institution-host'
+          AND subject_version = ${session.subjectVersion}
+          AND subject_hash = ${session.subject}
+      `;
+      return found.profileId;
+    }
+    if (manifest.identity.onboardingMode === 'phone-first') return null;
+
     return this.#sql.begin(async (transaction) => {
       await transaction`SELECT pg_advisory_xact_lock(hashtextextended(${`${session.tenantId}:${session.subjectVersion}:${session.subject}`}, 0))`;
       const existing = await transaction<{ user_profile_id: string }[]>`
@@ -128,6 +191,16 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
       `;
       return profileId;
     });
+  }
+
+  async getIdentity({ session, manifest }: { session: Session; manifest: TenantManifest }): Promise<WssIdentityState> {
+    const profileId = await this.#resolveProfile(session, manifest);
+    if (!profileId) return { status: 'registration-required' };
+    const found = await this.#findProfile(session);
+    return {
+      status: 'established',
+      assuranceLevel: (found?.assuranceLevel ?? 'institution-authenticated') as Extract<WssIdentityState, { status: 'established' }>['assuranceLevel'],
+    };
   }
 
   async #ensurePolicy(manifest: TenantManifest): Promise<void> {
@@ -190,7 +263,8 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
   }
 
   async getHome({ session, manifest, walletId }: { session: Session; manifest: TenantManifest; walletId?: string }) {
-    const profileId = await this.#resolveProfile(session);
+    const profileId = await this.#resolveProfile(session, manifest);
+    if (!profileId) return absentHome(manifest);
     const home = await this.#readyHome(profileId, manifest, walletId);
     if (home) return home;
     if (walletId) return { status: 'unavailable', code: 'wallet_not_found', canRetry: false, source: 'wallet-query' } as const;
@@ -209,7 +283,8 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
       throw new Error('Secure key-core sources require a SAR wallet slot.');
     }
 
-    const profileId = await this.#resolveProfile(session);
+    const profileId = await this.#resolveProfile(session, manifest);
+    if (!profileId) throw new RegistrationError('identity_registration_required');
     await this.#ensurePolicy(manifest);
     let walletId = '';
     await this.#sql.begin(async (transaction) => {
@@ -307,5 +382,253 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
       mode: request.source.type === 'secure-new' ? 'development-key-core' : 'sandbox-contract-only',
       walletHome,
     };
+  }
+
+  async createRegistrationIntent({ session, manifest, request }: {
+    session: Session;
+    manifest: TenantManifest;
+    request: CreateRegistrationIntentRequest;
+  }): Promise<CreateRegistrationIntentResponse> {
+    await this.#assertDevelopmentBoundary();
+    if (manifest.identity.onboardingMode !== 'phone-first') throw new RegistrationError('phone_registration_not_enabled');
+    if (await this.#findProfile(session)) throw new RegistrationError('identity_already_established');
+    const normalized = normalizeRegistrationInput(request, manifest.identity.consentVersion);
+    const intentId = randomUUID();
+    const lookupHash = phoneLookupHash(session.tenantId, normalized.phone, this.#phoneLookupSecret);
+    const expiresAt = new Date(Date.now() + 15 * 60_000);
+    const aadPrefix = `${session.tenantId}:${intentId}`;
+    const encryptedName = encryptPrivateAttribute(normalized.name, this.#piiEncryptionKey, `${aadPrefix}:name`);
+    const encryptedBirthDate = encryptPrivateAttribute(normalized.birthDate, this.#piiEncryptionKey, `${aadPrefix}:birth-date`);
+    const encryptedPhone = encryptPrivateAttribute(normalized.phone, this.#piiEncryptionKey, `${aadPrefix}:phone`);
+
+    await this.#sql.begin(async (transaction) => {
+      await transaction`SELECT pg_advisory_xact_lock(hashtextextended(${`${session.tenantId}:registration:${session.subject}`}, 0))`;
+      const recent = await transaction<{ count: string }[]>`
+        SELECT count(*)::text AS count
+        FROM wss_registration_intents intent
+        JOIN wss_registration_session_bindings binding
+          ON binding.tenant_id = intent.tenant_id AND binding.registration_intent_id = intent.id
+        WHERE intent.tenant_id = ${session.tenantId}
+          AND binding.institution_subject_hash = ${session.subject}
+          AND binding.subject_version = ${session.subjectVersion}
+          AND intent.created_at > now() - interval '10 minutes'
+      `;
+      if (Number(recent[0]?.count ?? '0') >= 5) throw new RegistrationError('registration_rate_limited');
+      await transaction`
+        UPDATE wss_registration_intents intent
+        SET status = 'cancelled', name_ciphertext = NULL, birth_date_ciphertext = NULL,
+            phone_ciphertext = NULL, pii_purged_at = now(), updated_at = now()
+        FROM wss_registration_session_bindings binding
+        WHERE binding.tenant_id = intent.tenant_id
+          AND binding.registration_intent_id = intent.id
+          AND intent.tenant_id = ${session.tenantId}
+          AND binding.institution_subject_hash = ${session.subject}
+          AND binding.subject_version = ${session.subjectVersion}
+          AND intent.status = 'pending'
+      `;
+      await transaction`
+        INSERT INTO wss_registration_intents (
+          id, tenant_id, status, name_ciphertext, birth_date_ciphertext, phone_ciphertext,
+          phone_lookup_hash, carrier_code, encryption_key_version, consent_version, expires_at
+        ) VALUES (
+          ${intentId}, ${session.tenantId}, 'pending', ${encryptedName}, ${encryptedBirthDate},
+          ${encryptedPhone}, ${lookupHash}, ${normalized.carrierCode}, 1,
+          ${normalized.consentVersion}, ${expiresAt}
+        )
+      `;
+      await transaction`
+        INSERT INTO wss_registration_session_bindings (
+          tenant_id, registration_intent_id, institution_subject_hash, subject_version, session_id_hash
+        ) VALUES (
+          ${session.tenantId}, ${intentId}, ${session.subject}, ${session.subjectVersion},
+          ${sessionIdHash(session.tenantId, session.sessionId, this.#otpMacSecret)}
+        )
+      `;
+    });
+    return { registrationIntentId: intentId, expiresAt: expiresAt.toISOString() };
+  }
+
+  async createPhoneChallenge({ session, manifest, registrationIntentId }: {
+    session: Session;
+    manifest: TenantManifest;
+    registrationIntentId: string;
+  }): Promise<CreatePhoneChallengeResponse> {
+    await this.#assertDevelopmentBoundary();
+    if (manifest.identity.onboardingMode !== 'phone-first') throw new RegistrationError('phone_registration_not_enabled');
+    const challengeId = randomUUID();
+    const code = generateOtp();
+    const expiresAt = new Date(Date.now() + 3 * 60_000);
+    await this.#sql.begin(async (transaction) => {
+      await transaction`SELECT pg_advisory_xact_lock(hashtextextended(${`${session.tenantId}:challenge:${registrationIntentId}`}, 0))`;
+      const intents = await transaction<{ status: string; expires_at: Date }[]>`
+        SELECT intent.status, intent.expires_at
+        FROM wss_registration_intents intent
+        JOIN wss_registration_session_bindings binding
+          ON binding.tenant_id = intent.tenant_id AND binding.registration_intent_id = intent.id
+        WHERE intent.tenant_id = ${session.tenantId}
+          AND intent.id = ${registrationIntentId}
+          AND binding.institution_subject_hash = ${session.subject}
+          AND binding.subject_version = ${session.subjectVersion}
+          AND binding.session_id_hash = ${sessionIdHash(session.tenantId, session.sessionId, this.#otpMacSecret)}
+        FOR UPDATE OF intent
+      `;
+      const intent = intents[0];
+      if (!intent) throw new RegistrationError('registration_intent_not_found');
+      if (intent.status !== 'pending' || new Date(intent.expires_at) <= new Date()) throw new RegistrationError('registration_intent_expired');
+      const recent = await transaction<{ count: string }[]>`
+        SELECT count(*)::text AS count FROM wss_phone_challenges
+        WHERE tenant_id = ${session.tenantId}
+          AND registration_intent_id = ${registrationIntentId}
+          AND created_at > now() - interval '10 minutes'
+      `;
+      if (Number(recent[0]?.count ?? '0') >= 3) throw new RegistrationError('challenge_rate_limited');
+      await transaction`
+        UPDATE wss_phone_challenges SET status = 'cancelled'
+        WHERE tenant_id = ${session.tenantId}
+          AND registration_intent_id = ${registrationIntentId}
+          AND status = 'issued'
+      `;
+      await transaction`
+        INSERT INTO wss_phone_challenges (
+          id, tenant_id, registration_intent_id, status, otp_mac, mac_key_version,
+          max_attempts, expires_at, delivery_channel, delivery_provider, sent_at
+        ) VALUES (
+          ${challengeId}, ${session.tenantId}, ${registrationIntentId}, 'issued',
+          ${otpMac(session.tenantId, challengeId, code, this.#otpMacSecret)}, 1, 5,
+          ${expiresAt}, 'sms',
+          ${manifest.identity.phoneVerification === 'development-sms' ? 'development-preview' : 'host'}, now()
+        )
+      `;
+    });
+    return {
+      challengeId,
+      expiresAt: expiresAt.toISOString(),
+      delivery: 'sms',
+      ...(manifest.identity.phoneVerification === 'development-sms' ? { developmentCode: code } : {}),
+    };
+  }
+
+  async verifyPhoneChallenge({ session, manifest, registrationIntentId, challengeId, code }: {
+    session: Session;
+    manifest: TenantManifest;
+    registrationIntentId: string;
+    challengeId: string;
+    code: string;
+  }): Promise<VerifyPhoneChallengeResponse> {
+    await this.#assertDevelopmentBoundary();
+    if (!/^\d{6}$/.test(code)) throw new RegistrationError('invalid_verification_code');
+    let rejectionCode: string | null = null;
+    await this.#sql.begin(async (transaction) => {
+      await transaction`SELECT pg_advisory_xact_lock(hashtextextended(${`${session.tenantId}:registration:${session.subject}`}, 0))`;
+      const rows = await transaction<{
+        challenge_status: string;
+        otp_mac: Buffer;
+        attempt_count: number;
+        max_attempts: number;
+        challenge_expires_at: Date;
+        intent_status: string;
+        intent_expires_at: Date;
+        name_ciphertext: Buffer;
+        birth_date_ciphertext: Buffer;
+        phone_ciphertext: Buffer;
+        phone_lookup_hash: Buffer;
+        carrier_code: string;
+        encryption_key_version: number;
+        consent_version: string;
+      }[]>`
+        SELECT challenge.status AS challenge_status, challenge.otp_mac, challenge.attempt_count,
+          challenge.max_attempts, challenge.expires_at AS challenge_expires_at,
+          intent.status AS intent_status, intent.expires_at AS intent_expires_at,
+          intent.name_ciphertext, intent.birth_date_ciphertext, intent.phone_ciphertext,
+          intent.phone_lookup_hash, intent.carrier_code, intent.encryption_key_version, intent.consent_version
+        FROM wss_phone_challenges challenge
+        JOIN wss_registration_intents intent
+          ON intent.tenant_id = challenge.tenant_id AND intent.id = challenge.registration_intent_id
+        JOIN wss_registration_session_bindings binding
+          ON binding.tenant_id = intent.tenant_id AND binding.registration_intent_id = intent.id
+        WHERE challenge.tenant_id = ${session.tenantId}
+          AND challenge.registration_intent_id = ${registrationIntentId}
+          AND challenge.id = ${challengeId}
+          AND binding.institution_subject_hash = ${session.subject}
+          AND binding.subject_version = ${session.subjectVersion}
+          AND binding.session_id_hash = ${sessionIdHash(session.tenantId, session.sessionId, this.#otpMacSecret)}
+        FOR UPDATE OF challenge, intent
+      `;
+      const row = rows[0];
+      if (!row) throw new RegistrationError('phone_challenge_not_found');
+      if (row.challenge_status !== 'issued' || row.intent_status !== 'pending') throw new RegistrationError('phone_challenge_not_active');
+      if (new Date(row.challenge_expires_at) <= new Date() || new Date(row.intent_expires_at) <= new Date()) {
+        await transaction`UPDATE wss_phone_challenges SET status = 'expired' WHERE tenant_id = ${session.tenantId} AND id = ${challengeId}`;
+        rejectionCode = 'phone_challenge_expired';
+        return;
+      }
+      const candidateMac = otpMac(session.tenantId, challengeId, code, this.#otpMacSecret);
+      if (!verifyOtpMac(row.otp_mac, candidateMac)) {
+        const blocked = row.attempt_count + 1 >= row.max_attempts;
+        await transaction`
+          UPDATE wss_phone_challenges
+          SET attempt_count = attempt_count + 1, status = ${blocked ? 'blocked' : 'issued'}
+          WHERE tenant_id = ${session.tenantId} AND id = ${challengeId}
+        `;
+        rejectionCode = blocked ? 'phone_challenge_blocked' : 'verification_code_mismatch';
+        return;
+      }
+
+      const profileId = randomUUID();
+      await transaction`
+        INSERT INTO wss_user_profiles (id, tenant_id, status, assurance_level)
+        VALUES (${profileId}, ${session.tenantId}, 'active', 'phone-possession')
+      `;
+      await transaction`
+        INSERT INTO wss_external_identities (
+          id, tenant_id, user_profile_id, issuer, subject_hash, subject_version, assurance_level
+        ) VALUES (
+          ${randomUUID()}, ${session.tenantId}, ${profileId}, 'institution-host', ${session.subject},
+          ${session.subjectVersion}, 'institution-authenticated'
+        )
+      `;
+      await transaction`
+        INSERT INTO wss_user_private_attributes (
+          tenant_id, user_profile_id, name_ciphertext, birth_date_ciphertext, phone_ciphertext,
+          phone_lookup_hash, carrier_code, claim_source, phone_possession_verified_at, encryption_key_version
+        ) VALUES (
+          ${session.tenantId}, ${profileId}, ${row.name_ciphertext}, ${row.birth_date_ciphertext},
+          ${row.phone_ciphertext}, ${row.phone_lookup_hash}, ${row.carrier_code}, 'self-asserted', now(),
+          ${row.encryption_key_version}
+        )
+      `;
+      await transaction`
+        INSERT INTO wss_consent_records (
+          id, tenant_id, user_profile_id, purpose_code, document_version, accepted_at, evidence_hash
+        ) VALUES (
+          ${randomUUID()}, ${session.tenantId}, ${profileId}, 'wallet-profile-and-phone-possession',
+          ${row.consent_version}, now(),
+          ${consentEvidenceHash({ tenantId: session.tenantId, registrationIntentId, subjectHash: session.subject, consentVersion: row.consent_version })}
+        )
+      `;
+      await transaction`
+        UPDATE wss_phone_challenges
+        SET status = 'verified', verified_at = now()
+        WHERE tenant_id = ${session.tenantId} AND id = ${challengeId}
+      `;
+      await transaction`
+        UPDATE wss_registration_intents
+        SET status = 'completed', completed_profile_id = ${profileId}, name_ciphertext = NULL,
+          birth_date_ciphertext = NULL, phone_ciphertext = NULL, pii_purged_at = now(), updated_at = now()
+        WHERE tenant_id = ${session.tenantId} AND id = ${registrationIntentId}
+      `;
+      await transaction`
+        INSERT INTO wss_audit_events (
+          id, tenant_id, event_type, actor_type, actor_ref_hash,
+          user_profile_id, correlation_id, metadata
+        ) VALUES (
+          ${randomUUID()}, ${session.tenantId}, 'identity.phone-possession-verified',
+          'institution-subject', ${session.subject}, ${profileId}, ${session.sessionId},
+          ${transaction.json({ consentVersion: row.consent_version, carrierCode: row.carrier_code })}
+        )
+      `;
+    });
+    if (rejectionCode) throw new RegistrationError(rejectionCode);
+    return { identity: { status: 'established', assuranceLevel: 'phone-possession' } };
   }
 }

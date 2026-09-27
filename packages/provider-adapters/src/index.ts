@@ -1,9 +1,14 @@
 import type {
+  CreatePhoneChallengeResponse,
+  CreateRegistrationIntentRequest,
+  CreateRegistrationIntentResponse,
   ProvisionWalletRequest,
   ProvisionWalletResponse,
   TenantManifest,
   WalletHomePayload,
   WssSessionClaims,
+  VerifyPhoneChallengeResponse,
+  WssIdentityState,
 } from '@took-wss/contracts';
 
 export interface TransferIntent {
@@ -76,4 +81,29 @@ export interface WalletProvisioningProvider {
     manifest: TenantManifest;
     request: ProvisionWalletRequest;
   }): Promise<ProvisionWalletResponse>;
+}
+
+export interface IdentityRegistrationProvider {
+  readonly id: string;
+  getIdentity(input: {
+    session: Omit<WssSessionClaims, 'nonce'>;
+    manifest: TenantManifest;
+  }): Promise<WssIdentityState>;
+  createRegistrationIntent(input: {
+    session: Omit<WssSessionClaims, 'nonce'>;
+    manifest: TenantManifest;
+    request: CreateRegistrationIntentRequest;
+  }): Promise<CreateRegistrationIntentResponse>;
+  createPhoneChallenge(input: {
+    session: Omit<WssSessionClaims, 'nonce'>;
+    manifest: TenantManifest;
+    registrationIntentId: string;
+  }): Promise<CreatePhoneChallengeResponse>;
+  verifyPhoneChallenge(input: {
+    session: Omit<WssSessionClaims, 'nonce'>;
+    manifest: TenantManifest;
+    registrationIntentId: string;
+    challengeId: string;
+    code: string;
+  }): Promise<VerifyPhoneChallengeResponse>;
 }

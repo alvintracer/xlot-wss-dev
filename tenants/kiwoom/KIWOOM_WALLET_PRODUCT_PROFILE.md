@@ -41,9 +41,10 @@ The target Kiwoom WSS path does not silently skip profile creation. Before the f
 2. carrier selection and mobile-number entry;
 3. WSS-issued SMS possession verification;
 4. creation of a random WSS `user_profile_id` UUID;
-5. wallet key-adapter selection and wallet provisioning.
+5. a separate Kiwoom host-session confirmation for wallet provisioning;
+6. wallet key-adapter selection and wallet provisioning.
 
-Name and birth date remain self-asserted in this flow; WSS SMS proves possession of the entered number, not carrier-backed legal identity. A later Kiwoom-authenticated subject is linked to the WSS profile after step-up confirmation. Adding another wallet slot to an already verified profile must not repeat the full registration flow.
+Name and birth date remain self-asserted in this flow; WSS SMS proves possession of the entered number, not carrier-backed legal identity. The short-lived WSS session already carries the versioned Kiwoom subject HMAC, so successful phone verification links that subject to the new profile; the separate host confirmation then gates wallet provisioning. If a pre-existing standalone WSS profile and institution profile must be combined later, that remains the explicit high-assurance linking/merge ceremony in ADR-0002. Adding another wallet slot to an already verified profile must not repeat the full registration flow.
 
 Other tenants may choose the institution-first path when their authenticated host assertion meets policy. The onboarding mode is a project policy choice, not tenant-specific branching in the shared runtime.
 
@@ -112,7 +113,7 @@ The Reference Host now creates a real random took SAR wallet in its customer-sid
 
 When the development database is connected, the BFF persists the Kiwoom WSS profile, wallet slot, public address rows, audit event, and three customer-side AES-GCM recovery-envelope ciphertexts in `xlot-wss-dev`. The plaintext shares and envelope key remain in volatile Reference Host memory and are lost on reload. This is therefore a real wallet/address and ciphertext-persistence path, but not production storage or durable device-loss recovery. Production remains fail-closed without an approved native key core, independently controlled encrypted factor stores, signed host registration attestation, recovery-factor providers, and security review. The sandbox still provides no real balance, K-VWAP valuation, KYT decision, sponsored-gas execution, or transaction submission. Send remains disabled until those dependencies are connected.
 
-The Kiwoom phone-first profile and SMS possession verification described above remain the next identity slice. The current Reference Host uses development institution authentication and must not be described as real SMS or legal-identity verification.
+The Kiwoom phone-first profile path is implemented against `xlot-wss-dev`. Registration PII is AES-256-GCM encrypted before persistence, the phone lookup uses a separate keyed digest, the six-digit code is stored only as a server-peppered MAC, and successful verification atomically creates the random profile UUID, encrypted private attributes, consent, external institution link, and audit event before purging the intent PII. The Reference Host exposes a development-only code only to loopback origins; no external SMS gateway is connected. This must not be described as real SMS delivery or legal-identity verification.
 
 ## 8. Change record
 
@@ -122,3 +123,4 @@ The Kiwoom phone-first profile and SMS possession verification described above r
 - 2026-09-27: Added an always-visible five-row address view: one shared EVM address group plus Solana, Bitcoin, TRON, and XRP.
 - 2026-09-27: Added actual Reference Host SAR creation, five-chain address derivation, all-pairs 2-of-3 recovery verification, and public-address registration. Production storage and attestation remain gated.
 - 2026-09-27: Added the `xlot-wss-dev` persistence contract for WSS UUIDs, wallet slots, public addresses, audit events, and customer-side encrypted SAR envelopes. Production SAR remains a separate deployment and architecture.
+- 2026-09-27: Implemented manifest-selectable `phone-first` and `institution-first` onboarding, with the Kiwoom development profile using encrypted phone-possession registration before its first wallet slot.

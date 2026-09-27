@@ -31,11 +31,15 @@ export function App() {
         sessionKeyAdapter={runtime.bootstrap.session.keyAdapter}
         hostCapabilities={runtime.hostCapabilities}
         walletHome={walletHome}
+        identity={runtime.bootstrap.identity}
         onNavigate={runtime.navigate}
         onShellModeChange={runtime.setShellMode}
         onRequestHostAuthentication={runtime.requestHostAuthentication}
         onRequestSecureSarWalletCreation={runtime.requestSecureSarWalletCreation}
         onRequestSecureWalletImport={runtime.requestSecureWalletImport}
+        onCreateRegistrationIntent={runtime.createRegistrationIntent}
+        onCreatePhoneChallenge={runtime.createPhoneChallenge}
+        onVerifyPhoneChallenge={runtime.verifyPhoneChallenge}
         onProvisionWallet={runtime.provisionWallet}
         onSelectWallet={runtime.selectWallet}
       />

@@ -5,6 +5,7 @@ const hostUrl = process.env.WSS_REFERENCE_HOST_URL || 'http://127.0.0.1:5173';
 const chromePath = process.env.WSS_CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const screenshotPath = process.env.WSS_WALLET_FLOW_SCREENSHOT || '/tmp/took-wss-kiwoom-wallet-flow.png';
 const homeScreenshotPath = process.env.WSS_WALLET_HOME_SCREENSHOT || '/tmp/took-wss-kiwoom-asset-home.png';
+const previewCustomerRef = `kiwoom-browser-e2e-${Date.now()}`;
 
 await access(chromePath);
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
@@ -19,18 +20,38 @@ page.on('console', (message) => {
 });
 page.on('response', (response) => {
   const pathname = new URL(response.url()).pathname;
-  if (pathname === '/v1/sessions' || pathname === '/v1/runtime/bootstrap' || pathname === '/v1/wallets/provision') {
+  if (pathname === '/v1/sessions'
+    || pathname === '/v1/runtime/bootstrap'
+    || pathname === '/v1/wallets/provision'
+    || pathname === '/v1/registration/intents') {
     apiResponses.set(pathname, response.status());
   }
+  if (/^\/v1\/registration\/intents\/[^/]+\/challenges$/.test(pathname)) apiResponses.set('/v1/registration/intents/:intentId/challenges', response.status());
+  if (/^\/v1\/registration\/intents\/[^/]+\/challenges\/[^/]+\/verify$/.test(pathname)) apiResponses.set('/v1/registration/intents/:intentId/challenges/:challengeId/verify', response.status());
   if (/^\/v1\/wallets\/[^/]+\/home$/.test(pathname)) apiResponses.set('/v1/wallets/:walletId/home', response.status());
 });
 
 try {
-  await page.goto(hostUrl, { waitUntil: 'networkidle' });
+  const previewUrl = new URL(hostUrl);
+  previewUrl.searchParams.set('customerRef', previewCustomerRef);
+  await page.goto(previewUrl.toString(), { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: '은행앱에서 월렛 열기' }).click();
   const walletFrame = page.frameLocator('iframe');
   await walletFrame.getByRole('button', { name: '첫 지갑 추가하기' }).click();
   await page.locator('.phone[data-shell-mode="focus"]').waitFor();
+  await walletFrame.getByRole('heading', { name: /지갑을 연결할 정보를/ }).waitFor();
+  await walletFrame.getByLabel('이름').fill('테스트사용자');
+  await walletFrame.getByLabel('생년월일').fill('19900102');
+  await walletFrame.getByRole('button', { name: /통신사 선택/ }).click();
+  await walletFrame.getByRole('dialog', { name: '통신사 선택' }).getByRole('button', { name: 'SKT', exact: true }).click();
+  await walletFrame.getByLabel('휴대폰 번호').fill('01000000000');
+  await walletFrame.getByRole('checkbox').check();
+  await walletFrame.getByRole('button', { name: '인증번호 받기' }).click();
+  const developmentCodeCopy = await walletFrame.locator('.kw-development-code').innerText();
+  const developmentCode = developmentCodeCopy.match(/\d{6}/)?.[0];
+  if (!developmentCode) throw new Error('Development phone code was not shown in the loopback preview.');
+  await walletFrame.getByLabel('인증번호').fill(developmentCode);
+  await walletFrame.getByRole('button', { name: '인증번호 확인' }).click();
   await walletFrame.getByRole('button', { name: '키움 인증 요청' }).click();
   await walletFrame.getByRole('heading', { name: /새로 만들거나 기존 지갑을/ }).waitFor();
   await walletFrame.getByRole('button', { name: /새 지갑 만들기/ }).click();
@@ -135,6 +156,9 @@ try {
 
   if (apiResponses.get('/v1/sessions') !== 201
     || apiResponses.get('/v1/runtime/bootstrap') !== 200
+    || apiResponses.get('/v1/registration/intents') !== 201
+    || apiResponses.get('/v1/registration/intents/:intentId/challenges') !== 201
+    || apiResponses.get('/v1/registration/intents/:intentId/challenges/:challengeId/verify') !== 200
     || apiResponses.get('/v1/wallets/provision') !== 201
     || apiResponses.get('/v1/wallets/:walletId/home') !== 200) {
     throw new Error(`Unexpected API responses: ${JSON.stringify(Object.fromEntries(apiResponses))}`);
@@ -146,6 +170,7 @@ try {
     api: Object.fromEntries(apiResponses),
     shellPolicy: 'host-tabs-on-root/focus-without-host-chrome',
     walletSlots: 2,
+    identityOnboarding: 'encrypted-profile-and-phone-possession',
     walletAddressGroups: 5,
     selectedWalletNetworks: 9,
     sarKeyCore: 'real-derivation-and-2-of-3-verification',

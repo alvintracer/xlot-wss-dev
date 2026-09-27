@@ -40,10 +40,14 @@ export default function KiwoomWalletPresentation(props: WalletPresentationProps)
           mode={creationMode}
           canSecureWalletImport={props.hostCapabilities.canSecureWalletImport}
           canCreateSecureSarWallet={props.hostCapabilities.canCreateSecureSarWallet}
+          identity={props.identity}
           onClose={() => setCreationMode(null)}
           onAuthenticate={() => props.onRequestHostAuthentication('wallet-provisioning')}
           onRequestSecureSarWalletCreation={props.onRequestSecureSarWalletCreation}
           onRequestSecureImport={props.onRequestSecureWalletImport}
+          onCreateRegistrationIntent={props.onCreateRegistrationIntent}
+          onCreatePhoneChallenge={props.onCreatePhoneChallenge}
+          onVerifyPhoneChallenge={props.onVerifyPhoneChallenge}
           onProvision={props.onProvisionWallet}
           onComplete={completeProvisioning}
         />

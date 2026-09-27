@@ -30,7 +30,7 @@
    - The isolated `xlot-wss-dev` project now has the remotely applied, hard-marked WSS schema, persistent UUID/profile/wallet/address/audit repositories, and development-only encrypted-envelope storage. All WSS tables have RLS enabled and no `anon`/`authenticated` table grants.
    - The deployed, read-only development SAR Edge Function verifies the WSS session and wallet ownership before returning ciphertext. It has no plaintext-share, decryption-key, or reconstruction API.
    - The Kiwoom browser vertical slice has persisted a real SAR wallet plus an FSL MPC slot, survived a BFF restart, restored nine network rows/five address groups, and retrieved the three encrypted SAR envelopes through the deployed ownership-checked Edge Function.
-   - Next identity slice: WSS phone-first registration APIs, encrypted or keyed PII matching, a real SMS OTP provider adapter, and institution-subject merge after step-up.
+   - The generic manifest now selects `phone-first` or `institution-first`. The Kiwoom development path implements session-bound registration intents, encrypted PII, keyed phone lookup, MAC-only OTP storage, consent/audit evidence, transient-PII purge, and first-wallet gating. A real SMS provider, broader abuse controls, retention approval, and explicit institution-subject linking/merge ceremonies remain production work.
    - Next key-core slice: durable device-key protection for development recovery, followed by native/hardware-backed storage, independently controlled durable factor stores, signed one-time host attestation, and an end-to-end recovery ceremony.
    - The Kiwoom development slice covers host authentication, actual new-SAR creation, a fail-closed secure-import entry path, idempotent sandbox registration, and independent wallet slots with per-wallet network capabilities.
    - The development BFF never receives a seed, private key, plaintext recovery share, completed SAR secret, or envelope key and remains unavailable in production. It does not fabricate balances.
@@ -41,7 +41,7 @@
 5. Add Android/iOS native WebView wrappers using the same bridge contract.
 6. Add browser and native end-to-end tests for origin, nonce, expiry, and replay rejection.
 
-Current browser coverage includes Reference Host session issuance, signed bootstrap, profile-based Kiwoom presentation loading, root/focus shell delivery, host authentication, actual host-key-core SAR creation, multi-wallet-slot provisioning and selection, real receive-address display, send gates, and 320/360/390/430 overflow checks. Unit coverage verifies distinct wallet generation and every 2-of-3 share pair. Security lifecycle cases in item 6 remain open.
+Current browser coverage includes Reference Host session issuance, signed bootstrap, encrypted phone-first registration and possession verification, profile-based Kiwoom presentation loading, root/focus shell delivery, host authentication, actual host-key-core SAR creation, multi-wallet-slot provisioning and selection, real receive-address display, send gates, and 320/360/390/430 overflow checks. Unit coverage verifies registration normalization/cryptographic boundaries, distinct wallet generation, and every 2-of-3 share pair. Security lifecycle cases in item 6 remain open.
 
 ## Phase 2 — took SAR production hardening
 

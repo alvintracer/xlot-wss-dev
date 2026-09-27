@@ -6,6 +6,8 @@ const migrationUrl = new URL('../db/migrations/0001_wss_identity.sql', import.me
 const migration = readFileSync(migrationUrl, 'utf8');
 const developmentSarMigrationUrl = new URL('../db/migrations/0002_wss_development_sar.sql', import.meta.url);
 const developmentSarMigration = readFileSync(developmentSarMigrationUrl, 'utf8');
+const phoneRegistrationMigrationUrl = new URL('../db/migrations/0003_wss_phone_registration.sql', import.meta.url);
+const phoneRegistrationMigration = readFileSync(phoneRegistrationMigrationUrl, 'utf8');
 
 describe('WSS identity migration', () => {
   it('parses as PostgreSQL and contains the required identity boundaries', () => {
@@ -54,5 +56,24 @@ describe('WSS development SAR migration', () => {
     const ddlWithoutComments = developmentSarMigration.replace(/--.*$/gm, '');
     expect(ddlWithoutComments).not.toMatch(/\b(mnemonic|seed_phrase|private_key|plaintext_share|vault_key|wrapping_key|decryption_key)\b/i);
     expect(ddlWithoutComments).toContain('ciphertext_base64 text NOT NULL');
+  });
+});
+
+describe('WSS phone registration migration', () => {
+  it('binds registration intents to an institution session without plaintext identifiers', () => {
+    const parseableMigration = phoneRegistrationMigration
+      .replace(/^ALTER TABLE .* ENABLE ROW LEVEL SECURITY;$/gm, '')
+      .replace(/^REVOKE ALL ON TABLE .*;$/gm, '');
+    expect(parse(parseableMigration).length).toBeGreaterThan(4);
+    expect(phoneRegistrationMigration).toContain('CREATE TABLE wss_registration_session_bindings');
+    expect(phoneRegistrationMigration).toContain('institution_subject_hash text NOT NULL');
+    expect(phoneRegistrationMigration).toContain('session_id_hash text NOT NULL');
+    expect(phoneRegistrationMigration).toContain("delivery_channel = 'sms'");
+    expect(phoneRegistrationMigration).toContain('ENABLE ROW LEVEL SECURITY');
+  });
+
+  it('never adds raw customer, phone, or OTP columns', () => {
+    const ddlWithoutComments = phoneRegistrationMigration.replace(/--.*$/gm, '');
+    expect(ddlWithoutComments).not.toMatch(/\b(customer_ref|phone_plaintext|otp_code|otp_plaintext)\b/i);
   });
 });

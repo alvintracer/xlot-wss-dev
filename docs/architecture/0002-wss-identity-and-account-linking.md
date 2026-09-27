@@ -1,6 +1,6 @@
 # ADR-0002: Separate WSS identity, institution identity, and wallet ownership
 
-Status: Accepted for implementation scaffold; privacy/legal retention values require project approval before production.
+Status: Accepted; development phone-first slice implemented. Privacy/legal retention values require project approval before production.
 
 ## Decision
 
@@ -86,6 +86,8 @@ The first schema is in `services/institution-bff/db/migrations/0001_wss_identity
 - consent and audit records.
 
 The schema must not contain private keys, mnemonics, reconstructed SAR secrets, SAR shares, raw OTP codes, provider secrets, or unencrypted direct identifiers.
+
+Migration `0003_wss_phone_registration.sql` binds each short-lived registration intent to the versioned institution subject and a keyed session identifier. The development BFF applies AES-256-GCM before writing direct identifiers, uses separate secrets for phone lookup and OTP MAC, limits intent/challenge creation and verification attempts, creates profile/consent/identity/audit state in one transaction, and purges PII from the completed intent. The loopback-only `development-sms` adapter returns the generated code for local testing without logging it; production manifests cannot select that adapter.
 
 ## Open production decisions
 

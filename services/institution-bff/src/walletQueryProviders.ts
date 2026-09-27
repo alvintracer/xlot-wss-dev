@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  CreateRegistrationIntentRequest,
   ProvisionWalletRequest,
   ProvisionWalletResponse,
   ReadyWalletHomePayload,
@@ -8,8 +9,9 @@ import type {
   PublicWalletAddressRegistration,
   WalletProfileSummary,
   WssSessionClaims,
+  WssIdentityState,
 } from '@took-wss/contracts';
-import type { WalletProvisioningProvider, WalletQueryProvider } from '@took-wss/provider-adapters';
+import type { IdentityRegistrationProvider, WalletProvisioningProvider, WalletQueryProvider } from '@took-wss/provider-adapters';
 import { DevelopmentPostgresWalletProvider } from './databaseWalletProvider.js';
 
 type Session = Omit<WssSessionClaims, 'nonce'>;
@@ -63,10 +65,28 @@ function withWalletIndex(home: ReadyWalletHomePayload, homes: ReadyWalletHomePay
   return { ...home, wallets: homes.map(walletSummary) };
 }
 
-class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningProvider {
+class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningProvider, IdentityRegistrationProvider {
   readonly id = 'sandbox-wallet-provider';
   readonly #homes = new Map<string, ReadyWalletHomePayload[]>();
   readonly #idempotency = new Map<string, ProvisionWalletResponse>();
+
+  async getIdentity({ manifest }: { session: Session; manifest: TenantManifest }): Promise<WssIdentityState> {
+    return manifest.identity.onboardingMode === 'institution-first'
+      ? { status: 'established', assuranceLevel: 'institution-authenticated' }
+      : { status: 'registration-required' };
+  }
+
+  async createRegistrationIntent(_input: { session: Session; manifest: TenantManifest; request: CreateRegistrationIntentRequest }): Promise<never> {
+    throw new Error('Persistent identity registration provider is required.');
+  }
+
+  async createPhoneChallenge(): Promise<never> {
+    throw new Error('Persistent identity registration provider is required.');
+  }
+
+  async verifyPhoneChallenge(): Promise<never> {
+    throw new Error('Persistent identity registration provider is required.');
+  }
 
   async getHome({ session, manifest, walletId }: { session: Session; manifest: TenantManifest; walletId?: string }) {
     const homes = this.#homes.get(session.sessionId) ?? [];
@@ -153,8 +173,18 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
 }
 
 const databaseUrl = process.env.DATABASE_URL?.trim();
+function requiredRegistrationSecret(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`${name} is required when DATABASE_URL is configured.`);
+  if (name !== 'WSS_PII_ENCRYPTION_KEY' && value.length < 32) throw new Error(`${name} must contain at least 32 characters.`);
+  return value;
+}
 const developmentDatabaseProvider = databaseUrl && !process.env.VITEST
-  ? new DevelopmentPostgresWalletProvider(databaseUrl)
+  ? new DevelopmentPostgresWalletProvider(databaseUrl, {
+      piiEncryptionKeyHex: requiredRegistrationSecret('WSS_PII_ENCRYPTION_KEY'),
+      phoneLookupSecret: requiredRegistrationSecret('WSS_PHONE_LOOKUP_SECRET'),
+      otpMacSecret: requiredRegistrationSecret('WSS_OTP_MAC_SECRET'),
+    })
   : null;
 const kiwoomSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();
 const referenceSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();
@@ -165,6 +195,11 @@ export const walletQueryProviders = new Map<string, WalletQueryProvider>([
 ]);
 
 export const walletProvisioningProviders = new Map<string, WalletProvisioningProvider>([
+  ['kiwoom', kiwoomSandboxProvider],
+  ['reference-bank', referenceSandboxProvider],
+]);
+
+export const identityRegistrationProviders = new Map<string, IdentityRegistrationProvider>([
   ['kiwoom', kiwoomSandboxProvider],
   ['reference-bank', referenceSandboxProvider],
 ]);

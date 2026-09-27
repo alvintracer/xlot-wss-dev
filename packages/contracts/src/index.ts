@@ -28,6 +28,8 @@ export const MOBILE_CARRIER_CODES = [
   'lgu-plus-mvno',
 ] as const;
 export type MobileCarrierCode = typeof MOBILE_CARRIER_CODES[number];
+export type IdentityOnboardingMode = 'institution-first' | 'phone-first';
+export type PhoneVerificationMode = 'host' | 'development-sms';
 export type IdentityAssuranceLevel =
   | 'self-asserted'
   | 'phone-possession'
@@ -105,6 +107,11 @@ export interface TenantManifest {
     };
   };
   brand: TenantBrand;
+  identity: {
+    onboardingMode: IdentityOnboardingMode;
+    phoneVerification: PhoneVerificationMode;
+    consentVersion: string;
+  };
   enabledModules: WssModuleId[];
   keyManagement: {
     policyVersion: number;
@@ -118,6 +125,41 @@ export interface TenantManifest {
     quote: 'bonanza-k-vwap' | 'mock';
   };
   chains: string[];
+}
+
+export type WssIdentityState =
+  | { status: 'registration-required' }
+  | {
+      status: 'established';
+      assuranceLevel: IdentityAssuranceLevel;
+    };
+
+export interface CreateRegistrationIntentRequest {
+  name: string;
+  birthDate: string;
+  phone: string;
+  carrierCode: MobileCarrierCode;
+  consentVersion: string;
+}
+
+export interface CreateRegistrationIntentResponse {
+  registrationIntentId: string;
+  expiresAt: string;
+}
+
+export interface CreatePhoneChallengeResponse {
+  challengeId: string;
+  expiresAt: string;
+  delivery: 'sms';
+  developmentCode?: string;
+}
+
+export interface VerifyPhoneChallengeRequest {
+  code: string;
+}
+
+export interface VerifyPhoneChallengeResponse {
+  identity: Extract<WssIdentityState, { status: 'established' }>;
 }
 
 export interface WssSessionClaims {
@@ -229,11 +271,15 @@ export interface WalletPresentationProps {
   sessionKeyAdapter: KeyAdapterId;
   hostCapabilities: HostCapabilities;
   walletHome: WalletHomePayload;
+  identity: WssIdentityState;
   onNavigate: (route: string) => void;
   onShellModeChange: (mode: WalletShellMode) => void;
   onRequestHostAuthentication: (purpose: HostAuthenticationPurpose) => Promise<HostAuthenticationResult>;
   onRequestSecureSarWalletCreation: () => Promise<SecureSarWalletCreationResult>;
   onRequestSecureWalletImport: (method: WalletImportMethod) => Promise<SecureWalletImportResult>;
+  onCreateRegistrationIntent: (request: CreateRegistrationIntentRequest) => Promise<CreateRegistrationIntentResponse>;
+  onCreatePhoneChallenge: (registrationIntentId: string) => Promise<CreatePhoneChallengeResponse>;
+  onVerifyPhoneChallenge: (registrationIntentId: string, challengeId: string, request: VerifyPhoneChallengeRequest) => Promise<VerifyPhoneChallengeResponse>;
   onProvisionWallet: (request: ProvisionWalletRequest) => Promise<ProvisionWalletResponse>;
   onSelectWallet: (walletId: string) => Promise<ReadyWalletHomePayload>;
 }
@@ -259,6 +305,7 @@ export interface WssRuntimeBootstrap {
   protocolVersion: 1;
   session: Omit<WssSessionClaims, 'nonce'>;
   manifest: TenantManifest;
+  identity: WssIdentityState;
   walletHome: WalletHomePayload;
 }
 
@@ -329,6 +376,16 @@ export function isHostCapabilities(value: unknown): value is HostCapabilities {
     'canCreateSecureSarWallet',
   ] as const;
   return keys.every((key) => typeof value[key] === 'boolean');
+}
+
+export function isWssIdentityState(value: unknown): value is WssIdentityState {
+  if (!isRecord(value)) return false;
+  if (value.status === 'registration-required') return true;
+  return value.status === 'established'
+    && (value.assuranceLevel === 'self-asserted'
+      || value.assuranceLevel === 'phone-possession'
+      || value.assuranceLevel === 'institution-authenticated'
+      || value.assuranceLevel === 'identity-provider-verified');
 }
 
 export function isWalletHomePayload(value: unknown): value is WalletHomePayload {
@@ -493,6 +550,16 @@ export function assertTenantManifest(value: TenantManifest): TenantManifest {
   if (value.schemaVersion !== 1) throw new Error('Unsupported tenant manifest version.');
   if (!value.tenantId || !value.walletName) throw new Error('Tenant identity is incomplete.');
   if (!value.presentation.profileId || !value.presentation.guideVersion) throw new Error('Tenant presentation metadata is incomplete.');
+  if (value.identity.onboardingMode !== 'institution-first' && value.identity.onboardingMode !== 'phone-first') {
+    throw new Error('Unsupported identity onboarding mode.');
+  }
+  if (value.identity.phoneVerification !== 'host' && value.identity.phoneVerification !== 'development-sms') {
+    throw new Error('Unsupported phone verification mode.');
+  }
+  if (!value.identity.consentVersion.trim()) throw new Error('Identity consent version is required.');
+  if (value.environment === 'production' && value.identity.phoneVerification === 'development-sms') {
+    throw new Error('Development SMS verification is forbidden in production.');
+  }
   if (value.presentation.navigation.walletMenu === 'hamburger' && value.presentation.navigation.rootEntry === 'host-tabs') {
     throw new Error('A host-tab root must not add a duplicate wallet hamburger menu.');
   }

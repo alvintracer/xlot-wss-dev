@@ -29,6 +29,11 @@ export const referenceBankManifest = assertTenantManifest({
     textColor: '#101828',
     radius: 'soft',
   },
+  identity: {
+    onboardingMode: 'institution-first',
+    phoneVerification: 'host',
+    consentVersion: 'reference-bank-wallet-profile-v1',
+  },
   enabledModules: ['wallet-home', 'send-receive', 'sar-recovery', 'phone-transfer', 'kyt', 'k-vwap', 'gas-sponsorship'],
   keyManagement: {
     policyVersion: 1,

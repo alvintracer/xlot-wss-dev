@@ -9,7 +9,8 @@
 
 - `0001_wss_identity.sql` applied and checksum recorded
 - `0002_wss_development_sar.sql` applied and checksum recorded
-- 17 `public.wss_%` tables present, including the migration ledger
+- `0003_wss_phone_registration.sql` applied and checksum recorded
+- 18 `public.wss_%` tables present, including the migration ledger
 - Row Level Security enabled on every WSS table
 - zero table grants to `anon` and `authenticated`
 - deployment marker verified as `proposal-and-early-function-sandbox`
@@ -20,6 +21,8 @@
   configured as Function secrets
 - randomly generated local WSS session and subject-HMAC secrets stored only in
   `.env.local`; the session secret is synchronized to the Edge Function
+- separate randomly generated PII-encryption, phone-lookup-HMAC, and OTP-MAC
+  secrets stored only in the mode-0600 `.env.local`
 - Session pooler runtime connection verified from the Institution BFF
 
 ## Verified persistent vertical slice
@@ -39,6 +42,13 @@
   wallet and rejected the owned FSL wallet with `wallet_not_found`;
 - allowed preflight returned 204, an untrusted origin returned 403, and an
   unauthenticated request returned 401.
+- a new Kiwoom customer session returned `registration-required`, completed the
+  encrypted phone-possession path, then returned `established`; the completed
+  intent had all transient PII purged, the durable private attributes remained
+  encrypted, and the challenge retained only a 32-byte OTP MAC;
+- the headless browser completed registration, host confirmation, real SAR
+  creation, nine-network registration, a second FSL wallet slot, wallet
+  selection, receive-address display, and fail-closed send checks.
 
 ## Deliberate development limitation
 
@@ -47,5 +57,10 @@ institution key compiled into its local browser demo. That key is not an
 institution integration credential and must never be deployed. A real tenant
 host backend supplies its private institution credential and creates the WSS
 session server-to-server.
+
+The current `development-sms` adapter does not send an SMS. It reveals a test
+code only to an allowed loopback WebView origin. A real provider adapter,
+network/device abuse controls, approved copy, retention policy, and operational
+monitoring remain production gates.
 
 No secret value belongs in this document, Git, a browser bundle, or chat.

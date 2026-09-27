@@ -3,8 +3,12 @@ import {
   WSS_PROTOCOL_VERSION,
   isHostToWalletMessage,
   isRecord,
+  isWssIdentityState,
   isWalletHomePayload,
   type HostCapabilities,
+  type CreatePhoneChallengeResponse,
+  type CreateRegistrationIntentRequest,
+  type CreateRegistrationIntentResponse,
   type HostAuthenticationPurpose,
   type HostAuthenticationResult,
   type ProvisionWalletRequest,
@@ -16,6 +20,8 @@ import {
   type WalletShellMode,
   type WalletToHostMessage,
   type WssRuntimeBootstrap,
+  type VerifyPhoneChallengeRequest,
+  type VerifyPhoneChallengeResponse,
 } from '@took-wss/contracts';
 
 type RuntimeState =
@@ -29,6 +35,9 @@ type RuntimeResult = RuntimeState & {
   requestHostAuthentication: (purpose: HostAuthenticationPurpose) => Promise<HostAuthenticationResult>;
   requestSecureSarWalletCreation: () => Promise<SecureSarWalletCreationResult>;
   requestSecureWalletImport: (method: WalletImportMethod) => Promise<SecureWalletImportResult>;
+  createRegistrationIntent: (request: CreateRegistrationIntentRequest) => Promise<CreateRegistrationIntentResponse>;
+  createPhoneChallenge: (registrationIntentId: string) => Promise<CreatePhoneChallengeResponse>;
+  verifyPhoneChallenge: (registrationIntentId: string, challengeId: string, request: VerifyPhoneChallengeRequest) => Promise<VerifyPhoneChallengeResponse>;
   provisionWallet: (request: ProvisionWalletRequest) => Promise<ProvisionWalletResponse>;
   selectWallet: (walletId: string) => Promise<ReadyWalletHomePayload>;
 };
@@ -127,6 +136,7 @@ export function useWssRuntime(): RuntimeResult {
           || bootstrap.protocolVersion !== WSS_PROTOCOL_VERSION
           || !isRecord(bootstrap.manifest)
           || !isRecord(bootstrap.session)
+          || !isWssIdentityState(bootstrap.identity)
           || !isWalletHomePayload(bootstrap.walletHome)) {
           throw new Error('Unsupported WSS bootstrap contract.');
         }
@@ -271,6 +281,65 @@ export function useWssRuntime(): RuntimeResult {
     return result;
   }, []);
 
+  const createRegistrationIntent = useCallback(async (request: CreateRegistrationIntentRequest): Promise<CreateRegistrationIntentResponse> => {
+    if (!sessionToken.current || !bffOriginRef.current) throw new Error('Wallet session is not ready.');
+    const response = await fetch(`${bffOriginRef.current}/v1/registration/intents`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${sessionToken.current}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Registration intent was rejected.');
+    const result = await response.json() as CreateRegistrationIntentResponse;
+    if (!isRecord(result) || typeof result.registrationIntentId !== 'string' || typeof result.expiresAt !== 'string') {
+      throw new Error('Unsupported registration intent response.');
+    }
+    return result;
+  }, []);
+
+  const createPhoneChallenge = useCallback(async (registrationIntentId: string): Promise<CreatePhoneChallengeResponse> => {
+    if (!sessionToken.current || !bffOriginRef.current) throw new Error('Wallet session is not ready.');
+    const response = await fetch(`${bffOriginRef.current}/v1/registration/intents/${encodeURIComponent(registrationIntentId)}/challenges`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${sessionToken.current}`, 'Content-Type': 'application/json' },
+      body: '{}',
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Phone challenge was rejected.');
+    const result = await response.json() as CreatePhoneChallengeResponse;
+    if (!isRecord(result)
+      || typeof result.challengeId !== 'string'
+      || typeof result.expiresAt !== 'string'
+      || result.delivery !== 'sms'
+      || (result.developmentCode !== undefined && typeof result.developmentCode !== 'string')) {
+      throw new Error('Unsupported phone challenge response.');
+    }
+    return result;
+  }, []);
+
+  const verifyPhoneChallenge = useCallback(async (
+    registrationIntentId: string,
+    challengeId: string,
+    request: VerifyPhoneChallengeRequest,
+  ): Promise<VerifyPhoneChallengeResponse> => {
+    if (!sessionToken.current || !bffOriginRef.current) throw new Error('Wallet session is not ready.');
+    const response = await fetch(`${bffOriginRef.current}/v1/registration/intents/${encodeURIComponent(registrationIntentId)}/challenges/${encodeURIComponent(challengeId)}/verify`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${sessionToken.current}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Phone verification was rejected.');
+    const result = await response.json() as VerifyPhoneChallengeResponse;
+    if (!isRecord(result) || !isWssIdentityState(result.identity) || result.identity.status !== 'established') {
+      throw new Error('Unsupported phone verification response.');
+    }
+    setState((current) => current.status === 'ready'
+      ? { ...current, bootstrap: { ...current.bootstrap, identity: result.identity } }
+      : current);
+    return result;
+  }, []);
+
   return {
     ...state,
     navigate,
@@ -278,6 +347,9 @@ export function useWssRuntime(): RuntimeResult {
     requestHostAuthentication,
     requestSecureSarWalletCreation,
     requestSecureWalletImport,
+    createRegistrationIntent,
+    createPhoneChallenge,
+    verifyPhoneChallenge,
     provisionWallet,
     selectWallet,
   };

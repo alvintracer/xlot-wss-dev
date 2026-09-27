@@ -29,6 +29,11 @@ export const kiwoomManifest = assertTenantManifest({
     textColor: '#1B1C20',
     radius: 'soft',
   },
+  identity: {
+    onboardingMode: 'phone-first',
+    phoneVerification: 'development-sms',
+    consentVersion: 'kiwoom-wallet-profile-v1',
+  },
   enabledModules: [
     'wallet-home',
     'send-receive',

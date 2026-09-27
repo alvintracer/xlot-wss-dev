@@ -2,10 +2,12 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { timingSafeEqual } from 'node:crypto';
 import {
   WSS_PROTOCOL_VERSION,
+  MOBILE_CARRIER_CODES,
   isSecureSarWalletRegistration,
   isRecord,
   type CreateSessionRequest,
   type CreateSessionResponse,
+  type CreateRegistrationIntentRequest,
   type KeyAdapterId,
   type ProvisionWalletRequest,
   type TenantManifest,
@@ -14,7 +16,8 @@ import {
 import { kiwoomManifest } from '@took-wss/tenant-kiwoom';
 import { referenceBankManifest } from '@took-wss/tenant-reference-bank';
 import { issueSessionToken, verifySessionToken } from './sessionToken.js';
-import { walletProvisioningProviders, walletQueryProviders } from './walletQueryProviders.js';
+import { RegistrationError } from './phoneRegistration.js';
+import { identityRegistrationProviders, walletProvisioningProviders, walletQueryProviders } from './walletQueryProviders.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const port = Number(process.env.PORT || 4100);
@@ -138,6 +141,43 @@ function parseProvisionWalletRequest(value: unknown): ProvisionWalletRequest {
   };
 }
 
+function parseRegistrationIntentRequest(value: unknown): CreateRegistrationIntentRequest {
+  if (!isRecord(value)
+    || typeof value.name !== 'string'
+    || typeof value.birthDate !== 'string'
+    || typeof value.phone !== 'string'
+    || typeof value.carrierCode !== 'string'
+    || !MOBILE_CARRIER_CODES.includes(value.carrierCode as (typeof MOBILE_CARRIER_CODES)[number])
+    || typeof value.consentVersion !== 'string') {
+    throw new RegistrationError('invalid_registration_request');
+  }
+  return value as unknown as CreateRegistrationIntentRequest;
+}
+
+function sessionFromClaims(claims: ReturnType<typeof verifySessionToken>) {
+  return {
+    protocolVersion: claims.protocolVersion,
+    sessionId: claims.sessionId,
+    tenantId: claims.tenantId,
+    subject: claims.subject,
+    subjectVersion: claims.subjectVersion,
+    keyAdapter: claims.keyAdapter,
+    issuedAt: claims.issuedAt,
+    expiresAt: claims.expiresAt,
+  } as const;
+}
+
+function isLoopbackRequest(request: IncomingMessage): boolean {
+  const origin = request.headers.origin;
+  if (!origin) return false;
+  try {
+    const hostname = new URL(origin).hostname;
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+  } catch {
+    return false;
+  }
+}
+
 async function handleCreateSession(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const providedKey = String(request.headers['x-wss-institution-key'] || '');
   if (!constantTimeEqual(providedKey, institutionApiKey)) {
@@ -189,20 +229,17 @@ async function handleBootstrap(request: IncomingMessage, response: ServerRespons
     sendJson(response, 503, { error: 'production_wallet_query_provider_required' });
     return;
   }
-  const session = {
-    protocolVersion: claims.protocolVersion,
-    sessionId: claims.sessionId,
-    tenantId: claims.tenantId,
-    subject: claims.subject,
-    subjectVersion: claims.subjectVersion,
-    keyAdapter: claims.keyAdapter,
-    issuedAt: claims.issuedAt,
-    expiresAt: claims.expiresAt,
-  } as const;
+  const session = sessionFromClaims(claims);
+  const identityProvider = identityRegistrationProviders.get(manifest.tenantId);
+  if (!identityProvider) {
+    sendJson(response, 503, { error: 'identity_provider_unavailable' });
+    return;
+  }
   const bootstrap: WssRuntimeBootstrap = {
     protocolVersion: WSS_PROTOCOL_VERSION,
     session,
     manifest,
+    identity: await identityProvider.getIdentity({ session, manifest }),
     walletHome: await walletQueryProvider.getHome({ session, manifest }),
   };
   sendJson(response, 200, bootstrap);
@@ -224,16 +261,7 @@ async function handleProvisionWallet(request: IncomingMessage, response: ServerR
     sendJson(response, 503, { error: 'production_wallet_provisioning_provider_required' });
     return;
   }
-  const session = {
-    protocolVersion: claims.protocolVersion,
-    sessionId: claims.sessionId,
-    tenantId: claims.tenantId,
-    subject: claims.subject,
-    subjectVersion: claims.subjectVersion,
-    keyAdapter: claims.keyAdapter,
-    issuedAt: claims.issuedAt,
-    expiresAt: claims.expiresAt,
-  } as const;
+  const session = sessionFromClaims(claims);
   const provisionRequest = parseProvisionWalletRequest(await readJson(request));
   if (!manifest.keyManagement.allowedAdapters.includes(provisionRequest.keyAdapter)) {
     sendJson(response, 400, { error: 'key_adapter_not_allowed' });
@@ -276,17 +304,64 @@ async function handleWalletHome(request: IncomingMessage, response: ServerRespon
     sendJson(response, 503, { error: 'production_wallet_query_provider_required' });
     return;
   }
-  const session = {
-    protocolVersion: claims.protocolVersion,
-    sessionId: claims.sessionId,
-    tenantId: claims.tenantId,
-    subject: claims.subject,
-    subjectVersion: claims.subjectVersion,
-    keyAdapter: claims.keyAdapter,
-    issuedAt: claims.issuedAt,
-    expiresAt: claims.expiresAt,
-  } as const;
+  const session = sessionFromClaims(claims);
   sendJson(response, 200, await provider.getHome({ session, manifest, walletId }));
+}
+
+async function identityContext(request: IncomingMessage) {
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const manifest = tenants.get(claims.tenantId);
+  if (!manifest) throw new RegistrationError('session_policy_mismatch');
+  const provider = identityRegistrationProviders.get(manifest.tenantId);
+  if (!provider) throw new RegistrationError('identity_provider_unavailable');
+  if (isProduction && provider.id === 'development-postgres-wallet-provider') {
+    throw new RegistrationError('production_identity_provider_required');
+  }
+  return { session: sessionFromClaims(claims), manifest, provider };
+}
+
+async function handleCreateRegistrationIntent(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const context = await identityContext(request);
+  const result = await context.provider.createRegistrationIntent({
+    session: context.session,
+    manifest: context.manifest,
+    request: parseRegistrationIntentRequest(await readJson(request)),
+  });
+  sendJson(response, 201, result);
+}
+
+async function handleCreatePhoneChallenge(
+  request: IncomingMessage,
+  response: ServerResponse,
+  registrationIntentId: string,
+): Promise<void> {
+  const context = await identityContext(request);
+  const result = await context.provider.createPhoneChallenge({
+    session: context.session,
+    manifest: context.manifest,
+    registrationIntentId,
+  });
+  if (!isLoopbackRequest(request)) delete result.developmentCode;
+  sendJson(response, 201, result);
+}
+
+async function handleVerifyPhoneChallenge(
+  request: IncomingMessage,
+  response: ServerResponse,
+  registrationIntentId: string,
+  challengeId: string,
+): Promise<void> {
+  const body = await readJson(request);
+  if (!isRecord(body) || typeof body.code !== 'string') throw new RegistrationError('invalid_verification_code');
+  const context = await identityContext(request);
+  const result = await context.provider.verifyPhoneChallenge({
+    session: context.session,
+    manifest: context.manifest,
+    registrationIntentId,
+    challengeId,
+    code: body.code,
+  });
+  sendJson(response, 200, result);
 }
 
 const server = createServer(async (request, response) => {
@@ -314,6 +389,25 @@ const server = createServer(async (request, response) => {
       await handleBootstrap(request, response);
       return;
     }
+    if (request.method === 'POST' && url.pathname === '/v1/registration/intents') {
+      await handleCreateRegistrationIntent(request, response);
+      return;
+    }
+    const challengeMatch = url.pathname.match(/^\/v1\/registration\/intents\/([^/]+)\/challenges$/);
+    if (request.method === 'POST' && challengeMatch) {
+      await handleCreatePhoneChallenge(request, response, decodeURIComponent(challengeMatch[1]!));
+      return;
+    }
+    const verificationMatch = url.pathname.match(/^\/v1\/registration\/intents\/([^/]+)\/challenges\/([^/]+)\/verify$/);
+    if (request.method === 'POST' && verificationMatch) {
+      await handleVerifyPhoneChallenge(
+        request,
+        response,
+        decodeURIComponent(verificationMatch[1]!),
+        decodeURIComponent(verificationMatch[2]!),
+      );
+      return;
+    }
     if (request.method === 'POST' && url.pathname === '/v1/wallets/provision') {
       await handleProvisionWallet(request, response);
       return;
@@ -326,6 +420,14 @@ const server = createServer(async (request, response) => {
     sendJson(response, 404, { error: 'not_found' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    if (error instanceof RegistrationError) {
+      const status = error.code.includes('rate_limited') ? 429
+        : error.code.includes('not_found') ? 404
+          : error.code.includes('required') || error.code.includes('policy_mismatch') ? 403
+            : 400;
+      sendJson(response, status, { error: error.code });
+      return;
+    }
     const status = message.includes('session') || message.includes('token') || message.includes('expired') ? 401 : 400;
     sendJson(response, status, { error: 'request_rejected' });
   }

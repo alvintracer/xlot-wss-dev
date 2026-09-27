@@ -17,6 +17,11 @@ import { getHostChromeProfile } from './hostChromeRegistry';
 
 const bffUrl = import.meta.env.VITE_WSS_BFF_URL || 'http://localhost:4100';
 const localDevelopmentInstitutionKey = import.meta.env.DEV ? 'local-wss-development-only' : '';
+const previewCustomerRef = (() => {
+  if (!import.meta.env.DEV) return '';
+  const requested = new URLSearchParams(window.location.search).get('customerRef')?.trim();
+  return requested && /^[a-zA-Z0-9._:-]{3,128}$/.test(requested) ? requested : 'demo-customer-001';
+})();
 const hostCapabilities: HostCapabilities = {
   handlesSafeArea: true,
   rendersRootHeader: true,
@@ -87,7 +92,7 @@ export function App() {
           'Content-Type': 'application/json',
           'x-wss-institution-key': localDevelopmentInstitutionKey,
         },
-        body: JSON.stringify({ tenantId, customerRef: 'demo-customer-001', requestedKeyAdapter: keyAdapter }),
+        body: JSON.stringify({ tenantId, customerRef: previewCustomerRef, requestedKeyAdapter: keyAdapter }),
       });
       if (!response.ok) throw new Error('Session request rejected.');
       setSession(await response.json() as CreateSessionResponse);

@@ -1,15 +1,20 @@
 import {
   Check,
+  CaretRight,
   CirclesThreePlus,
   DeviceMobile,
   Key,
   LockKey,
   ShieldCheck,
   Wallet,
+  X,
 } from '@phosphor-icons/react';
 import { useRef, useState } from 'react';
 import type {
   HostAuthenticationResult,
+  CreatePhoneChallengeResponse,
+  CreateRegistrationIntentRequest,
+  CreateRegistrationIntentResponse,
   KeyAdapterId,
   ProvisionWalletRequest,
   ProvisionWalletResponse,
@@ -17,10 +22,15 @@ import type {
   SecureWalletImportResult,
   TenantManifest,
   WalletImportMethod,
+  VerifyPhoneChallengeRequest,
+  VerifyPhoneChallengeResponse,
+  WssIdentityState,
 } from '@took-wss/contracts';
 import { FlowShell } from './FlowShell';
 
 type CreateFlowStep =
+  | 'profile'
+  | 'phone-code'
   | 'key-adapter'
   | 'authentication'
   | 'wallet-source'
@@ -37,15 +47,27 @@ interface CreateWalletFlowProps {
   mode: 'initial' | 'add';
   canSecureWalletImport: boolean;
   canCreateSecureSarWallet: boolean;
+  identity: WssIdentityState;
   onClose: () => void;
   onAuthenticate: () => Promise<HostAuthenticationResult>;
   onRequestSecureSarWalletCreation: () => Promise<SecureSarWalletCreationResult>;
   onRequestSecureImport: (method: WalletImportMethod) => Promise<SecureWalletImportResult>;
+  onCreateRegistrationIntent: (request: CreateRegistrationIntentRequest) => Promise<CreateRegistrationIntentResponse>;
+  onCreatePhoneChallenge: (registrationIntentId: string) => Promise<CreatePhoneChallengeResponse>;
+  onVerifyPhoneChallenge: (registrationIntentId: string, challengeId: string, request: VerifyPhoneChallengeRequest) => Promise<VerifyPhoneChallengeResponse>;
   onProvision: (request: ProvisionWalletRequest) => Promise<ProvisionWalletResponse>;
   onComplete: (response: ProvisionWalletResponse) => void;
 }
 
 const maskedSeedSlots = Array.from({ length: 12 }, (_, index) => index + 1);
+const carriers = [
+  ['skt', 'SKT'],
+  ['kt', 'KT'],
+  ['lgu-plus', 'LG U+'],
+  ['skt-mvno', 'SKT 알뜰폰'],
+  ['kt-mvno', 'KT 알뜰폰'],
+  ['lgu-plus-mvno', 'LG U+ 알뜰폰'],
+] as const;
 
 const adapterCopy: Record<KeyAdapterId, { title: string; description: string; badge: string }> = {
   'took-sar': {
@@ -71,16 +93,33 @@ export function CreateWalletFlow({
   mode,
   canSecureWalletImport,
   canCreateSecureSarWallet,
+  identity,
   onClose,
   onAuthenticate,
   onRequestSecureSarWalletCreation,
   onRequestSecureImport,
+  onCreateRegistrationIntent,
+  onCreatePhoneChallenge,
+  onVerifyPhoneChallenge,
   onProvision,
   onComplete,
 }: CreateWalletFlowProps) {
   const canChooseAdapter = mode === 'add' && manifest.keyManagement.allowedAdapters.length > 1;
+  const requiresRegistration = mode === 'initial'
+    && manifest.identity.onboardingMode === 'phone-first'
+    && identity.status === 'registration-required';
   const [keyAdapter, setKeyAdapter] = useState(initialKeyAdapter);
-  const [step, setStep] = useState<CreateFlowStep>(canChooseAdapter ? 'key-adapter' : 'authentication');
+  const [step, setStep] = useState<CreateFlowStep>(requiresRegistration ? 'profile' : canChooseAdapter ? 'key-adapter' : 'authentication');
+  const [name, setName] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [phone, setPhone] = useState('');
+  const [carrierCode, setCarrierCode] = useState<CreateRegistrationIntentRequest['carrierCode'] | null>(null);
+  const [profileConsent, setProfileConsent] = useState(false);
+  const [carrierSheetOpen, setCarrierSheetOpen] = useState(false);
+  const [registrationIntentId, setRegistrationIntentId] = useState<string | null>(null);
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [developmentCode, setDevelopmentCode] = useState<string | null>(null);
   const [walletSource, setWalletSource] = useState<SarWalletSource | null>(null);
   const [secureImportRef, setSecureImportRef] = useState<string | null>(null);
   const [recoveryAcknowledged, setRecoveryAcknowledged] = useState(false);
@@ -88,15 +127,82 @@ export function CreateWalletFlow({
   const [error, setError] = useState<string | null>(null);
   const idempotencyKey = useRef(crypto.randomUUID());
   const isSar = keyAdapter === 'took-sar';
+  const identityOffset = requiresRegistration ? 2 : 0;
   const offset = canChooseAdapter ? 1 : 0;
-  const totalSteps = isSar ? offset + 5 : offset + 3;
-  const stepNumber = step === 'key-adapter' ? 1
-    : step === 'authentication' ? offset + 1
-      : step === 'wallet-source' ? offset + 2
-        : step === 'seed-wallet' || step === 'secure-import' ? offset + 3
-          : step === 'sar-setup' ? offset + 4
-            : step === 'provider-wallet' ? offset + 2
+  const totalSteps = identityOffset + (isSar ? offset + 5 : offset + 3);
+  const stepNumber = step === 'profile' ? 1
+    : step === 'phone-code' ? 2
+      : step === 'key-adapter' ? identityOffset + 1
+        : step === 'authentication' ? identityOffset + offset + 1
+          : step === 'wallet-source' ? identityOffset + offset + 2
+            : step === 'seed-wallet' || step === 'secure-import' ? identityOffset + offset + 3
+              : step === 'sar-setup' ? identityOffset + offset + 4
+                : step === 'provider-wallet' ? identityOffset + offset + 2
               : totalSteps;
+
+  const normalizedBirthDate = birthDate.replace(/\D/g, '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3');
+  const normalizedPhone = phone.replace(/\D/g, '');
+  const canSubmitProfile = name.trim().length >= 2
+    && /^\d{4}-\d{2}-\d{2}$/.test(normalizedBirthDate)
+    && /^010\d{8}$/.test(normalizedPhone)
+    && carrierCode !== null
+    && profileConsent;
+
+  const requestPhoneCode = async () => {
+    if (!canSubmitProfile || !carrierCode) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const intent = await onCreateRegistrationIntent({
+        name: name.trim(),
+        birthDate: normalizedBirthDate,
+        phone: normalizedPhone,
+        carrierCode,
+        consentVersion: manifest.identity.consentVersion,
+      });
+      const challenge = await onCreatePhoneChallenge(intent.registrationIntentId);
+      setRegistrationIntentId(intent.registrationIntentId);
+      setChallengeId(challenge.challengeId);
+      setDevelopmentCode(challenge.developmentCode ?? null);
+      setVerificationCode('');
+      setStep('phone-code');
+    } catch {
+      setError('입력 내용을 확인하거나 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resendPhoneCode = async () => {
+    if (!registrationIntentId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const challenge = await onCreatePhoneChallenge(registrationIntentId);
+      setChallengeId(challenge.challengeId);
+      setDevelopmentCode(challenge.developmentCode ?? null);
+      setVerificationCode('');
+    } catch {
+      setError('인증번호를 다시 보내지 못했어요. 잠시 후 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifyPhoneCode = async () => {
+    if (!registrationIntentId || !challengeId || !/^\d{6}$/.test(verificationCode)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onVerifyPhoneChallenge(registrationIntentId, challengeId, { code: verificationCode });
+      setDevelopmentCode(null);
+      setStep('authentication');
+    } catch {
+      setError('인증번호가 맞지 않거나 유효시간이 지났어요.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const selectAdapter = (nextAdapter: KeyAdapterId) => {
     setKeyAdapter(nextAdapter);
@@ -105,6 +211,81 @@ export function CreateWalletFlow({
     setRecoveryAcknowledged(false);
     setError(null);
   };
+
+  if (step === 'profile') {
+    const selectedCarrier = carriers.find(([code]) => code === carrierCode)?.[1];
+    return (
+      <FlowShell
+        title="고객 정보 확인"
+        step={stepNumber}
+        totalSteps={totalSteps}
+        onClose={onClose}
+        footer={(
+          <button className="kw-button" type="button" disabled={!canSubmitProfile || busy} aria-busy={busy} onClick={() => void requestPhoneCode()}>
+            {busy ? '인증번호를 보내고 있어요' : '인증번호 받기'}
+          </button>
+        )}
+      >
+        <h1 className="kw-flow-title">지갑을 연결할 정보를<br />먼저 확인해 주세요</h1>
+        <p className="kw-body kw-mt-12">지갑 고객 UUID를 만들고 휴대폰 소유 여부를 확인하는 단계예요. 법적 본인확인을 대신하지 않습니다.</p>
+        <div className="kw-underlined-fields kw-mt-24">
+          <label><span>이름</span><input value={name} autoComplete="name" maxLength={40} placeholder="이름 입력" onChange={(event) => setName(event.target.value)} /></label>
+          <label><span>생년월일</span><input value={birthDate} inputMode="numeric" autoComplete="bday" maxLength={10} placeholder="YYYY.MM.DD" onChange={(event) => setBirthDate(event.target.value)} /></label>
+          <button className="kw-field-button" type="button" onClick={() => setCarrierSheetOpen(true)}>
+            <span>통신사</span><strong data-empty={!selectedCarrier}>{selectedCarrier ?? '통신사 선택'}</strong><CaretRight aria-hidden="true" />
+          </button>
+          <label><span>휴대폰 번호</span><input value={phone} inputMode="tel" autoComplete="tel" maxLength={13} placeholder="숫자만 입력" onChange={(event) => setPhone(event.target.value)} /></label>
+        </div>
+        <label className="kw-consent kw-mt-24">
+          <input type="checkbox" checked={profileConsent} onChange={(event) => setProfileConsent(event.target.checked)} />
+          <span>지갑 프로필 생성과 휴대폰 소유 확인을 위한 개인정보 처리에 동의합니다.</span>
+        </label>
+        {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
+        {carrierSheetOpen ? (
+          <div className="kw-modal-layer" role="presentation" onMouseDown={() => setCarrierSheetOpen(false)}>
+            <section className="kw-carrier-sheet" role="dialog" aria-modal="true" aria-label="통신사 선택" onMouseDown={(event) => event.stopPropagation()}>
+              <header><h2>통신사를 선택해 주세요</h2><button type="button" aria-label="통신사 선택 닫기" onClick={() => setCarrierSheetOpen(false)}><X aria-hidden="true" /></button></header>
+              <div>
+                {carriers.map(([code, label]) => (
+                  <button type="button" key={code} aria-pressed={carrierCode === code} onClick={() => { setCarrierCode(code); setCarrierSheetOpen(false); }}>
+                    <span>{label}</span>{carrierCode === code ? <Check aria-hidden="true" /> : null}
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : null}
+      </FlowShell>
+    );
+  }
+
+  if (step === 'phone-code') {
+    return (
+      <FlowShell
+        title="휴대폰 확인"
+        step={stepNumber}
+        totalSteps={totalSteps}
+        onBack={() => setStep('profile')}
+        onClose={onClose}
+        footer={(
+          <button className="kw-button" type="button" disabled={!/^\d{6}$/.test(verificationCode) || busy} aria-busy={busy} onClick={() => void verifyPhoneCode()}>
+            {busy ? '확인하고 있어요' : '인증번호 확인'}
+          </button>
+        )}
+      >
+        <div className="kw-flow-symbol" aria-hidden="true"><DeviceMobile weight="regular" /></div>
+        <h1 className="kw-flow-title">문자로 받은 인증번호<br />6자리를 입력해 주세요</h1>
+        <p className="kw-body kw-mt-12">입력한 번호의 휴대폰을 현재 사용할 수 있는지 확인합니다.</p>
+        <label className="kw-code-field kw-mt-24">
+          <span>인증번호</span>
+          <input autoFocus value={verificationCode} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))} />
+        </label>
+        {developmentCode ? <p className="kw-development-code kw-mt-16">개발 확인용 인증번호 <strong>{developmentCode}</strong></p> : null}
+        <button className="kw-text-action kw-mt-20" type="button" disabled={busy} onClick={() => void resendPhoneCode()}>인증번호 다시 받기</button>
+        {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
+      </FlowShell>
+    );
+  }
 
   const requestAuthentication = async () => {
     setBusy(true);
@@ -242,7 +423,7 @@ export function CreateWalletFlow({
       >
         <div className="kw-flow-symbol" aria-hidden="true"><ShieldCheck weight="regular" /></div>
         <h1 className="kw-flow-title">키움 고객 인증으로<br />지갑 등록을 시작해요</h1>
-        <p className="kw-body kw-mt-12">이 WebView가 이름·전화번호를 다시 받지 않고, 키움 앱이 보유한 고객 세션으로 본인 여부를 확인합니다.</p>
+        <p className="kw-body kw-mt-12">키움 앱이 보유한 고객 세션으로 지갑 등록 요청을 한 번 더 확인합니다.</p>
         <div className="kw-inline-notice kw-mt-24">
           <LockKey className="kw-icon kw-icon--small" aria-hidden="true" />
           <span>인증 결과만 전달받으며 PIN, 생체정보, 주민등록번호는 WSS로 전달되지 않습니다.</span>

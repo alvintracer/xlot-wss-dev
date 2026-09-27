@@ -43,6 +43,11 @@ const newProjectManifest = assertTenantManifest({
     textColor: '#0A0A0A',
     radius: 'soft',
   },
+  identity: {
+    onboardingMode: 'institution-first',
+    phoneVerification: 'host',
+    consentVersion: 'new-wss-wallet-profile-v1',
+  },
   enabledModules: ['wallet-home', 'sar-recovery'],
   keyManagement: {
     policyVersion: 1,

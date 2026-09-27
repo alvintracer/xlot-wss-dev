@@ -127,6 +127,11 @@ describe('key management policy', () => {
       textColor: '#111111',
       radius: 'soft',
     },
+    identity: {
+      onboardingMode: 'institution-first',
+      phoneVerification: 'host',
+      consentVersion: 'test-consent-v1',
+    },
     providers: { execution: 'took-router', compliance: 'mock', quote: 'mock' },
     chains: ['ethereum'],
   };
