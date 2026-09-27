@@ -27,8 +27,11 @@
 - `wss-auth-send-sms` deployed with gateway JWT verification disabled so that
   Supabase Auth can invoke the Standard Webhooks-verified endpoint
 - a generated Auth Hook signing secret stored only in `.env.local` and
-  synchronized to the Edge Function; the three SOLAPI credentials and remote
-  Auth Hook activation are still pending
+  synchronized to the Edge Function
+- all three SOLAPI credentials synchronized as Edge Function secrets and the
+  remote Supabase Auth Send SMS Hook activated
+- hosted Auth settings returned phone-provider enabled, and the deployed Hook
+  was verified `ACTIVE` at version 4 without exposing a credential value
 - Session pooler runtime connection verified from the Institution BFF
 
 ## Verified persistent vertical slice
@@ -67,11 +70,13 @@ session server-to-server.
 
 The Kiwoom manifest now selects `supabase-auth-solapi`. Supabase Auth owns OTP
 generation and verification, while the deployed Send SMS Hook delivers the
-code through SOLAPI and never stores it. Because the three SOLAPI credentials
-are not yet present, the development sandbox currently makes that unavailability
-explicit and falls back to `development-sms`, which reveals a test code only to
-an allowed loopback WebView origin. Production never falls back. Remote hook
-activation, broader network/device abuse controls, approved copy, retention
-policy, and operational monitoring remain production gates.
+code through SOLAPI and never stores it. The linked development project has the
+Hook and provider secrets activated. If delivery is unavailable, the sandbox
+makes that failure explicit and falls back to `development-sms`, which reveals
+a test code only to an allowed loopback WebView origin. Production never falls
+back. Broader network/device abuse controls, approved copy, retention policy,
+and operational monitoring remain production gates. Automated checks do not
+send to a synthetic phone number; live receipt should be verified through the
+Kiwoom onboarding screen with an authorized test handset.
 
 No secret value belongs in this document, Git, a browser bundle, or chat.

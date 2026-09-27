@@ -42,10 +42,10 @@ npm run dev
 The host starts with the Kiwoom tenant and can request took SAR, Thirdweb User Wallet, or FSL MPC. The browser-to-BFF session call is a local reference flow only. In production, a financial institution backend creates the session and gives the short-lived token to its native app.
 
 The Kiwoom manifest prefers Supabase Auth phone verification with the SOLAPI
-Send SMS Hook. Until the three SOLAPI credentials are configured and the hook
-is activated, sandbox mode visibly falls back to the loopback-only development
-code; production always fails closed. See `supabase/README.md` and run
-`npm run auth:activate:solapi` after adding the server-only secrets.
+Send SMS Hook. The linked `xlot-wss-dev` project has that path activated;
+sandbox mode visibly falls back to the loopback-only development code only when
+delivery is unavailable, while production always fails closed. See
+`supabase/README.md` for activation and rotation instructions.
 
 When `.env.local` contains the isolated development Session pooler URL plus
 independent WSS session and subject-HMAC secrets, the BFF persists profiles,
