@@ -27,8 +27,8 @@
    - Identity, registration, wallet, SAR policy, provider-link, consent, and audit table boundaries are defined.
    - The Reference Host now performs actual random took SAR creation, took-compatible EVM/Solana/Bitcoin/TRON/XRP address derivation, Shamir GF(256) 2-of-3 splitting, all-pairs reconstruction checks, and public-address registration.
    - Secret entropy, plaintext recovery shares, and the envelope key stay inside the host key core. The WSS WebView and BFF receive an opaque handle, public addresses, customer-side encrypted recovery envelopes, and non-secret recovery metadata.
-   - The isolated `xlot-wss-dev` project now has a hard-marked WSS schema, persistent UUID/profile/wallet/address/audit repositories, and development-only encrypted-envelope storage. Remote migration application is pending an IPv4-compatible Session pooler connection.
-   - A read-only development SAR Edge Function verifies the WSS session and wallet ownership before returning ciphertext. It has no plaintext-share, decryption-key, or reconstruction API.
+   - The isolated `xlot-wss-dev` project now has the remotely applied, hard-marked WSS schema, persistent UUID/profile/wallet/address/audit repositories, and development-only encrypted-envelope storage. All WSS tables have RLS enabled and no `anon`/`authenticated` table grants.
+   - The deployed, read-only development SAR Edge Function verifies the WSS session and wallet ownership before returning ciphertext. It has no plaintext-share, decryption-key, or reconstruction API.
    - Next identity slice: WSS phone-first registration APIs, encrypted or keyed PII matching, a real SMS OTP provider adapter, and institution-subject merge after step-up.
    - Next key-core slice: durable device-key protection for development recovery, followed by native/hardware-backed storage, independently controlled durable factor stores, signed one-time host attestation, and an end-to-end recovery ceremony.
    - The Kiwoom development slice covers host authentication, actual new-SAR creation, a fail-closed secure-import entry path, idempotent sandbox registration, and independent wallet slots with per-wallet network capabilities.

@@ -82,6 +82,7 @@ The local Reference Host now creates real random wallet entropy, real multichain
 - Host navigation and focused wallet flows follow `docs/architecture/0004-host-shell-and-focused-wallet-flows.md`.
 - Host-owned SAR creation and its production gate follow `docs/architecture/0005-host-sar-key-core-boundary.md`.
 - The shared proposal/early-function Supabase boundary follows `docs/architecture/0006-xlot-wss-development-backend.md`.
+- Current non-secret development deployment state is recorded in `docs/DEVELOPMENT_ENVIRONMENT_STATUS.md`.
 - The Kiwoom Super Wallet product model and customization decisions live in `tenants/kiwoom/KIWOOM_WALLET_PRODUCT_PROFILE.md`.
 - For Kiwoom work, begin with `tenants/kiwoom/ui-kit/kiwoom-wallet-ui-guide/AGENT_IMPLEMENTATION_BRIEF.md`.
 - See `docs/DESIGN_GOVERNANCE.md` before adding or changing UI.
