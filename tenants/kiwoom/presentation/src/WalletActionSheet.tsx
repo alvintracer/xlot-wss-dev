@@ -28,6 +28,7 @@ import type {
   WalletProfileSummary,
   WalletReceiveAssetView,
 } from '@took-wss/contracts';
+import { AssetIcon } from './AssetIcon';
 
 export type WalletActionMode = 'receive' | 'send' | 'exchange';
 type SendStep = 'asset' | 'network' | 'amount' | 'recipient-method' | 'recipient' | 'review' | 'success';
@@ -190,7 +191,7 @@ function NetworkPicker({ networks, onSelect }: { networks: WalletNetworkView[]; 
           disabled={network.addressStatus !== 'ready'}
           onClick={() => onSelect(network)}
         >
-          <span className="kw-transfer-asset-mark" aria-hidden="true">{network.nativeSymbol.slice(0, 1)}</span>
+          <AssetIcon className="kw-transfer-asset-mark" symbol={network.nativeSymbol} iconAssetId={`coin:${network.nativeSymbol.toLowerCase()}`} />
           <span>
             <strong>{nativeName(network)}</strong>
             <small>{network.network}{network.addressStatus !== 'ready' ? ' · 주소 준비 중' : ''}</small>
@@ -207,7 +208,7 @@ function AssetGroupPicker({ groups, onSelect }: { groups: AssetGroup[]; onSelect
     <div className="kw-transfer-choice-list">
       {groups.map((group) => (
         <button className="kw-transfer-choice" type="button" key={group.symbol} onClick={() => onSelect(group)}>
-          <span className="kw-transfer-asset-mark" aria-hidden="true">{group.symbol.slice(0, 1)}</span>
+          <AssetIcon className="kw-transfer-asset-mark" symbol={group.symbol} iconAssetId={group.deployments[0]?.iconAssetId} />
           <span>
             <strong>{group.name}</strong>
             <small>{group.symbol} · {group.deployments.length}개 네트워크</small>
@@ -240,7 +241,7 @@ function AssetNetworkPicker({
           : `${asset.balanceDisplay} ${asset.symbol}`;
         return (
           <button className="kw-transfer-choice" type="button" key={asset.assetId} disabled={!canSelect} onClick={() => onSelect(asset)}>
-            <span className="kw-transfer-asset-mark" aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
+            <AssetIcon className="kw-transfer-asset-mark" symbol={asset.symbol} iconAssetId={asset.iconAssetId} />
             <span>
               <strong>{asset.network}</strong>
               <small>{asset.canonical ? '공식 발행 자산' : '브리지 자산'}{!canSelect ? ` · ${asset.transferUnavailableReason ?? '보내기 연결 준비 중'}` : ''}</small>
@@ -461,7 +462,7 @@ function SendFlow({
   };
 
   const prepare = async () => {
-    if (!asset?.chainId || !amountAtomic || !recipient.trim() || recipientMode !== 'address' || !destinationTagValid) return;
+    if (!asset?.chainId || !amountAtomic || !recipient.trim() || !destinationTagValid) return;
     setBusy(true);
     setError(null);
     try {
@@ -478,7 +479,9 @@ function SendFlow({
       setPrepared(quote);
       setStep('review');
     } catch {
-      setError('보내기 조건을 확인하지 못했어요. 주소, 잔액과 네트워크 수수료를 다시 확인해 주세요.');
+      setError(recipientMode === 'phone'
+        ? '휴대폰 송금 조건을 확인하지 못했어요. 번호, 잔액과 에스크로 지원 네트워크를 다시 확인해 주세요.'
+        : '보내기 조건을 확인하지 못했어요. 주소, 잔액과 네트워크 수수료를 다시 확인해 주세요.');
     } finally {
       setBusy(false);
     }
@@ -568,7 +571,7 @@ function SendFlow({
             <p className="kw-transfer-lead">지갑 주소 또는 휴대폰 번호를 선택해 주세요.</p>
             <div className="kw-recipient-methods">
               <button type="button" onClick={() => selectRecipientMode('address')}><span><LinkSimple aria-hidden="true" /></span><strong>지갑 주소로 보내기</strong><small>받는 분의 {asset.network} 주소로 보내요.</small><CaretRight aria-hidden="true" /></button>
-              <button type="button" onClick={() => selectRecipientMode('phone')}><span><DeviceMobile aria-hidden="true" /></span><strong>휴대폰 번호로 보내기</strong><small>본인 확인 후 받을 수 있는 수령 링크를 보내요.</small><CaretRight aria-hidden="true" /></button>
+              <button type="button" disabled={asset.phoneTransferStatus !== 'enabled'} onClick={() => selectRecipientMode('phone')}><span><DeviceMobile aria-hidden="true" /></span><strong>휴대폰 번호로 보내기</strong><small>{asset.phoneTransferStatus === 'enabled' ? '에스크로에 예치하고 안전한 수령 링크를 보내요.' : asset.phoneTransferUnavailableReason ?? '이 네트워크에서는 아직 이용할 수 없어요.'}</small><CaretRight aria-hidden="true" /></button>
             </div>
           </div>
         ) : step === 'recipient' && asset ? (
@@ -604,7 +607,7 @@ function SendFlow({
             ) : null}
             <p className="kw-transfer-field-hint">{recipientMode === 'address' ? '네트워크가 다르면 자산을 찾기 어려울 수 있어요.' : '상대방은 수령 안내를 받고 본인 확인 후 자산을 받아요.'}</p>
             {recipientMode === 'address' && asset.chainId === 'xrp' ? <p className="kw-transfer-field-hint">거래소가 목적지 태그를 안내했다면 반드시 함께 입력해 주세요.</p> : null}
-            {recipientMode === 'phone' ? <div className="kw-transfer-bridge-notice"><ShieldCheck aria-hidden="true" /><span><strong>휴대폰 송금 연결을 준비하고 있어요.</strong>에스크로 예치와 수령 링크 발급이 연결된 뒤 실제 보내기를 진행할 수 있어요.</span></div> : null}
+            {recipientMode === 'phone' ? <div className="kw-transfer-bridge-notice"><ShieldCheck aria-hidden="true" /><span><strong>받는 분이 확인한 뒤 수령해요.</strong>보낸 자산은 7일 동안 에스크로에 안전하게 보관되고, 기간 안에 받지 않으면 환불할 수 있어요.</span></div> : null}
             {recipient.length > 0 && !recipientValid ? <p className="kw-transfer-error" role="alert">{recipientMode === 'address' ? '받는 주소 형식을 다시 확인해 주세요.' : '휴대폰 번호를 다시 확인해 주세요.'}</p> : null}
             {!destinationTagValid ? <p className="kw-transfer-error" role="alert">목적지 태그는 0부터 4,294,967,295 사이의 숫자로 입력해 주세요.</p> : null}
             {error ? <p className="kw-transfer-error" role="alert">{error}</p> : null}
@@ -618,16 +621,18 @@ function SendFlow({
               <span>{prepared.fiatDisplay ?? '원화 환산 정보 없음'}</span>
             </div>
             <dl className="kw-transfer-review-list">
-              <div><dt>받는 주소</dt><dd>{abbreviatedAddress(prepared.recipient)}</dd></div>
+              <div><dt>{prepared.channel === 'phone' ? '받는 분' : '받는 주소'}</dt><dd>{prepared.channel === 'phone' ? prepared.recipient : abbreviatedAddress(prepared.recipient)}</dd></div>
               {prepared.destinationTag !== undefined ? <div><dt>목적지 태그</dt><dd>{prepared.destinationTag}</dd></div> : null}
               <div><dt>네트워크</dt><dd>{prepared.network}</dd></div>
               <div><dt>{prepared.networkFee.maximum ? '최대 네트워크 수수료' : '네트워크 수수료'}</dt><dd>{prepared.networkFee.amountDisplay} {prepared.networkFee.symbol}{prepared.networkFee.fiatDisplay ? <small>{prepared.networkFee.fiatDisplay}</small> : null}</dd></div>
+              {prepared.phoneEscrow ? <div><dt>수령 수수료</dt><dd>{prepared.phoneEscrow.claimFeeDisplay} {prepared.assetSymbol}<small>받는 금액은 {prepared.phoneEscrow.recipientAmountDisplay} {prepared.assetSymbol}</small></dd></div> : null}
+              {prepared.phoneEscrow ? <div><dt>에스크로 예치</dt><dd>{prepared.phoneEscrow.escrowAmountDisplay} {prepared.assetSymbol}<small>{new Date(prepared.phoneEscrow.expiresAt).toLocaleDateString('ko-KR')}까지 수령</small></dd></div> : null}
               <div><dt>수수료 부담</dt><dd><button type="button" onClick={() => setGasDialogOpen(true)}>{prepared.gasSponsorship.status === 'sponsored' ? '서비스 부담 · 적용됨' : '고객 부담 · 상세 보기'}<CaretRight aria-hidden="true" /></button></dd></div>
               <div><dt>견적 유효시간</dt><dd>{quoteExpired ? '만료됨' : `${new Date(prepared.expiresAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}까지`}</dd></div>
             </dl>
             <div className={`kw-compliance-card kw-compliance-card--${prepared.compliance.status}`}>
               {reviewBlocked ? <WarningCircle aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}
-              <div><strong>{prepared.compliance.status === 'allow' ? '주소 확인 완료' : prepared.compliance.status === 'review' ? '추가 확인이 필요해요' : '보낼 수 없는 주소예요'}</strong><p>{prepared.compliance.message}</p></div>
+              <div><strong>{prepared.compliance.status === 'allow' ? prepared.channel === 'phone' ? '수령 절차 확인 완료' : '주소 확인 완료' : prepared.compliance.status === 'review' ? '추가 확인이 필요해요' : '보낼 수 없는 주소예요'}</strong><p>{prepared.compliance.message}</p></div>
             </div>
             {needsReason ? (
               <label className="kw-transfer-reason">
@@ -640,8 +645,8 @@ function SendFlow({
         ) : step === 'success' && asset && result ? (
           <div className="kw-transfer-page kw-transfer-success">
             <CheckCircle aria-hidden="true" />
-            <h2 id="kw-wallet-action-title">보내기를<br />접수했어요</h2>
-            <p>네트워크에서 거래를 확인하고 있어요.</p>
+            <h2 id="kw-wallet-action-title">{result.delivery?.status === 'sent' ? <>수령 안내를<br />보냈어요</> : <>보내기를<br />접수했어요</>}</h2>
+            <p>{result.delivery?.status === 'sent' ? `${result.delivery.recipientDisplay} 번호로 수령 링크를 보냈어요.` : result.delivery?.status === 'failed' ? '자산 예치는 완료됐지만 수령 안내 발송을 다시 확인해야 해요.' : '네트워크에서 거래를 확인하고 있어요.'}</p>
             <div><span>보낸 금액</span><strong>{prepared?.amountDisplay} {asset.symbol}</strong></div>
             <button type="button" onClick={() => void navigator.clipboard.writeText(result.transactionHash)}>거래 해시 복사</button>
           </div>
@@ -650,7 +655,7 @@ function SendFlow({
       {step === 'amount' ? (
         <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={!validAmount} onClick={() => setStep('recipient-method')}>{asset?.balanceStatus === 'unavailable' ? '잔액 확인이 필요해요' : available <= 0n ? '보낼 잔액이 없어요' : '다음'}</button></footer>
       ) : step === 'recipient' ? (
-        <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={!recipientValid || !destinationTagValid || recipientMode === 'phone' || busy} aria-busy={busy} onClick={() => void prepare()}>{recipientMode === 'phone' ? '휴대폰 송금 연결 준비 중' : busy ? '확인하고 있어요' : '보내기 조건 확인'}</button></footer>
+        <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={!recipientValid || !destinationTagValid || busy} aria-busy={busy} onClick={() => void prepare()}>{busy ? '확인하고 있어요' : recipientMode === 'phone' ? '에스크로 조건 확인' : '보내기 조건 확인'}</button></footer>
       ) : step === 'review' ? (
         <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={busy || (!quoteExpired && (Boolean(reviewBlocked) || (Boolean(needsReason) && complianceReason.trim().length < 5)))} aria-busy={busy} onClick={() => void (quoteExpired || needsReason ? prepare() : execute())}>{busy ? '처리하고 있어요' : quoteExpired ? '견적 다시 확인' : needsReason ? '위험도 다시 확인' : '인증하고 보내기'}</button></footer>
       ) : step === 'success' ? (

@@ -126,15 +126,15 @@ export function HostSecurityOverlay({
           <div className="host-security-content">
             <div className="host-security-symbol" aria-hidden="true"><ShieldCheck size={34} weight="regular" /></div>
             <p className="host-security-kicker">보내기 최종 확인</p>
-            <h2 id="host-security-title">받는 주소와 금액을<br />한 번 더 확인해 주세요</h2>
+            <h2 id="host-security-title">{view.request.channel === 'phone' ? '받는 분과 금액을' : '받는 주소와 금액을'}<br />한 번 더 확인해 주세요</h2>
             <dl className="host-transfer-summary">
               <div><dt>보낼 자산</dt><dd>{view.request.amountDisplay} {view.request.assetSymbol}</dd></div>
               <div><dt>네트워크</dt><dd>{view.request.network}</dd></div>
-              <div><dt>받는 주소</dt><dd>{view.request.recipient}</dd></div>
+              <div><dt>{view.request.channel === 'phone' ? '받는 분' : '받는 주소'}</dt><dd>{view.request.recipient}</dd></div>
             </dl>
             <div className="host-security-notice">
               <LockKey size={19} aria-hidden="true" />
-              <span>기기 인증이 끝나면 이 거래 한 건에만 사용할 수 있는 서명을 만들어요.</span>
+              <span>기기 인증이 끝나면 {view.request.transaction.type === 'evm-batch' ? '토큰 승인과 에스크로 예치에만 사용할 수 있는 서명을 만들어요.' : '이 거래 한 건에만 사용할 수 있는 서명을 만들어요.'}</span>
             </div>
             {error ? <p className="host-security-error" role="alert">{error}</p> : null}
           </div>

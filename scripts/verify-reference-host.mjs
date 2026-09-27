@@ -5,6 +5,7 @@ const hostUrl = process.env.WSS_REFERENCE_HOST_URL || 'http://127.0.0.1:5173';
 const chromePath = process.env.WSS_CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const screenshotPath = process.env.WSS_SCREENSHOT_PATH || '/tmp/took-wss-kiwoom-w00.png';
 const sendScreenshotPath = process.env.WSS_SEND_SCREENSHOT_PATH || '/tmp/took-wss-kiwoom-send-zero.png';
+const assetIconScreenshotPath = process.env.WSS_ASSET_ICON_SCREENSHOT_PATH || '/tmp/took-wss-kiwoom-asset-icons.png';
 
 await access(chromePath);
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
@@ -159,6 +160,26 @@ try {
   if (await sendDialog.locator('.kw-transfer-choice').count() !== 21) {
     throw new Error('Send must expose supported assets even without a balance.');
   }
+  const assetIcons = sendDialog.locator('img[src^="/assets/coins/"]');
+  if (await assetIcons.count() !== 21) {
+    throw new Error('Every selectable asset must render a local coin icon.');
+  }
+  for (let index = 0; index < await assetIcons.count(); index += 1) {
+    const icon = assetIcons.nth(index);
+    await icon.scrollIntoViewIfNeeded();
+    await icon.evaluate((image) => new Promise((resolve) => {
+      if (image.complete) return resolve(undefined);
+      image.addEventListener('load', () => resolve(undefined), { once: true });
+      image.addEventListener('error', () => resolve(undefined), { once: true });
+    }));
+  }
+  const incompleteIcons = await assetIcons.evaluateAll((images) => images.filter((image) => (
+    !(image instanceof HTMLImageElement) || !image.complete || image.naturalWidth < 1
+  )).map((image) => image.getAttribute('src')));
+  if (incompleteIcons.length > 0) {
+    throw new Error(`Local asset icons failed to load: ${incompleteIcons.join(', ')}`);
+  }
+  await sendDialog.screenshot({ path: assetIconScreenshotPath });
   await sendDialog.getByRole('button', { name: /USD Coin.*USDC.*7개 네트워크/ }).click();
   const sendNetworkDialog = walletFrame.getByRole('dialog', { name: /어떤 네트워크에서.*보낼까요/ });
   await sendNetworkDialog.getByRole('button', { name: /Ethereum.*0 USDC/ }).click();
@@ -227,6 +248,7 @@ try {
     },
     screenshot: screenshotPath,
     sendScreenshot: sendScreenshotPath,
+    assetIconScreenshot: assetIconScreenshotPath,
   }, null, 2));
 } catch (error) {
   console.error(JSON.stringify({

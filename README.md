@@ -16,7 +16,7 @@ Every project selects a versioned recovery requirement at creation time: `sar-re
 - `services/institution-bff/db` — WSS identity, account linking, wallet ownership, encrypted development-envelope, consent, and audit migrations
 - `supabase/functions/wss-dev-sar-vault` — read-only, development-only encrypted SAR-envelope retrieval after session and ownership verification
 - `supabase/functions/wss-auth-send-sms` — Supabase Auth Send SMS Hook that delivers Auth-owned OTPs through SOLAPI
-- `supabase/functions/wallet-price-quote` — server-side Bonanza K-VWAP-first portfolio/reference quote gateway with labeled market fallback
+- `supabase/functions/wallet-price-quote` — server-side Bonanza K-VWAP-first quote gateway with CoinGecko then CoinMarketCap market-reference fallback
 - `supabase/functions/kyt-screen` — TranSight KYT gateway that fails closed when the provider is unavailable
 - `packages/contracts` — versioned manifests, session, and WebView bridge contracts
 - `packages/host-sdk` — host-to-wallet WebView/iframe SDK
@@ -100,6 +100,7 @@ The local Reference Host now creates real random wallet entropy, real multichain
 - The shared proposal/early-function Supabase boundary follows `docs/architecture/0006-xlot-wss-development-backend.md`.
 - Current non-secret development deployment state is recorded in `docs/DEVELOPMENT_ENVIRONMENT_STATUS.md`.
 - Stablecoin inventory, tenant policy, and capability levels are recorded in `docs/STABLECOIN_ASSET_POLICY.md`.
+- Phone escrow execution, data boundaries, and activation gates are recorded in `docs/PHONE_ESCROW_EXECUTION.md`.
 - The Kiwoom Super Wallet product model and customization decisions live in `tenants/kiwoom/KIWOOM_WALLET_PRODUCT_PROFILE.md`.
 - For Kiwoom work, begin with `tenants/kiwoom/ui-kit/kiwoom-wallet-ui-guide/AGENT_IMPLEMENTATION_BRIEF.md`.
 - See `docs/DESIGN_GOVERNANCE.md` before adding or changing UI.

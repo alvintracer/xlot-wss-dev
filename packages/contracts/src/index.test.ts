@@ -137,6 +137,7 @@ describe('host initialization contract', () => {
       amountDisplay: '0.01',
       fromAddress: '0x0000000000000000000000000000000000000002',
       recipient: '0x0000000000000000000000000000000000000001',
+      channel: 'address',
       transaction: {
         type: 'evm-native',
         chainId: 1,
@@ -170,6 +171,24 @@ describe('host initialization contract', () => {
       protocolVersion: 1,
       requestId: 'request-5',
       request: erc20SigningRequest,
+    })).toBe(true);
+    expect(isWalletToHostMessage({
+      type: 'took-wss:secure-transaction-sign-request',
+      protocolVersion: 1,
+      requestId: 'request-phone-batch',
+      request: {
+        ...erc20SigningRequest,
+        recipient: '010-****-5678',
+        channel: 'phone',
+        transaction: {
+          type: 'evm-batch',
+          chainId: 1,
+          transactions: [
+            { ...erc20SigningRequest.transaction, purpose: 'token-approval', nonce: 4 },
+            { ...erc20SigningRequest.transaction, purpose: 'phone-escrow-deposit', nonce: 5 },
+          ],
+        },
+      },
     })).toBe(true);
     expect(isWalletToHostMessage({
       type: 'took-wss:secure-transaction-sign-request',

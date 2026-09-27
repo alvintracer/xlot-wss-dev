@@ -1,6 +1,6 @@
 # Stablecoin asset policy
 
-- Updated: 2026-09-27
+- Updated: 2026-09-28
 - Scope: reusable WSS asset registry and tenant-selectable policy
 - Source of truth: `services/institution-bff/src/stablecoinRegistry.ts`
 
@@ -55,10 +55,12 @@ registry; tenant manifests contain symbols rather than duplicated addresses.
   network selection uses a zero-balance-inclusive catalog, so the amount field
   remains visible with an explicit zero available amount instead of becoming an
   empty state. Token and KRW inputs resolve to an atomic string before prepare.
-- Phone send: the customer-facing route selection and phone-input state are
-  present, but execution remains disabled until the dedicated phone-escrow
-  quote, deposit/relay, claim-link, and SMS adapter is connected. Phone numbers
-  are not sent to the ordinary address-transfer endpoint.
+- Phone send: the WSS sender path now prepares a live sender-pays contract
+  quote, batches ERC-20 allowance and deposit operations behind one host
+  authorization, verifies the confirmed deposit event, and sends the claim
+  link through SOLAPI. It remains fail-closed until a WSS-owned claim URL and
+  the matching contract signer are configured; see `PHONE_ESCROW_EXECUTION.md`.
+  Phone numbers are never sent to the ordinary address-transfer endpoint.
 - Non-EVM token send: Solana SPL builds a v0 transaction and creates the
   destination associated token account when needed; TRON TRC-20 builds and
   signs the exact trigger-smart-contract transaction; XRPL verifies source and
@@ -73,6 +75,21 @@ registry; tenant manifests contain symbols rather than duplicated addresses.
 - XRP Ledger: receiving an issued asset such as RLUSD, USDC, or XSGD requires
   an appropriate trust line. The receive screen calls this out; trust-line
   creation is not yet automated.
+
+## Icons and KRW reference prices
+
+The wallet serves a vetted local icon for all 21 currently selectable native
+coin and stablecoin symbols from `apps/wallet-webview/public/assets/coins`.
+Fifteen existing took catalog assets were copied into this independent project;
+six missing stablecoin marks were fetched from CoinMarketCap by stable numeric
+ID. Runtime screens never hotlink logo providers, and the directory manifest
+records origin and ID for revalidation.
+
+KRW quotes resolve in this order: fresh Bonanza K-VWAP, CoinGecko market
+reference, then CoinMarketCap market reference for symbols still missing. DAI
+and every other enabled symbol have both CoinGecko and stable CoinMarketCap ID
+mappings. Only Bonanza output may be labeled K-VWAP; either fallback remains a
+market reference with its provider and observation timestamp preserved.
 
 ## Address authorities
 

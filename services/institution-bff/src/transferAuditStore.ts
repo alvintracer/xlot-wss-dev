@@ -30,20 +30,23 @@ export async function recordPreparedTransfer(input: {
   }
   const { session, request, prepared } = input;
   const reason = request.complianceReason?.trim();
+  const recipientReference = request.channel === 'address'
+    ? prepared.recipient
+    : `${request.channel}:${hash(`${session.tenantId}\u0000${request.recipient.replace(/\D/g, '')}`)}`;
   const status = prepared.compliance.status === 'block' || prepared.compliance.status === 'unavailable'
     ? 'blocked'
     : prepared.signingRequest ? 'approval-required' : 'prepared';
   await sql`
     INSERT INTO wss_transfer_intents (
       id, tenant_id, wallet_id, session_id_hash, subject_hash,
-      chain_id, asset_id, asset_symbol, from_address, recipient_address,
+      chain_id, asset_id, asset_symbol, from_address, recipient_address, transfer_channel,
       amount_atomic, network_fee_atomic, compliance_status,
       compliance_risk_level, compliance_risk_score,
       compliance_reason_recorded, compliance_reason_hash,
       gas_sponsorship_status, signing_payload_hash, status, expires_at
     ) VALUES (
       ${prepared.intentId}, ${session.tenantId}, ${prepared.walletId}, ${hash(session.sessionId)}, ${session.subject},
-      ${prepared.chainId}, ${prepared.assetId}, ${prepared.assetSymbol}, ${prepared.fromAddress}, ${prepared.recipient},
+      ${prepared.chainId}, ${prepared.assetId}, ${prepared.assetSymbol}, ${prepared.fromAddress}, ${recipientReference}, ${request.channel},
       ${prepared.amountAtomic}, ${prepared.networkFee.amountAtomic}, ${prepared.compliance.status},
       ${prepared.compliance.riskLevel ?? null}, ${prepared.compliance.riskScore ?? null},
       ${Boolean(reason)}, ${reason ? hash(reason) : null},

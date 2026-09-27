@@ -42,7 +42,7 @@
    - The development query adapter reads real native balances on all nine configured networks plus configured ERC-20, SPL, TRC-20, and XRPL issued-currency balances, then calls the provider-aware KRW quote gateway.
    - EVM native plus allowlisted ERC-20, Solana SPL, TRON TRC-20, and XRPL issued-token send perform amount/fee preparation, fail-closed KYT, host-owned customer confirmation, key-core signing, exact signed-transaction verification, broadcast, and submitted-receipt display. XRP destination tags, trust-line checks, Solana ATA creation rent, and TRON maximum fee limits are handled explicitly.
    - Send uses the same asset-first/network-second catalog, keeps selection and amount input visible at zero balance, distinguishes unavailable balance from zero, and converts token/KRW input to exact atomic strings before preparation.
-   - Wallet-address and phone-number route selection is present after amount entry. The phone path is intentionally non-executable until the dedicated escrow quote/deposit/relay/claim-link/SMS adapter is implemented; it is not tunneled through the address-transfer API.
+   - Wallet-address and phone-number route selection is present after amount entry. The phone sender path now reads live escrow fees, preserves the requested recipient amount, prepares native or ordered ERC-20 approve/deposit transactions, verifies the confirmed deposit event, and sends a SOLAPI claim link. Activation remains fail-closed until the WSS recipient-claim gateway and the matching contract signer are configured and smoke tested; it is not tunneled through the address-transfer API.
    - Native-coin transfers are correctly marked ineligible for sponsorship. ERC-20 relay eligibility is labeled separately from actual relay execution; permit/Solana/TRON relayer execution remains a later fee-abstraction slice even though direct SPL/TRC/XRPL sending is enabled.
    - TranSight and Bonanza credentials remain deployment configuration gates; missing KYT blocks sending and a non-Bonanza quote is never labeled K-VWAP.
 4. ◐ Add audit event references without storing signing material.
@@ -67,7 +67,7 @@ Current browser coverage includes Reference Host session issuance, signed bootst
 1. ◐ TranSight KYT adapter with fail-closed policy and contract tests.
    - The Edge gateway and BFF fail-closed path are deployed; production credentials, response-contract fixtures, monitoring, and reason-retention approval remain.
 2. ◐ Bonanza K-VWAP adapter with source count, freshness, TTL, and receipt evidence.
-   - The deployed quote gateway prefers fresh Bonanza snapshots and labels market fallback separately; production gateway credentials and receipt evidence remain.
+   - The deployed quote gateway prefers fresh Bonanza snapshots, then uses CoinGecko and CoinMarketCap by stable numeric ID for missing symbols. Both fallbacks are labeled market references; production K-VWAP credentials and receipt evidence remain.
 3. Generic execution adapter for chain capability and fee abstraction.
 4. Webhook signing, delivery retries, reconciliation, and operations console.
 

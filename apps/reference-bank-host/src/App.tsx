@@ -294,7 +294,11 @@ export function App() {
     const activeSessionToken = session.sessionToken;
     const authorization = await issueDevelopmentHostAuthorization('transfer-approval', activeSessionToken);
     const transaction = active.request.transaction;
-    const signedTransaction = transaction.type === 'solana-spl'
+    const signedTransaction = transaction.type === 'evm-batch'
+      ? JSON.stringify(await Promise.all(transaction.transactions.map((item) => (
+          referenceHostSarKeyCore.signEvmTransactionForAddress(active.request.fromAddress, item)
+        ))))
+      : transaction.type === 'solana-spl'
       ? await referenceHostSarKeyCore.signSolanaTransactionForAddress(
           active.request.fromAddress,
           transaction.unsignedTransactionBase64,

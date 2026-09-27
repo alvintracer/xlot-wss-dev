@@ -22,6 +22,7 @@ import type {
   WalletHomePayload,
 } from '@took-wss/contracts';
 import { WalletActionSheet, type WalletActionMode } from './WalletActionSheet';
+import { AssetIcon } from './AssetIcon';
 import { WalletAddressList } from './WalletAddressList';
 import { WalletSelectorSheet } from './WalletSelectorSheet';
 
@@ -52,7 +53,7 @@ function formatValuationTime(value: string): string {
 function AssetRow({ asset, hideBalance, onOpen }: { asset: WalletAssetView; hideBalance: boolean; onOpen: () => void }) {
   return (
     <button className="kw-asset-row" type="button" onClick={onOpen}>
-      <span className="kw-asset-icon kw-asset-icon--usd" aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
+      <AssetIcon className="kw-asset-icon" symbol={asset.symbol} iconAssetId={asset.iconAssetId} />
       <span className="kw-asset-info">
         <strong className="kw-asset-name">{asset.name}</strong>
         <span className="kw-asset-sub">{asset.network}</span>

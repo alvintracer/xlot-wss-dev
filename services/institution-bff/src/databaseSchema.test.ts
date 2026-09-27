@@ -9,7 +9,9 @@ const developmentSarMigration = readFileSync(developmentSarMigrationUrl, 'utf8')
 const phoneRegistrationMigrationUrl = new URL('../db/migrations/0003_wss_phone_registration.sql', import.meta.url);
 const phoneRegistrationMigration = readFileSync(phoneRegistrationMigrationUrl, 'utf8');
 const supabasePhoneAuthMigrationUrl = new URL('../db/migrations/0004_wss_supabase_phone_auth.sql', import.meta.url);
+const phoneEscrowMigrationUrl = new URL('../db/migrations/0007_wss_phone_escrow.sql', import.meta.url);
 const supabasePhoneAuthMigration = readFileSync(supabasePhoneAuthMigrationUrl, 'utf8');
+const phoneEscrowMigration = readFileSync(phoneEscrowMigrationUrl, 'utf8');
 const walletHostProofMigrationUrl = new URL('../db/migrations/0005_wss_wallet_host_proofs.sql', import.meta.url);
 const walletHostProofMigration = readFileSync(walletHostProofMigrationUrl, 'utf8');
 
@@ -93,6 +95,28 @@ describe('WSS Supabase phone Auth migration', () => {
   it('does not add an OTP plaintext column', () => {
     const ddlWithoutComments = supabasePhoneAuthMigration.replace(/--.*$/gm, '');
     expect(ddlWithoutComments).not.toMatch(/\b(otp_code|otp_plaintext|verified_phone)\b/i);
+  });
+});
+
+describe('WSS phone escrow migration', () => {
+  it('keeps recipient PII encrypted behind a server-only RLS table', () => {
+    const parseableMigration = phoneEscrowMigration
+      .replace(/^BEGIN;\s*/i, '')
+      .replace(/\s*COMMIT;\s*$/i, '')
+      .replace(/^ALTER TABLE .* ENABLE ROW LEVEL SECURITY;$/gm, '')
+      .replace(/^REVOKE ALL ON TABLE .*;$/gm, '');
+    expect(() => parse(parseableMigration)).not.toThrow();
+    expect(phoneEscrowMigration).toContain('CREATE TABLE wss_phone_escrows');
+    expect(phoneEscrowMigration).toContain('ADD COLUMN transfer_channel');
+    expect(phoneEscrowMigration).toContain('recipient_ciphertext bytea');
+    expect(phoneEscrowMigration).toContain('recipient_lookup_hash bytea NOT NULL');
+    expect(phoneEscrowMigration).toContain('ENABLE ROW LEVEL SECURITY');
+    expect(phoneEscrowMigration).toContain('REVOKE ALL ON TABLE wss_phone_escrows FROM anon, authenticated');
+  });
+
+  it('does not add a plaintext phone or signing-material column', () => {
+    const ddlWithoutComments = phoneEscrowMigration.replace(/--.*$/gm, '');
+    expect(ddlWithoutComments).not.toMatch(/\b(phone_plaintext|recipient_phone|otp_code|private_key|seed|mnemonic|signed_transaction)\b/i);
   });
 });
 

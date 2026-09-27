@@ -5,6 +5,7 @@ import type {
   WalletValuationView,
 } from '@took-wss/contracts';
 import { stablecoinsForPolicy, type StablecoinDeployment } from './stablecoinRegistry.js';
+import { phoneEscrowUnavailableReason, supportsPhoneEscrow } from './phoneEscrowService.js';
 
 export interface NativeAssetConfig {
   name: string;
@@ -34,6 +35,10 @@ interface PriceSnapshot {
   krw: number;
   provider: string;
   asOf: string;
+}
+
+function iconAssetId(symbol: string): string {
+  return `coin:${symbol.toLowerCase()}`;
 }
 
 interface ScannedBalance {
@@ -348,6 +353,7 @@ export function supportedReceiveAssets(
     const config = nativeAssets[network.chainId]!;
     const native: WalletReceiveAssetView = {
       assetId: `${network.chainId}:native`,
+      iconAssetId: iconAssetId(config.symbol),
       chainId: network.chainId,
       addressGroupId: network.addressGroupId,
       symbol: config.symbol,
@@ -360,6 +366,8 @@ export function supportedReceiveAssets(
       balanceDisplay: '0',
       availableAtomic: '0',
       transferStatus: config.evmChainId ? 'enabled' : 'unavailable',
+      phoneTransferStatus: supportsPhoneEscrow(network.chainId) ? 'enabled' : 'unavailable',
+      ...(phoneEscrowUnavailableReason(network.chainId) ? { phoneTransferUnavailableReason: phoneEscrowUnavailableReason(network.chainId) } : {}),
       ...(!config.evmChainId ? { transferUnavailableReason: '이 네트워크의 보내기 서명 연동을 준비하고 있어요.' } : {}),
     };
     return [native, ...deployments.filter(({ chainId }) => chainId === network.chainId).map((deployment) => {
@@ -369,6 +377,7 @@ export function supportedReceiveAssets(
         || deployment.transport === 'xrpl-issued';
       return {
         assetId: deployment.assetId,
+        iconAssetId: iconAssetId(deployment.symbol),
         chainId: deployment.chainId,
         addressGroupId: network.addressGroupId,
         symbol: deployment.symbol,
@@ -382,6 +391,12 @@ export function supportedReceiveAssets(
         balanceDisplay: '0',
         availableAtomic: '0',
         transferStatus: canTransfer ? 'enabled' as const : 'unavailable' as const,
+        phoneTransferStatus: supportsPhoneEscrow(network.chainId) && deployment.transport === 'evm-erc20' ? 'enabled' as const : 'unavailable' as const,
+        ...(!(supportsPhoneEscrow(network.chainId) && deployment.transport === 'evm-erc20') ? {
+          phoneTransferUnavailableReason: deployment.transport === 'evm-erc20'
+            ? phoneEscrowUnavailableReason(network.chainId)
+            : '이 네트워크에서는 아직 휴대폰 번호로 보낼 수 없어요.',
+        } : {}),
         ...(!canTransfer ? { transferUnavailableReason: '이 네트워크의 보내기 서명 연동을 준비하고 있어요.' } : {}),
       };
     })];
@@ -417,6 +432,7 @@ export async function queryWalletPortfolio(
       : Boolean(config.evmChainId);
     return {
       assetId: deployment?.assetId ?? `${network.chainId}:native`,
+      iconAssetId: iconAssetId(symbol),
       chainId: network.chainId,
       addressGroupId: network.addressGroupId,
       symbol,

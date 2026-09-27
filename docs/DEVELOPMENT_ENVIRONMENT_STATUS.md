@@ -1,6 +1,6 @@
 # xlot-wss-dev environment status
 
-- Last verified: 2026-09-27
+- Last verified: 2026-09-28
 - Supabase project: `xlot-wss-dev`
 - Project ref: `opgtfobitjrmujlpfhtd`
 - GitHub: `https://github.com/alvintracer/xlot-wss-dev`
@@ -13,7 +13,8 @@
 - `0004_wss_supabase_phone_auth.sql` applied and checksum recorded
 - `0005_wss_wallet_host_proofs.sql` applied and checksum recorded
 - `0006_wss_transfer_lifecycle.sql` applied and checksum recorded
-- 20 `public.wss_%` tables present, including the migration ledger
+- `0007_wss_phone_escrow.sql` applied and checksum recorded
+- 21 `public.wss_%` tables present, including the migration ledger
 - Row Level Security enabled on every WSS table
 - zero table grants to `anon` and `authenticated`
 - deployment marker verified as `proposal-and-early-function-sandbox`
@@ -39,9 +40,10 @@
   tenant-scoped unique indexes; signed proof strings are not persisted
 - `wallet-price-quote` and fail-closed `kyt-screen` Edge Functions deployed;
   their gateway JWT checks remain enabled and the BFF calls them server-side
-- the updated `wallet-price-quote` deployment returned a fresh labeled
-  market-reference quote for all 14 configured Kiwoom stablecoin symbols with
-  no unavailable asset on 2026-09-27
+- the updated `wallet-price-quote` deployment returned fresh labeled
+  market-reference quotes for DAI, USDC, and JPYC with no unavailable asset on
+  2026-09-28; its fallback order is Bonanza K-VWAP, CoinGecko, then the official
+  CoinMarketCap quotes endpoint using stable numeric IDs
 - transfer intent and execution tables deployed with RLS and no browser-role
   grants; raw signatures, signed transactions, proof tokens, and key material
   are not columns in either table
@@ -82,8 +84,13 @@ chain-specific balances, send capability, and optional KRW unit price; a failed
 balance query is distinguished from a real zero. The send amount form remains
 visible at zero balance and switches between KRW and token units, while its CTA
 stays disabled. Address/phone route selection is implemented after a valid
-amount, but phone execution remains fail-closed until the dedicated took
-phone-escrow adapter is connected. The execution slice supports EVM native and
+amount. The reusable phone sender path now covers live contract fee reads,
+sender-pays native/ERC-20 deposits, exact batch-signature verification,
+confirmed deposit-event matching, encrypted recipient persistence, and SOLAPI
+claim-link delivery on Ethereum, Polygon, Arbitrum, and Base. It remains
+fail-closed in `xlot-wss-dev` until a WSS-owned claim gateway and the matching
+contract signer are configured, so a development customer cannot accidentally
+lock funds in an unreleasable escrow. The execution slice supports EVM native and
 allowlisted ERC-20 tokens plus allowlisted Solana SPL, TRON TRC-20, and XRPL
 issued tokens, including chain-native fee preparation, KYT, host confirmation,
 SAR key-core signing, exact signed-payload verification, broadcast, and
@@ -92,8 +99,9 @@ creation rent, and TRON maximum fee limits are handled explicitly. A
 funded development wallet plus configured TranSight credentials are required
 for a live-send smoke test; without KYT credentials the flow intentionally
 blocks. Token inventory, price coverage, and direct ERC-20 execution are
-implemented. Permit/Solana/TRON relay execution, phone-escrow execution,
-native non-EVM coin sends, and confirmation reconciliation remain open. Every
+implemented. Permit/Solana/TRON relay execution, the phone recipient claim and
+refund service, native non-EVM coin sends, and general confirmation
+reconciliation remain open. Every
 direct token send still requires the chain's native fee asset even when a relay
 quote reports that the asset is eligible.
 

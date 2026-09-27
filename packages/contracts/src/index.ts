@@ -209,6 +209,7 @@ export interface WalletProfileSummary {
 
 export interface WalletAssetView {
   assetId: string;
+  iconAssetId?: string;
   chainId?: string;
   addressGroupId?: string;
   symbol: string;
@@ -231,6 +232,7 @@ export interface WalletAssetView {
 
 export interface WalletReceiveAssetView {
   assetId: string;
+  iconAssetId?: string;
   chainId: string;
   addressGroupId: string;
   symbol: string;
@@ -245,6 +247,8 @@ export interface WalletReceiveAssetView {
   availableAtomic: string;
   transferStatus: 'enabled' | 'unavailable';
   transferUnavailableReason?: string;
+  phoneTransferStatus?: 'enabled' | 'unavailable';
+  phoneTransferUnavailableReason?: string;
   referencePrice?: {
     currency: 'KRW';
     decimal: string;
@@ -276,6 +280,7 @@ export interface PreparedTransfer {
   assetSymbol: string;
   fromAddress: string;
   recipient: string;
+  channel: TransferChannel;
   destinationTag?: string;
   amountAtomic: string;
   amountDisplay: string;
@@ -299,6 +304,15 @@ export interface PreparedTransfer {
     reasonRequired: boolean;
     message: string;
   };
+  phoneEscrow?: {
+    recipientAmountAtomic: string;
+    recipientAmountDisplay: string;
+    escrowAmountAtomic: string;
+    escrowAmountDisplay: string;
+    claimFeeAtomic: string;
+    claimFeeDisplay: string;
+    expiresAt: string;
+  };
   signingRequest?: SecureTransactionSigningRequest;
   expiresAt: string;
 }
@@ -312,17 +326,14 @@ export interface SecureTransactionSigningRequest {
   amountDisplay: string;
   fromAddress: string;
   recipient: string;
+  channel: TransferChannel;
   destinationTag?: string;
   transaction:
+    | EvmTransactionSigningPayload
     | {
-        type: 'evm-native' | 'evm-erc20';
+        type: 'evm-batch';
         chainId: number;
-        nonce: number;
-        to: string;
-        value: string;
-        gasLimit: string;
-        gasPrice: string;
-        data?: string;
+        transactions: EvmTransactionSigningPayload[];
       }
     | {
         type: 'solana-spl';
@@ -360,6 +371,18 @@ export interface SecureTransactionSigningRequest {
       };
 }
 
+export interface EvmTransactionSigningPayload {
+  type: 'evm-native' | 'evm-erc20';
+  purpose?: 'asset-transfer' | 'token-approval' | 'phone-escrow-deposit';
+  chainId: number;
+  nonce: number;
+  to: string;
+  value: string;
+  gasLimit: string;
+  gasPrice: string;
+  data?: string;
+}
+
 export type SecureTransactionSigningResult =
   | {
       status: 'completed';
@@ -381,6 +404,11 @@ export interface TransferExecutionResult {
   status: 'submitted' | 'confirmed';
   transactionHash: string;
   explorerUrl?: string;
+  delivery?: {
+    channel: 'phone';
+    status: 'pending' | 'sent' | 'failed';
+    recipientDisplay: string;
+  };
 }
 
 export interface WalletNetworkView {
@@ -595,6 +623,7 @@ export function isWalletHomePayload(value: unknown): value is WalletHomePayload 
     && typeof fiat.stale === 'boolean';
   const isAsset = (asset: unknown) => isRecord(asset)
     && typeof asset.assetId === 'string'
+    && (asset.iconAssetId === undefined || typeof asset.iconAssetId === 'string')
     && (asset.chainId === undefined || typeof asset.chainId === 'string')
     && (asset.addressGroupId === undefined || typeof asset.addressGroupId === 'string')
     && typeof asset.symbol === 'string'
@@ -620,6 +649,7 @@ export function isWalletHomePayload(value: unknown): value is WalletHomePayload 
     && (network.addressStatus !== 'ready' || typeof network.address === 'string');
   const isReceiveAsset = (asset: unknown) => isRecord(asset)
     && typeof asset.assetId === 'string'
+    && (asset.iconAssetId === undefined || typeof asset.iconAssetId === 'string')
     && typeof asset.chainId === 'string'
     && typeof asset.addressGroupId === 'string'
     && typeof asset.symbol === 'string'
@@ -638,6 +668,8 @@ export function isWalletHomePayload(value: unknown): value is WalletHomePayload 
     && /^\d+$/.test(asset.availableAtomic)
     && (asset.transferStatus === 'enabled' || asset.transferStatus === 'unavailable')
     && (asset.transferUnavailableReason === undefined || typeof asset.transferUnavailableReason === 'string')
+    && (asset.phoneTransferStatus === undefined || asset.phoneTransferStatus === 'enabled' || asset.phoneTransferStatus === 'unavailable')
+    && (asset.phoneTransferUnavailableReason === undefined || typeof asset.phoneTransferUnavailableReason === 'string')
     && (asset.referencePrice === undefined || (isRecord(asset.referencePrice)
       && asset.referencePrice.currency === 'KRW'
       && typeof asset.referencePrice.decimal === 'string'
@@ -753,20 +785,24 @@ export function isSecureTransactionSigningRequest(value: unknown): value is Secu
     || typeof value.amountDisplay !== 'string'
     || typeof value.fromAddress !== 'string'
     || typeof value.recipient !== 'string'
+    || (value.channel !== 'address' && value.channel !== 'phone' && value.channel !== 'message')
     || (value.destinationTag !== undefined && typeof value.destinationTag !== 'string')
     || !isRecord(value.transaction)) return false;
   if (value.transaction.type === 'evm-native' || value.transaction.type === 'evm-erc20') {
-    return Number.isSafeInteger(value.transaction.chainId)
-      && Number.isSafeInteger(value.transaction.nonce)
-      && typeof value.transaction.to === 'string'
-      && typeof value.transaction.value === 'string'
-      && /^\d+$/.test(value.transaction.value)
-      && typeof value.transaction.gasLimit === 'string'
-      && /^\d+$/.test(value.transaction.gasLimit)
-      && typeof value.transaction.gasPrice === 'string'
-      && /^\d+$/.test(value.transaction.gasPrice)
-      && (value.transaction.data === undefined || (typeof value.transaction.data === 'string' && /^0x(?:[0-9a-fA-F]{2})*$/.test(value.transaction.data)))
-      && (value.transaction.type !== 'evm-erc20' || (typeof value.transaction.data === 'string' && value.transaction.data.length >= 10));
+    return isEvmTransactionSigningPayload(value.transaction);
+  }
+  if (value.transaction.type === 'evm-batch') {
+    const transactionBatch = value.transaction;
+    const transactions = transactionBatch.transactions;
+    if (!Array.isArray(transactions)) return false;
+    return Number.isSafeInteger(transactionBatch.chainId)
+      && transactions.length >= 2
+      && transactions.length <= 3
+      && transactions.every((transaction, index) => (
+        isEvmTransactionSigningPayload(transaction)
+        && transaction.chainId === transactionBatch.chainId
+        && (index === 0 || transaction.nonce === transactions[index - 1]!.nonce + 1)
+      ));
   }
   if (value.transaction.type === 'solana-spl') {
     return typeof value.transaction.unsignedTransactionBase64 === 'string'
@@ -813,6 +849,25 @@ export function isSecureTransactionSigningRequest(value: unknown): value is Secu
       && Number.isSafeInteger(value.transaction.snapshotLedgerIndex);
   }
   return false;
+}
+
+function isEvmTransactionSigningPayload(value: unknown): value is EvmTransactionSigningPayload {
+  if (!isRecord(value) || (value.type !== 'evm-native' && value.type !== 'evm-erc20')) return false;
+  return Number.isSafeInteger(value.chainId)
+    && Number.isSafeInteger(value.nonce)
+    && (value.purpose === undefined
+      || value.purpose === 'asset-transfer'
+      || value.purpose === 'token-approval'
+      || value.purpose === 'phone-escrow-deposit')
+    && typeof value.to === 'string'
+    && typeof value.value === 'string'
+    && /^\d+$/.test(value.value)
+    && typeof value.gasLimit === 'string'
+    && /^\d+$/.test(value.gasLimit)
+    && typeof value.gasPrice === 'string'
+    && /^\d+$/.test(value.gasPrice)
+    && (value.data === undefined || (typeof value.data === 'string' && /^0x(?:[0-9a-fA-F]{2})*$/.test(value.data)))
+    && (value.type !== 'evm-erc20' || (typeof value.data === 'string' && value.data.length >= 10));
 }
 
 function containsForbiddenWalletSecret(value: unknown): boolean {

@@ -177,7 +177,7 @@ function parsePrepareTransferRequest(value: unknown): PrepareTransferRequest {
     || typeof value.chainId !== 'string'
     || typeof value.recipient !== 'string'
     || typeof value.amountAtomic !== 'string'
-    || value.channel !== 'address'
+    || (value.channel !== 'address' && value.channel !== 'phone')
     || (value.destinationTag !== undefined && typeof value.destinationTag !== 'string')
     || (value.complianceReason !== undefined && typeof value.complianceReason !== 'string')) {
     throw new Error('invalid_transfer_request');
