@@ -58,7 +58,7 @@ try {
   }
 
   await walletFrame.getByRole('button', { name: /새 지갑 만들기/ }).click();
-  await walletFrame.getByRole('heading', { name: /실제 복구 구문을/ }).waitFor();
+  await walletFrame.getByRole('heading', { name: /복구 구문을 안전하게/ }).waitFor();
   await walletFrame.getByRole('button', { name: '키움 보안 화면 열기' }).click();
 
   const backupOverlay = page.locator('.host-security-layer');

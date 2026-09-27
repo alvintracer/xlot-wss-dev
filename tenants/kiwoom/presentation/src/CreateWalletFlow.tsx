@@ -566,11 +566,11 @@ export function CreateWalletFlow({
         )}
       >
         <div className="kw-flow-symbol" aria-hidden="true"><Key weight="regular" /></div>
-        <h1 className="kw-flow-title">실제 복구 구문을<br />키움 보안 화면에서 확인해요</h1>
-        <p className="kw-body kw-mt-12">고객 기기 키 코어가 새 지갑을 먼저 만들고, 실제 12개 단어를 호스트 보안 화면에서 한 번만 보여줍니다. 단어 확인을 마쳐야 자가복구 설정을 계속할 수 있어요.</p>
+        <h1 className="kw-flow-title">복구 구문을 안전하게<br />보관해 주세요</h1>
+        <p className="kw-body kw-mt-12">새 지갑의 복구 구문 12개를 키움 보안 화면에서 한 번만 보여드려요. 지갑을 다시 찾을 때 꼭 필요하니 순서대로 적어 안전한 곳에 보관해 주세요.</p>
         <div className="kw-inline-notice kw-inline-notice--neutral kw-mt-16">
           <DeviceMobile className="kw-icon kw-icon--small" aria-hidden="true" />
-          <span>{canCreateSecureSarWallet ? '복구 구문은 WSS WebView·키움/took 서버·이벤트 로그로 전달되지 않습니다.' : '승인된 네이티브 키 코어가 연결된 환경에서만 실제 지갑을 만들 수 있습니다.'}</span>
+          <span>{canCreateSecureSarWallet ? '복구 구문은 고객님의 기기에서만 확인할 수 있으며, 키움 서버로 전송되거나 저장되지 않아요.' : '현재 환경에서는 새 자가복구 지갑을 만들 수 없어요.'}</span>
         </div>
         {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
       </FlowShell>
@@ -593,8 +593,8 @@ export function CreateWalletFlow({
         )}
       >
         <div className="kw-flow-symbol" aria-hidden="true"><LockKey weight="regular" /></div>
-        <h1 className="kw-flow-title">{isMnemonic ? '니모닉' : '개인키'}는<br />보안 입력에서만 받아요</h1>
-        <p className="kw-body kw-mt-12">입력값은 고객 기기의 승인된 키 코어가 직접 처리합니다. WSS WebView와 키움·took 서버에는 원문이 전달되지 않습니다.</p>
+        <h1 className="kw-flow-title">{isMnemonic ? '복구 구문은' : '개인키는'}<br />키움 보안 화면에서 입력해요</h1>
+        <p className="kw-body kw-mt-12">입력한 정보는 고객님의 기기 안에서만 안전하게 처리되며, 키움 서버로 전송되거나 저장되지 않아요.</p>
         <div className="kw-inline-notice kw-mt-24">
           <ShieldCheck className="kw-icon kw-icon--small" aria-hidden="true" />
           <span>보안 입력이 끝나면 비밀값 대신 일회성 등록 참조만 전달받아 SAR 설정을 이어갑니다.</span>

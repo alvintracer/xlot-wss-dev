@@ -210,7 +210,7 @@ export function App() {
   return (
     <main className="studio-shell">
       <aside>
-        <div className="studio-brand"><span>took!</span><strong>WSS Studio</strong></div>
+        <div className="studio-brand"><span>WSS</span><strong>Studio</strong></div>
         <nav aria-label="Studio sections">
           <button className="active" type="button"><CirclesFour size={18} />Product Composer</button>
           <button type="button"><Key size={18} />Key Policy</button>

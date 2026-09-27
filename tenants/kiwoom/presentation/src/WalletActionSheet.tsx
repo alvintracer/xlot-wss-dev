@@ -83,7 +83,7 @@ function TookChannelIntro({ mode, canUseContacts }: { mode: 'receive' | 'send'; 
       <div className="kw-took-intro__heading">
         {isReceive ? <ChatCircleDots aria-hidden="true" /> : <PaperPlaneTilt aria-hidden="true" />}
         <div>
-          <span>took! 간편 송금</span>
+          <span>키움 간편 송금</span>
           <strong>{isReceive ? '주소 없이 간편하게 툭받기' : '받는 사람에게 간편하게 툭주기'}</strong>
         </div>
       </div>

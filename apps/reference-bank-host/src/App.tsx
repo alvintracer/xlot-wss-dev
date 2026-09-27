@@ -339,7 +339,7 @@ export function App() {
   return (
     <main className="host-page">
       <section className="control-panel ops-editorial-grid">
-        <div className="eyebrow"><ShieldCheck size={15} weight="fill" /> TOOK WSS REFERENCE HOST</div>
+        <div className="eyebrow"><ShieldCheck size={15} weight="fill" /> WSS REFERENCE HOST</div>
         <h1>금융사 앱 안에<br />지갑을 안전하게.</h1>
         <p className="intro">브랜드, 서비스 모듈, 키 관리 방식을 조합하고 동일한 WSS WebView를 기관 앱 안에 삽입합니다.</p>
 

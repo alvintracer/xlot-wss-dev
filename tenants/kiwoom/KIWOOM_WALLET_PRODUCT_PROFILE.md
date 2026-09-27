@@ -112,6 +112,8 @@ Kiwoom tenant responsibilities:
 
 - account-like wallet selector and wording;
 - Kiwoom asset-tab layout, typography, sheets, and host chrome;
+- tenant-only customer branding: internal `took` package, protocol, and platform
+  identifiers must never render in Kiwoom customer-facing WSS screens;
 - Kiwoom customer authentication SDK integration;
 - approved FSL, K-VWAP, TranSight, and host-app handoff configuration.
 
@@ -150,3 +152,4 @@ The Kiwoom phone-first profile path is implemented against `xlot-wss-dev` and se
 - 2026-09-27: Activated the SOLAPI secrets and Supabase Auth Send SMS Hook in `xlot-wss-dev`; live message receipt remains a handset-level smoke test.
 - 2026-09-27: Added explicit host customer confirmation, real 12-word host-only backup and three-word verification, payload-bound SAR attestation, and one-time wallet authorization proof enforcement.
 - 2026-09-27: Removed the redundant post-SMS host-confirmation UI from initial wallet onboarding. The Reference Host now issues the same session/purpose-bound one-time proof in the background and opens the wallet start-method screen directly; proof enforcement remains unchanged.
+- 2026-09-27: Rewrote recovery and secure-import copy in customer language and removed visible `took` branding from WSS customer surfaces. Internal package and bridge identifiers remain implementation-only.

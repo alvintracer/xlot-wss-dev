@@ -72,7 +72,7 @@ export function HostSecurityOverlay({
     try {
       await onConfirmSeedBackup();
     } catch {
-      setError('키 코어 확인 증빙을 만들지 못했어요. 다시 시도해 주세요.');
+      setError('복구 구문 확인을 완료하지 못했어요. 다시 시도해 주세요.');
       setBusy(false);
     }
   };
@@ -107,7 +107,7 @@ export function HostSecurityOverlay({
         <>
           <div className="host-security-content host-security-content--seed">
             <div className="host-security-symbol" aria-hidden="true"><Key size={32} weight="regular" /></div>
-            <p className="host-security-kicker">HOST-OWNED SECURE VIEW</p>
+            <p className="host-security-kicker">복구 구문 보관</p>
             <h2 id="host-security-title">복구 구문을 안전한 곳에<br />순서대로 기록해 주세요</h2>
             <p>이 12개 단어는 지금 한 번만 보여드려요. 화면 캡처나 클라우드 메모 대신 오프라인 공간에 기록해 주세요.</p>
             <ol className="host-seed-grid" aria-label="실제 지갑 복구 구문">
@@ -130,7 +130,7 @@ export function HostSecurityOverlay({
         <>
           <div className="host-security-content">
             <div className="host-security-symbol" aria-hidden="true"><CheckCircle size={34} weight="regular" /></div>
-            <p className="host-security-kicker">BACKUP CONFIRMATION</p>
+            <p className="host-security-kicker">복구 구문 확인</p>
             <h2 id="host-security-title">기록한 복구 단어를<br />다시 입력해 주세요</h2>
             <p>단어 순서까지 맞아야 지갑 생성과 자가복구 설정을 계속할 수 있어요.</p>
             <div className="host-seed-confirmation">
@@ -147,7 +147,7 @@ export function HostSecurityOverlay({
                 </label>
               ))}
             </div>
-            <div className="host-security-warning"><WarningCircle size={18} aria-hidden="true" /><span>키움과 took은 복구 구문 원문을 서버로 전송하거나 저장하지 않습니다.</span></div>
+            <div className="host-security-warning"><WarningCircle size={18} aria-hidden="true" /><span>키움은 복구 구문 원문을 서버로 전송하거나 저장하지 않습니다.</span></div>
             {error ? <p className="host-security-error" role="alert">{error}</p> : null}
           </div>
           <footer className="host-security-footer host-security-footer--split">
