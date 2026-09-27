@@ -22,6 +22,7 @@ database password. It applies these files in order:
 2. `services/institution-bff/db/migrations/0002_wss_development_sar.sql`
 3. `services/institution-bff/db/migrations/0003_wss_phone_registration.sql`
 4. `services/institution-bff/db/migrations/0004_wss_supabase_phone_auth.sql`
+5. `services/institution-bff/db/migrations/0005_wss_wallet_host_proofs.sql`
 
 The running Institution BFF still needs the Supabase **Session pooler**
 connection string on IPv4-only developer machines. Keep the actual database

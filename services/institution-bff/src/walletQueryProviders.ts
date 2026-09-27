@@ -69,6 +69,8 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
   readonly id = 'sandbox-wallet-provider';
   readonly #homes = new Map<string, ReadyWalletHomePayload[]>();
   readonly #idempotency = new Map<string, ProvisionWalletResponse>();
+  readonly #hostAuthorizations = new Set<string>();
+  readonly #keyCoreAttestations = new Set<string>();
 
   async getIdentity({ manifest }: { session: Session; manifest: TenantManifest }): Promise<WssIdentityState> {
     return manifest.identity.onboardingMode === 'institution-first'
@@ -98,14 +100,22 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
     return withWalletIndex(selected, homes);
   }
 
-  async provision({ session, manifest, request }: {
+  async provision({ session, manifest, request, evidence }: {
     session: Session;
     manifest: TenantManifest;
     request: ProvisionWalletRequest;
+    evidence: { hostAuthorizationId: string; keyCoreAttestationId?: string };
   }): Promise<ProvisionWalletResponse> {
     const scopedIdempotencyKey = `${session.sessionId}:${request.idempotencyKey}`;
     const previous = this.#idempotency.get(scopedIdempotencyKey);
     if (previous) return previous;
+    if (!evidence.hostAuthorizationId || this.#hostAuthorizations.has(evidence.hostAuthorizationId)) {
+      throw new Error('Wallet authorization proof was already consumed.');
+    }
+    if (request.source.type === 'secure-new'
+      && (!evidence.keyCoreAttestationId || this.#keyCoreAttestations.has(evidence.keyCoreAttestationId))) {
+      throw new Error('Key-core attestation proof was already consumed.');
+    }
     if (!manifest.keyManagement.allowedAdapters.includes(request.keyAdapter)) {
       throw new Error('Requested key adapter is not allowed.');
     }
@@ -167,6 +177,8 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
       mode: request.source.type === 'secure-new' ? 'development-key-core' : 'sandbox-contract-only',
       walletHome: withWalletIndex(walletHome, homes),
     } as const;
+    this.#hostAuthorizations.add(evidence.hostAuthorizationId);
+    if (evidence.keyCoreAttestationId) this.#keyCoreAttestations.add(evidence.keyCoreAttestationId);
     this.#idempotency.set(scopedIdempotencyKey, response);
     return response;
   }

@@ -15,6 +15,7 @@ const baseSession = {
 
 const secureNewSource = {
   type: 'secure-new',
+  keyCoreAttestationProof: 'key-core-attestation-proof-for-provider-test',
   secureProvisionRef: 'sar-key-reference-123456',
   addresses: [
     { addressGroupId: 'evm', address: '0x0000000000000000000000000000000000000001' },
@@ -39,6 +40,19 @@ const secureNewSource = {
     keyCoreVersion: 'sar-key-core-v1',
   },
 } as const;
+
+let proofSequence = 0;
+function evidence(includeKeyCore = false) {
+  proofSequence += 1;
+  return {
+    hostAuthorizationId: `00000000-0000-4000-8000-${String(proofSequence).padStart(12, '0')}`,
+    ...(includeKeyCore
+      ? { keyCoreAttestationId: `10000000-0000-4000-8000-${String(proofSequence).padStart(12, '0')}` }
+      : {}),
+  };
+}
+
+const hostAuthorizationProof = 'host-authorization-proof-for-provider-test';
 
 describe('tenant wallet query provider', () => {
   it('returns W00 absent instead of a fabricated sandbox portfolio', async () => {
@@ -71,8 +85,10 @@ describe('tenant wallet query provider', () => {
         idempotencyKey: 'provision-test-001',
         keyAdapter: 'took-sar',
         recoverySetupAcknowledged: true,
+        hostAuthorizationProof,
         source: secureNewSource,
       },
+      evidence: evidence(true),
     });
 
     expect(result.mode).toBe('development-key-core');
@@ -100,8 +116,10 @@ describe('tenant wallet query provider', () => {
         idempotencyKey: 'multi-wallet-001',
         keyAdapter: 'took-sar',
         recoverySetupAcknowledged: true,
+        hostAuthorizationProof,
         source: secureNewSource,
       },
+      evidence: evidence(true),
     });
     const second = await provisioner!.provision({
       manifest: kiwoomManifest,
@@ -110,8 +128,10 @@ describe('tenant wallet query provider', () => {
         idempotencyKey: 'multi-wallet-002',
         keyAdapter: 'fsl-mpc',
         recoverySetupAcknowledged: true,
+        hostAuthorizationProof,
         source: { type: 'new' },
       },
+      evidence: evidence(),
     });
 
     expect(second.walletHome.wallets).toHaveLength(2);
@@ -134,12 +154,14 @@ describe('tenant wallet query provider', () => {
         idempotencyKey: 'import-wallet-001',
         keyAdapter: 'took-sar',
         recoverySetupAcknowledged: true,
+        hostAuthorizationProof,
         source: {
           type: 'secure-import',
           method: 'mnemonic',
           secureImportRef: 'opaque-secure-import-reference-001',
         },
       },
+      evidence: evidence(),
     });
 
     expect(result.walletHome.wallet).toMatchObject({ keyAdapter: 'took-sar', origin: 'imported' });
@@ -156,8 +178,10 @@ describe('tenant wallet query provider', () => {
         idempotencyKey: 'provision-test-002',
         keyAdapter: 'took-sar',
         recoverySetupAcknowledged: false,
+        hostAuthorizationProof,
         source: { type: 'new' },
       },
+      evidence: evidence(),
     })).rejects.toThrow('SAR recovery setup acknowledgement');
   });
 
@@ -170,8 +194,41 @@ describe('tenant wallet query provider', () => {
         idempotencyKey: 'provision-test-003',
         keyAdapter: 'took-sar',
         recoverySetupAcknowledged: true,
+        hostAuthorizationProof,
         source: { type: 'new' },
       },
+      evidence: evidence(),
     })).rejects.toThrow('host key-core registration');
+  });
+
+  it('cannot reuse a consumed host authorization for a different wallet operation', async () => {
+    const provider = walletProvisioningProviders.get('kiwoom');
+    const session = { ...baseSession, sessionId: 'reused-host-proof-session', keyAdapter: 'fsl-mpc' as const };
+    const sharedEvidence = evidence();
+    await provider!.provision({
+      manifest: kiwoomManifest,
+      session,
+      request: {
+        idempotencyKey: 'host-proof-first-wallet',
+        keyAdapter: 'fsl-mpc',
+        recoverySetupAcknowledged: true,
+        hostAuthorizationProof,
+        source: { type: 'new' },
+      },
+      evidence: sharedEvidence,
+    });
+
+    await expect(provider!.provision({
+      manifest: kiwoomManifest,
+      session,
+      request: {
+        idempotencyKey: 'host-proof-second-wallet',
+        keyAdapter: 'fsl-mpc',
+        recoverySetupAcknowledged: true,
+        hostAuthorizationProof,
+        source: { type: 'new' },
+      },
+      evidence: sharedEvidence,
+    })).rejects.toThrow('already consumed');
   });
 });

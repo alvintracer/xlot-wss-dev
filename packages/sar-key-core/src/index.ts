@@ -34,9 +34,15 @@ export interface SarWalletCreationResult {
   };
 }
 
+export interface PreparedSarWallet {
+  mnemonicWords: readonly string[];
+  wallet: SarWalletCreationResult;
+}
+
 interface SarShareStore {
   put(keyHandle: string, share: Uint8Array): Promise<void>;
   get(keyHandle: string): Promise<Uint8Array | null>;
+  delete(keyHandle: string): Promise<void>;
 }
 
 class VolatileShareStore implements SarShareStore {
@@ -48,6 +54,11 @@ class VolatileShareStore implements SarShareStore {
 
   async get(keyHandle: string): Promise<Uint8Array | null> {
     return this.#shares.get(keyHandle)?.slice() ?? null;
+  }
+
+  async delete(keyHandle: string): Promise<void> {
+    this.#shares.get(keyHandle)?.fill(0);
+    this.#shares.delete(keyHandle);
   }
 }
 
@@ -163,12 +174,11 @@ async function deriveSlip10Ed25519(seed: Uint8Array, path: readonly number[]): P
   return key;
 }
 
-async function deriveAddresses(entropy: Uint8Array): Promise<SarPublicAddress[]> {
+async function deriveAddresses(mnemonic: string): Promise<SarPublicAddress[]> {
   let seed = new Uint8Array();
   let solanaPrivateKey = new Uint8Array();
   try {
-    const phrase = ethers.Mnemonic.fromEntropy(entropy).phrase;
-    seed = Uint8Array.from(ethers.getBytes(ethers.Mnemonic.fromPhrase(phrase).computeSeed()));
+    seed = Uint8Array.from(ethers.getBytes(ethers.Mnemonic.fromPhrase(mnemonic).computeSeed()));
     const root = ethers.HDNodeWallet.fromSeed(seed);
 
     const evm = root.derivePath("m/44'/60'/0'/0/0").address;
@@ -234,12 +244,17 @@ export class ReferenceHostSarKeyCore {
   }
 
   async createWallet(): Promise<SarWalletCreationResult> {
+    return (await this.prepareWallet()).wallet;
+  }
+
+  async prepareWallet(): Promise<PreparedSarWallet> {
     const entropy = crypto.getRandomValues(new Uint8Array(16));
     const vaultKeyBytes = crypto.getRandomValues(new Uint8Array(32));
     let shares: Uint8Array[] = [];
     try {
       const keyHandle = `sar-key-${crypto.randomUUID()}`;
-      const addresses = await deriveAddresses(entropy);
+      const mnemonic = ethers.Mnemonic.fromEntropy(entropy).phrase;
+      const addresses = await deriveAddresses(mnemonic);
       shares = await split(entropy, 3, 2);
       if (shares.length !== 3) throw new Error('SAR share generation failed.');
 
@@ -264,15 +279,18 @@ export class ReferenceHostSarKeyCore {
       this.#publicAddresses.set(keyHandle, addresses.map((address) => ({ ...address })));
       this.#developmentVaultKeys.set(keyHandle, vaultKey);
       return {
-        keyHandle,
-        addresses,
-        recoveryEnvelopes,
-        recovery: {
-          scheme: 'shamir-gf256',
-          threshold: 2,
-          shareCount: 3,
-          recombinationVerified: true,
-          keyCoreVersion: SAR_KEY_CORE_VERSION,
+        mnemonicWords: Object.freeze(mnemonic.split(' ')),
+        wallet: {
+          keyHandle,
+          addresses,
+          recoveryEnvelopes,
+          recovery: {
+            scheme: 'shamir-gf256',
+            threshold: 2,
+            shareCount: 3,
+            recombinationVerified: true,
+            keyCoreVersion: SAR_KEY_CORE_VERSION,
+          },
         },
       };
     } finally {
@@ -280,6 +298,12 @@ export class ReferenceHostSarKeyCore {
       vaultKeyBytes.fill(0);
       for (const share of shares) share.fill(0);
     }
+  }
+
+  async discardWallet(keyHandle: string): Promise<void> {
+    await Promise.all(this.#stores.map((store) => store.delete(keyHandle)));
+    this.#publicAddresses.delete(keyHandle);
+    this.#developmentVaultKeys.delete(keyHandle);
   }
 
   async verifyRecovery(keyHandle: string, storeIndexes: readonly [number, number]): Promise<boolean> {
@@ -292,7 +316,7 @@ export class ReferenceHostSarKeyCore {
     try {
       const expected = this.#publicAddresses.get(keyHandle);
       if (!expected) return false;
-      const actual = await deriveAddresses(recovered);
+      const actual = await deriveAddresses(ethers.Mnemonic.fromEntropy(recovered).phrase);
       return actual.length === expected.length && actual.every((address, index) => (
         address.addressGroupId === expected[index]?.addressGroupId
         && address.address === expected[index]?.address

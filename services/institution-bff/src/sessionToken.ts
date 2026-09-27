@@ -38,7 +38,7 @@ export function issueSessionToken(input: {
     subjectVersion: 1,
     keyAdapter: input.keyAdapter,
     issuedAt,
-    expiresAt: issuedAt + (input.ttlSeconds ?? 300),
+    expiresAt: issuedAt + (input.ttlSeconds ?? 900),
     nonce: randomUUID(),
   };
   const unsigned = `${encode(TOKEN_HEADER)}.${encode(claims)}`;

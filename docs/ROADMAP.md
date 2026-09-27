@@ -26,12 +26,14 @@
    - Existing wallets pin their creation-time policy; later changes create a new policy version and migration flow.
    - Identity, registration, wallet, SAR policy, provider-link, consent, and audit table boundaries are defined.
    - The Reference Host now performs actual random took SAR creation, took-compatible EVM/Solana/Bitcoin/TRON/XRP address derivation, Shamir GF(256) 2-of-3 splitting, all-pairs reconstruction checks, and public-address registration.
+   - The host-owned security surface now displays the real 12-word BIP-39 phrase once, requires three randomly selected words to be re-entered, and sends no mnemonic field through the WSS bridge or BFF.
+   - Wallet provisioning now requires a session/purpose-bound host authorization proof; secure SAR creation additionally requires a proof bound to the canonical public key-core payload. Only proof UUIDs are persisted and tenant-scoped unique indexes prevent replay under a different idempotency key.
    - Secret entropy, plaintext recovery shares, and the envelope key stay inside the host key core. The WSS WebView and BFF receive an opaque handle, public addresses, customer-side encrypted recovery envelopes, and non-secret recovery metadata.
    - The isolated `xlot-wss-dev` project now has the remotely applied, hard-marked WSS schema, persistent UUID/profile/wallet/address/audit repositories, and development-only encrypted-envelope storage. All WSS tables have RLS enabled and no `anon`/`authenticated` table grants.
    - The deployed, read-only development SAR Edge Function verifies the WSS session and wallet ownership before returning ciphertext. It has no plaintext-share, decryption-key, or reconstruction API.
    - The Kiwoom browser vertical slice has persisted a real SAR wallet plus an FSL MPC slot, survived a BFF restart, restored nine network rows/five address groups, and retrieved the three encrypted SAR envelopes through the deployed ownership-checked Edge Function.
    - The generic manifest now selects `phone-first` or `institution-first`, plus a phone-verification provider. The Kiwoom profile prefers Supabase Auth with the activated SOLAPI Send SMS Hook: Auth owns the OTP, WSS verifies the Auth-returned phone against its keyed lookup, and only a domain-separated keyed provider-subject digest is retained. The isolated sandbox visibly falls back to MAC-only loopback verification only when delivery is unavailable; production fails closed. Broader abuse controls, retention approval, monitoring, and explicit institution-subject linking/merge ceremonies remain production work.
-   - Next key-core slice: durable device-key protection for development recovery, followed by native/hardware-backed storage, independently controlled durable factor stores, signed one-time host attestation, and an end-to-end recovery ceremony.
+   - Next key-core slice: durable device-key protection for development recovery, followed by native/hardware-backed storage, independently controlled durable factor stores, institution/native device attestation, and an end-to-end recovery ceremony. The current A/B/C screen is not yet factor enrollment.
    - The Kiwoom development slice covers host authentication, actual new-SAR creation, a fail-closed secure-import entry path, idempotent sandbox registration, and independent wallet slots with per-wallet network capabilities.
    - The development BFF never receives a seed, private key, plaintext recovery share, completed SAR secret, or envelope key and remains unavailable in production. It does not fabricate balances.
 3. ◐ Add receive/send flows, KRW input, quote expiry, KYT decision, customer approval, and receipt screens.
@@ -39,7 +41,9 @@
    - Send network selection fails closed until balance, quote, KYT, and approval are available.
 4. Add audit event references without storing signing material.
 5. Add Android/iOS native WebView wrappers using the same bridge contract.
-6. Add browser and native end-to-end tests for origin, nonce, expiry, and replay rejection.
+6. ◐ Add browser and native end-to-end tests for origin, nonce, expiry, and replay rejection.
+   - Unit/contract coverage now verifies signature tampering, expiry, session mismatch, payload binding, secret-field rejection, and provider-level one-time proof consumption.
+   - Browser coverage now verifies the explicit host confirmation and real mnemonic backup ceremony; native device attestation and recovery replay cases remain open.
 
 Current browser coverage includes Reference Host session issuance, signed bootstrap, encrypted phone-first registration and possession verification, profile-based Kiwoom presentation loading, root/focus shell delivery, host authentication, actual host-key-core SAR creation, multi-wallet-slot provisioning and selection, real receive-address display, send gates, and 320/360/390/430 overflow checks. Unit coverage verifies registration normalization/cryptographic boundaries, distinct wallet generation, and every 2-of-3 share pair. Security lifecycle cases in item 6 remain open.
 

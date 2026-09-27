@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ethers } from 'ethers';
 import { ReferenceHostSarKeyCore } from './index';
 
 describe('reference host SAR key core', () => {
@@ -27,5 +28,18 @@ describe('reference host SAR key core', () => {
     await expect(core.verifyRecovery(wallet.keyHandle, [0, 2])).resolves.toBe(true);
     await expect(core.verifyRecovery(wallet.keyHandle, [1, 2])).resolves.toBe(true);
     await expect(core.verifyRecovery(wallet.keyHandle, [1, 1])).resolves.toBe(false);
+  });
+
+  it('prepares a real 12-word BIP-39 backup and can discard the uncommitted wallet', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    const prepared = await core.prepareWallet();
+
+    expect(prepared.mnemonicWords).toHaveLength(12);
+    expect(ethers.Mnemonic.isValidMnemonic(prepared.mnemonicWords.join(' '))).toBe(true);
+    expect(JSON.stringify(prepared.wallet)).not.toContain(prepared.mnemonicWords.join(' '));
+    await expect(core.verifyRecovery(prepared.wallet.keyHandle, [0, 1])).resolves.toBe(true);
+
+    await core.discardWallet(prepared.wallet.keyHandle);
+    await expect(core.verifyRecovery(prepared.wallet.keyHandle, [0, 1])).resolves.toBe(false);
   });
 });

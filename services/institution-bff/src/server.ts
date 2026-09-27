@@ -4,10 +4,12 @@ import {
   WSS_PROTOCOL_VERSION,
   MOBILE_CARRIER_CODES,
   isSecureSarWalletRegistration,
+  isSecureSarWalletPayload,
   isRecord,
   type CreateSessionRequest,
   type CreateSessionResponse,
   type CreateRegistrationIntentRequest,
+  type HostAuthenticationPurpose,
   type KeyAdapterId,
   type ProvisionWalletRequest,
   type TenantManifest,
@@ -16,6 +18,13 @@ import {
 import { kiwoomManifest } from '@took-wss/tenant-kiwoom';
 import { referenceBankManifest } from '@took-wss/tenant-reference-bank';
 import { issueSessionToken, verifySessionToken } from './sessionToken.js';
+import {
+  assertProofSession,
+  issueSarKeyCoreProof,
+  issueWalletAuthorizationProof,
+  sarKeyCorePayloadHash,
+  verifyHostProof,
+} from './hostProof.js';
 import { RegistrationError } from './phoneRegistration.js';
 import { identityRegistrationProviders, walletProvisioningProviders, walletQueryProviders } from './walletQueryProviders.js';
 
@@ -107,7 +116,9 @@ function parseProvisionWalletRequest(value: unknown): ProvisionWalletRequest {
     || value.idempotencyKey.length < 8
     || value.idempotencyKey.length > 128
     || (value.keyAdapter !== 'took-sar' && value.keyAdapter !== 'thirdweb-user-wallet' && value.keyAdapter !== 'fsl-mpc')
-    || typeof value.recoverySetupAcknowledged !== 'boolean') {
+    || typeof value.recoverySetupAcknowledged !== 'boolean'
+    || typeof value.hostAuthorizationProof !== 'string'
+    || value.hostAuthorizationProof.length <= 20) {
     throw new Error('Invalid wallet provisioning request.');
   }
   if (!isRecord(value.source)) throw new Error('Invalid wallet provisioning source.');
@@ -120,6 +131,7 @@ function parseProvisionWalletRequest(value: unknown): ProvisionWalletRequest {
           addresses: value.source.addresses,
           recoveryEnvelopes: value.source.recoveryEnvelopes,
           recovery: value.source.recovery,
+          keyCoreAttestationProof: value.source.keyCoreAttestationProof,
         }
     : value.source.type === 'secure-import'
       && (value.source.method === 'mnemonic' || value.source.method === 'private-key')
@@ -137,6 +149,7 @@ function parseProvisionWalletRequest(value: unknown): ProvisionWalletRequest {
     idempotencyKey: value.idempotencyKey,
     keyAdapter: value.keyAdapter,
     recoverySetupAcknowledged: value.recoverySetupAcknowledged,
+    hostAuthorizationProof: value.hostAuthorizationProof,
     source,
   };
 }
@@ -176,6 +189,23 @@ function isLoopbackRequest(request: IncomingMessage): boolean {
   } catch {
     return false;
   }
+}
+
+function requireDevelopmentHost(request: IncomingMessage): void {
+  if (isProduction) throw new Error('Production host authorization provider required.');
+  if (!isLoopbackRequest(request)) throw new Error('Development host origin required.');
+  const providedKey = String(request.headers['x-wss-institution-key'] || '');
+  if (!constantTimeEqual(providedKey, institutionApiKey)) throw new Error('Institution host authorization required.');
+}
+
+function parseHostAuthenticationPurpose(value: unknown): HostAuthenticationPurpose {
+  if (!isRecord(value)
+    || (value.purpose !== 'wallet-provisioning'
+      && value.purpose !== 'transfer-approval'
+      && value.purpose !== 'wallet-recovery')) {
+    throw new Error('Invalid host authentication purpose.');
+  }
+  return value.purpose;
 }
 
 async function handleCreateSession(request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -245,6 +275,35 @@ async function handleBootstrap(request: IncomingMessage, response: ServerRespons
   sendJson(response, 200, bootstrap);
 }
 
+async function handleIssueDevelopmentHostAuthorization(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  requireDevelopmentHost(request);
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const session = sessionFromClaims(claims);
+  const purpose = parseHostAuthenticationPurpose(await readJson(request));
+  const issued = issueWalletAuthorizationProof({ session, purpose, secret: sessionSecret });
+  sendJson(response, 201, {
+    status: 'authenticated',
+    proof: issued.proof,
+    expiresAt: new Date(issued.claims.expiresAt * 1000).toISOString(),
+    method: 'development-reference-host',
+  });
+}
+
+async function handleIssueDevelopmentSarAttestation(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  requireDevelopmentHost(request);
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const session = sessionFromClaims(claims);
+  const body = await readJson(request);
+  if (!isRecord(body) || !isSecureSarWalletPayload(body.registration)) {
+    throw new Error('Invalid SAR key-core registration.');
+  }
+  const issued = issueSarKeyCoreProof({ session, payload: body.registration, secret: sessionSecret });
+  sendJson(response, 201, {
+    proof: issued.proof,
+    expiresAt: new Date(issued.claims.expiresAt * 1000).toISOString(),
+  });
+}
+
 async function handleProvisionWallet(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const claims = verifySessionToken(bearerToken(request), sessionSecret);
   const manifest = tenants.get(claims.tenantId);
@@ -275,10 +334,31 @@ async function handleProvisionWallet(request: IncomingMessage, response: ServerR
     sendJson(response, 400, { error: 'secure_sar_creation_requires_sar' });
     return;
   }
+  const hostAuthorization = verifyHostProof(provisionRequest.hostAuthorizationProof, sessionSecret);
+  assertProofSession(hostAuthorization, session);
+  if (hostAuthorization.kind !== 'wallet-authorization' || hostAuthorization.purpose !== 'wallet-provisioning') {
+    sendJson(response, 403, { error: 'wallet_authorization_required' });
+    return;
+  }
+  let keyCoreAttestationId: string | undefined;
+  if (provisionRequest.source.type === 'secure-new') {
+    const keyCoreAttestation = verifyHostProof(provisionRequest.source.keyCoreAttestationProof, sessionSecret);
+    assertProofSession(keyCoreAttestation, session);
+    if (keyCoreAttestation.kind !== 'sar-key-core'
+      || keyCoreAttestation.payloadHash !== sarKeyCorePayloadHash(provisionRequest.source)) {
+      sendJson(response, 403, { error: 'key_core_attestation_required' });
+      return;
+    }
+    keyCoreAttestationId = keyCoreAttestation.proofId;
+  }
   const result = await provider.provision({
     session,
     manifest,
     request: provisionRequest,
+    evidence: {
+      hostAuthorizationId: hostAuthorization.proofId,
+      ...(keyCoreAttestationId ? { keyCoreAttestationId } : {}),
+    },
   });
   sendJson(response, 201, result);
 }
@@ -387,6 +467,14 @@ const server = createServer(async (request, response) => {
     }
     if (request.method === 'GET' && url.pathname === '/v1/runtime/bootstrap') {
       await handleBootstrap(request, response);
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/development/host-authorizations') {
+      await handleIssueDevelopmentHostAuthorization(request, response);
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/development/sar-key-core-attestations') {
+      await handleIssueDevelopmentSarAttestation(request, response);
       return;
     }
     if (request.method === 'POST' && url.pathname === '/v1/registration/intents') {

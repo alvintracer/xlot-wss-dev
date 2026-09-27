@@ -59,7 +59,6 @@ interface CreateWalletFlowProps {
   onComplete: (response: ProvisionWalletResponse) => void;
 }
 
-const maskedSeedSlots = Array.from({ length: 12 }, (_, index) => index + 1);
 const carriers = [
   ['skt', 'SKT'],
   ['kt', 'KT'],
@@ -120,8 +119,10 @@ export function CreateWalletFlow({
   const [challengeId, setChallengeId] = useState<string | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [developmentCode, setDevelopmentCode] = useState<string | null>(null);
+  const [hostAuthorizationProof, setHostAuthorizationProof] = useState<string | null>(null);
   const [walletSource, setWalletSource] = useState<SarWalletSource | null>(null);
   const [secureImportRef, setSecureImportRef] = useState<string | null>(null);
+  const [preparedSarWallet, setPreparedSarWallet] = useState<Extract<SecureSarWalletCreationResult, { status: 'completed' }> | null>(null);
   const [recoveryAcknowledged, setRecoveryAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -208,6 +209,8 @@ export function CreateWalletFlow({
     setKeyAdapter(nextAdapter);
     setWalletSource(null);
     setSecureImportRef(null);
+    setPreparedSarWallet(null);
+    setHostAuthorizationProof(null);
     setRecoveryAcknowledged(false);
     setError(null);
   };
@@ -292,7 +295,8 @@ export function CreateWalletFlow({
     setError(null);
     try {
       const result = await onAuthenticate();
-      if (result === 'authenticated') {
+      if (result.status === 'authenticated') {
+        setHostAuthorizationProof(result.proof);
         setStep(isSar ? 'wallet-source' : 'provider-wallet');
         return;
       }
@@ -307,8 +311,35 @@ export function CreateWalletFlow({
   const chooseSource = (source: SarWalletSource) => {
     setWalletSource(source);
     setSecureImportRef(null);
+    setPreparedSarWallet(null);
     setError(null);
     setStep(source === 'new' ? 'seed-wallet' : 'secure-import');
+  };
+
+  const prepareSecureSarWallet = async () => {
+    if (!canCreateSecureSarWallet) {
+      setError('승인된 고객 기기 키 코어 연결이 필요해요.');
+      return;
+    }
+    if (preparedSarWallet) {
+      setStep('sar-setup');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await onRequestSecureSarWalletCreation();
+      if (result.status !== 'completed') {
+        setError('복구 구문 확인을 완료하지 못했어요.');
+        return;
+      }
+      setPreparedSarWallet(result);
+      setStep('sar-setup');
+    } catch {
+      setError('키움 보안 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const requestSecureImport = async () => {
@@ -332,6 +363,11 @@ export function CreateWalletFlow({
   };
 
   const provision = async () => {
+    if (!hostAuthorizationProof) {
+      setError('키움 고객 인증을 다시 완료해 주세요.');
+      setStep('authentication');
+      return;
+    }
     if (walletSource && walletSource !== 'new' && !secureImportRef) {
       setError('호스트 보안 입력을 먼저 완료해 주세요.');
       return;
@@ -346,14 +382,14 @@ export function CreateWalletFlow({
     try {
       let source: ProvisionWalletRequest['source'];
       if (isSar && walletSource === 'new') {
-        const result = await onRequestSecureSarWalletCreation();
-        if (result.status !== 'completed') throw new Error('Secure SAR wallet creation was cancelled.');
+        if (!preparedSarWallet) throw new Error('Secure SAR wallet preparation is required.');
         source = {
           type: 'secure-new',
-          secureProvisionRef: result.secureProvisionRef,
-          addresses: result.addresses,
-          recoveryEnvelopes: result.recoveryEnvelopes,
-          recovery: result.recovery,
+          secureProvisionRef: preparedSarWallet.secureProvisionRef,
+          addresses: preparedSarWallet.addresses,
+          recoveryEnvelopes: preparedSarWallet.recoveryEnvelopes,
+          recovery: preparedSarWallet.recovery,
+          keyCoreAttestationProof: preparedSarWallet.keyCoreAttestationProof,
         };
       } else if (walletSource && walletSource !== 'new' && secureImportRef) {
         source = {
@@ -368,6 +404,7 @@ export function CreateWalletFlow({
         idempotencyKey: idempotencyKey.current,
         keyAdapter,
         recoverySetupAcknowledged: isSar ? recoveryAcknowledged : true,
+        hostAuthorizationProof,
         source,
       });
       setBusy(false);
@@ -464,18 +501,20 @@ export function CreateWalletFlow({
         totalSteps={totalSteps}
         onBack={() => setStep('wallet-source')}
         onClose={onClose}
-        footer={<button className="kw-button" type="button" onClick={() => setStep('sar-setup')}>새 지갑으로 계속</button>}
+        footer={(
+          <button className="kw-button" type="button" disabled={!canCreateSecureSarWallet || busy} aria-busy={busy} onClick={() => void prepareSecureSarWallet()}>
+            {busy ? '키움 보안 화면을 준비하고 있어요' : preparedSarWallet ? '복구 구문 확인 완료' : '키움 보안 화면 열기'}
+          </button>
+        )}
       >
         <div className="kw-flow-symbol" aria-hidden="true"><Key weight="regular" /></div>
-        <h1 className="kw-flow-title">복구 구문은 고객 기기<br />안에서만 만들어져요</h1>
-        <p className="kw-body kw-mt-12">지갑 등록을 확정하면 호스트 키 코어가 실제 복구 구문과 체인별 키를 생성합니다. 키움·took 서버에는 완성된 구문이나 개인키를 보내지 않습니다.</p>
-        <div className="kw-seed-preview kw-mt-24" aria-label="보안 코어 연결 전 복구 구문 비공개 미리보기">
-          {maskedSeedSlots.map((index) => <span key={index}><b>{index}</b>••••</span>)}
-        </div>
+        <h1 className="kw-flow-title">실제 복구 구문을<br />키움 보안 화면에서 확인해요</h1>
+        <p className="kw-body kw-mt-12">고객 기기 키 코어가 새 지갑을 먼저 만들고, 실제 12개 단어를 호스트 보안 화면에서 한 번만 보여줍니다. 단어 확인을 마쳐야 자가복구 설정을 계속할 수 있어요.</p>
         <div className="kw-inline-notice kw-inline-notice--neutral kw-mt-16">
           <DeviceMobile className="kw-icon kw-icon--small" aria-hidden="true" />
-          <span>{canCreateSecureSarWallet ? 'Reference Host 개발 키 코어가 실제 키를 생성하되 복구 구문은 화면과 WSS에 노출하지 않습니다.' : '승인된 네이티브 키 코어가 연결된 환경에서만 실제 지갑을 만들 수 있습니다.'}</span>
+          <span>{canCreateSecureSarWallet ? '복구 구문은 WSS WebView·키움/took 서버·이벤트 로그로 전달되지 않습니다.' : '승인된 네이티브 키 코어가 연결된 환경에서만 실제 지갑을 만들 수 있습니다.'}</span>
         </div>
+        {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
       </FlowShell>
     );
   }

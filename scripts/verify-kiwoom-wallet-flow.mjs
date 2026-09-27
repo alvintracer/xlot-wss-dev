@@ -6,6 +6,11 @@ const chromePath = process.env.WSS_CHROME_PATH || '/Applications/Google Chrome.a
 const screenshotPath = process.env.WSS_WALLET_FLOW_SCREENSHOT || '/tmp/took-wss-kiwoom-wallet-flow.png';
 const homeScreenshotPath = process.env.WSS_WALLET_HOME_SCREENSHOT || '/tmp/took-wss-kiwoom-asset-home.png';
 const previewCustomerRef = `kiwoom-browser-e2e-${Date.now()}`;
+const authorizedTestPhone = process.env.WSS_AUTHORIZED_TEST_PHONE?.replace(/\D/g, '') || '';
+
+if (!/^010\d{8}$/.test(authorizedTestPhone)) {
+  throw new Error('Set WSS_AUTHORIZED_TEST_PHONE to an authorized handset before running the live phone-onboarding check.');
+}
 
 await access(chromePath);
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
@@ -44,7 +49,7 @@ try {
   await walletFrame.getByLabel('생년월일').fill('19900102');
   await walletFrame.getByRole('button', { name: /통신사 선택/ }).click();
   await walletFrame.getByRole('dialog', { name: '통신사 선택' }).getByRole('button', { name: 'SKT', exact: true }).click();
-  await walletFrame.getByLabel('휴대폰 번호').fill('01000000000');
+  await walletFrame.getByLabel('휴대폰 번호').fill(authorizedTestPhone);
   await walletFrame.getByRole('checkbox').check();
   await walletFrame.getByRole('button', { name: '인증번호 받기' }).click();
   const developmentCodeCopy = await walletFrame.locator('.kw-development-code').innerText();
@@ -53,10 +58,28 @@ try {
   await walletFrame.getByLabel('인증번호').fill(developmentCode);
   await walletFrame.getByRole('button', { name: '인증번호 확인' }).click();
   await walletFrame.getByRole('button', { name: '키움 인증 요청' }).click();
+  const authenticationOverlay = page.locator('.host-security-layer');
+  await authenticationOverlay.getByRole('heading', { name: /고객 확인이 필요해요/ }).waitFor();
+  await authenticationOverlay.getByRole('button', { name: '기기 인증으로 확인' }).click();
   await walletFrame.getByRole('heading', { name: /새로 만들거나 기존 지갑을/ }).waitFor();
   await walletFrame.getByRole('button', { name: /새 지갑 만들기/ }).click();
-  await walletFrame.getByRole('heading', { name: /복구 구문은 고객 기기/ }).waitFor();
-  await walletFrame.getByRole('button', { name: '새 지갑으로 계속' }).click();
+  await walletFrame.getByRole('heading', { name: /실제 복구 구문을/ }).waitFor();
+  await walletFrame.getByRole('button', { name: '키움 보안 화면 열기' }).click();
+  const backupOverlay = page.locator('.host-security-layer');
+  await backupOverlay.getByRole('heading', { name: /복구 구문을 안전한 곳에/ }).waitFor();
+  const mnemonicWords = await backupOverlay.locator('.host-seed-word strong').allTextContents();
+  if (mnemonicWords.length !== 12) throw new Error('Host key core did not present 12 recovery words.');
+  await backupOverlay.getByRole('checkbox').check();
+  await backupOverlay.getByRole('button', { name: '기록한 단어 확인하기' }).click();
+  const confirmationLabels = backupOverlay.locator('.host-seed-confirmation label');
+  for (let index = 0; index < await confirmationLabels.count(); index += 1) {
+    const label = confirmationLabels.nth(index);
+    const position = Number((await label.locator('span').innerText()).match(/^([0-9]+)번째/)?.[1]);
+    const word = mnemonicWords[position - 1];
+    if (!word) throw new Error('Invalid recovery-word confirmation position.');
+    await label.locator('input').fill(word);
+  }
+  await backupOverlay.getByRole('button', { name: '복구 구문 확인' }).click();
   await walletFrame.getByRole('heading', { name: /2개 조건으로 내가 직접/ }).waitFor();
   await walletFrame.getByRole('checkbox').check();
   await walletFrame.getByRole('button', { name: '지갑 만들기' }).click();
@@ -102,6 +125,8 @@ try {
   await walletFrame.getByRole('button', { name: /FSL MPC 지갑/ }).click();
   await walletFrame.getByRole('button', { name: '선택한 방식으로 계속' }).click();
   await walletFrame.getByRole('button', { name: '키움 인증 요청' }).click();
+  await authenticationOverlay.getByRole('heading', { name: /고객 확인이 필요해요/ }).waitFor();
+  await authenticationOverlay.getByRole('button', { name: '기기 인증으로 확인' }).click();
   await walletFrame.locator('h1.kw-flow-title', { hasText: 'FSL MPC 지갑' }).waitFor();
   await walletFrame.getByRole('button', { name: '이 지갑 슬롯 추가하기' }).click();
   await walletFrame.getByText('FSL MPC 지갑 2', { exact: true }).waitFor();
@@ -183,9 +208,8 @@ try {
   console.error(JSON.stringify({
     browserErrors,
     api: Object.fromEntries(apiResponses),
-    visibleText: (await page.locator('body').innerText()).slice(0, 2000),
+    currentUrl: page.url(),
   }, null, 2));
-  await page.screenshot({ path: screenshotPath, fullPage: true });
   throw error;
 } finally {
   await browser.close();

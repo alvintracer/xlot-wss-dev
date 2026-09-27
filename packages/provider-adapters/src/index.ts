@@ -80,6 +80,10 @@ export interface WalletProvisioningProvider {
     session: Omit<WssSessionClaims, 'nonce'>;
     manifest: TenantManifest;
     request: ProvisionWalletRequest;
+    evidence: {
+      hostAuthorizationId: string;
+      keyCoreAttestationId?: string;
+    };
   }): Promise<ProvisionWalletResponse>;
 }
 

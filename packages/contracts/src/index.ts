@@ -37,7 +37,14 @@ export type IdentityAssuranceLevel =
   | 'identity-provider-verified';
 export type WalletShellMode = 'root' | 'focus';
 export type HostAuthenticationPurpose = 'wallet-provisioning' | 'transfer-approval' | 'wallet-recovery';
-export type HostAuthenticationResult = 'authenticated' | 'cancelled';
+export type HostAuthenticationResult =
+  | {
+      status: 'authenticated';
+      proof: string;
+      expiresAt: string;
+      method: 'institution-sdk' | 'development-reference-host';
+    }
+  | { status: 'cancelled' };
 export type WalletImportMethod = 'mnemonic' | 'private-key';
 export type WalletProvisioningOrigin = 'created' | 'imported';
 export type SecureWalletImportResult =
@@ -66,11 +73,15 @@ export interface SarRecoveryEnvelopeRegistration {
   aad: string;
 }
 
-export interface SecureSarWalletRegistration {
+export interface SecureSarWalletPayload {
   secureProvisionRef: string;
   addresses: readonly PublicWalletAddressRegistration[];
   recoveryEnvelopes: readonly SarRecoveryEnvelopeRegistration[];
   recovery: SarRecoveryRegistration;
+}
+
+export interface SecureSarWalletRegistration extends SecureSarWalletPayload {
+  keyCoreAttestationProof: string;
 }
 
 export type SecureSarWalletCreationResult =
@@ -290,6 +301,7 @@ export interface ProvisionWalletRequest {
   idempotencyKey: string;
   keyAdapter: KeyAdapterId;
   recoverySetupAcknowledged: boolean;
+  hostAuthorizationProof: string;
   source:
     | { type: 'new' }
     | ({ type: 'secure-new' } & SecureSarWalletRegistration)
@@ -458,8 +470,13 @@ export function isHostToWalletMessage(value: unknown): value is HostToWalletMess
       && isHostCapabilities(value.hostCapabilities);
   }
   if (value.type === 'took-wss:host-auth-result') {
-    return typeof value.requestId === 'string'
-      && (value.result === 'authenticated' || value.result === 'cancelled');
+    if (typeof value.requestId !== 'string' || !isRecord(value.result)) return false;
+    if (value.result.status === 'cancelled') return true;
+    return value.result.status === 'authenticated'
+      && typeof value.result.proof === 'string'
+      && value.result.proof.length > 20
+      && typeof value.result.expiresAt === 'string'
+      && (value.result.method === 'institution-sdk' || value.result.method === 'development-reference-host');
   }
   if (value.type === 'took-wss:secure-import-result') {
     if (typeof value.requestId !== 'string' || !isRecord(value.result)) return false;
@@ -496,8 +513,39 @@ export function isWalletToHostMessage(value: unknown): value is WalletToHostMess
   return false;
 }
 
-export function isSecureSarWalletRegistration(value: unknown): value is SecureSarWalletRegistration {
+function containsForbiddenWalletSecret(value: unknown): boolean {
+  if (!isRecord(value) && !Array.isArray(value)) return false;
+  const forbidden = new Set([
+    'entropy',
+    'mnemonic',
+    'mnemonicwords',
+    'privatekey',
+    'recoveryshare',
+    'sarshare',
+    'seed',
+    'seedphrase',
+    'plaintextshare',
+    'vaultkey',
+    'wrappingkey',
+  ]);
+  const pending: object[] = [value];
+  const visited = new WeakSet<object>();
+  while (pending.length > 0) {
+    const current = pending.pop()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+    for (const [key, nested] of Object.entries(current)) {
+      const normalizedKey = key.replace(/[^a-z]/gi, '').toLowerCase();
+      if (forbidden.has(normalizedKey)) return true;
+      if (isRecord(nested) || Array.isArray(nested)) pending.push(nested);
+    }
+  }
+  return false;
+}
+
+export function isSecureSarWalletPayload(value: unknown): value is SecureSarWalletPayload {
   if (!isRecord(value)
+    || containsForbiddenWalletSecret(value)
     || typeof value.secureProvisionRef !== 'string'
     || value.secureProvisionRef.length < 16
     || value.secureProvisionRef.length > 256
@@ -544,6 +592,13 @@ export function isSecureSarWalletRegistration(value: unknown): value is SecureSa
     && typeof value.recovery.keyCoreVersion === 'string'
     && value.recovery.keyCoreVersion.length >= 3
     && value.recovery.keyCoreVersion.length <= 128;
+}
+
+export function isSecureSarWalletRegistration(value: unknown): value is SecureSarWalletRegistration {
+  return isRecord(value)
+    && typeof value.keyCoreAttestationProof === 'string'
+    && value.keyCoreAttestationProof.length > 20
+    && isSecureSarWalletPayload(value);
 }
 
 export function assertTenantManifest(value: TenantManifest): TenantManifest {

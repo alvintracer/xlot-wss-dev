@@ -42,7 +42,10 @@ The target Kiwoom WSS path does not silently skip profile creation. Before the f
 3. WSS-issued SMS possession verification;
 4. creation of a random WSS `user_profile_id` UUID;
 5. a separate Kiwoom host-session confirmation for wallet provisioning;
-6. wallet key-adapter selection and wallet provisioning.
+6. wallet key-adapter selection;
+7. for a new SAR wallet, host-only display and confirmation of the actual
+   12-word recovery phrase; and
+8. wallet provisioning with one-time host proofs.
 
 Name and birth date remain self-asserted in this flow; WSS SMS proves possession of the entered number, not carrier-backed legal identity. The short-lived WSS session already carries the versioned Kiwoom subject HMAC, so successful phone verification links that subject to the new profile; the separate host confirmation then gates wallet provisioning. If a pre-existing standalone WSS profile and institution profile must be combined later, that remains the explicit high-assurance linking/merge ceremony in ADR-0002. Adding another wallet slot to an already verified profile must not repeat the full registration flow.
 
@@ -88,6 +91,12 @@ Switching wallets calls `GET /v1/wallets/:walletId/home`. The server resolves wa
 
 Provisioning calls `POST /v1/wallets/provision` with a key adapter and a provider-new, host-secure-new, or opaque secure-import source. A host-secure-new source contains only the public address groups, an opaque key-core reference, and non-secret SAR setup metadata. Every successful call adds one wallet slot; it does not add one slot per network.
 
+The call also carries a short-lived host-authorization proof bound to the
+current session and `wallet-provisioning` purpose. A host-secure-new source
+adds a key-core attestation bound to the canonical hash of the public
+registration. The BFF persists only the proof UUIDs and rejects reuse for a
+different wallet operation.
+
 ## 6. Shared WSS versus Kiwoom customization
 
 Reusable WSS responsibilities:
@@ -109,9 +118,18 @@ Kiwoom behavior stays under `tenants/kiwoom` or provider adapter packages. The s
 
 ## 7. Current development boundary
 
-The Reference Host now creates a real random took SAR wallet in its customer-side development key core. It derives the EVM, Solana, Bitcoin, TRON, and XRP public addresses, performs an actual Shamir GF(256) 2-of-3 split, verifies every valid two-share reconstruction, and registers only public addresses with the BFF. Address rows and address-based receive are therefore usable in the development flow.
+The Reference Host now creates a real random took SAR wallet in its
+customer-side development key core. It shows the actual 12-word phrase only
+in a host-owned security overlay and requires three random word positions to
+be confirmed before registration. It derives the EVM, Solana, Bitcoin, TRON,
+and XRP public addresses, performs an actual Shamir GF(256) 2-of-3 split,
+verifies every valid two-share reconstruction, and registers only public
+addresses with the BFF. Address rows and address-based receive are therefore
+usable in the development flow. The explicit development customer-confirmation
+screen stands in for Kiwoom PIN/biometric SDK behavior and must not be treated
+as production identity assurance.
 
-When the development database is connected, the BFF persists the Kiwoom WSS profile, wallet slot, public address rows, audit event, and three customer-side AES-GCM recovery-envelope ciphertexts in `xlot-wss-dev`. The plaintext shares and envelope key remain in volatile Reference Host memory and are lost on reload. This is therefore a real wallet/address and ciphertext-persistence path, but not production storage or durable device-loss recovery. Production remains fail-closed without an approved native key core, independently controlled encrypted factor stores, signed host registration attestation, recovery-factor providers, and security review. The sandbox still provides no real balance, K-VWAP valuation, KYT decision, sponsored-gas execution, or transaction submission. Send remains disabled until those dependencies are connected.
+When the development database is connected, the BFF persists the Kiwoom WSS profile, wallet slot, public address rows, audit event, three customer-side AES-GCM recovery-envelope ciphertexts, and only the UUIDs of the consumed host proofs in `xlot-wss-dev`. The plaintext shares, recovery phrase, proof strings, and envelope key are not persisted; key material remains in volatile Reference Host memory and is lost on reload. This is therefore a real wallet/address, ceremony, proof-binding, and ciphertext-persistence path, but not production storage or durable device-loss recovery. Production remains fail-closed without an approved native key core, independently controlled encrypted factor stores, institution/native device attestation, recovery-factor providers, and security review. The current A/B/C recovery screen records acknowledgement but does not yet enroll three independent durable factors. The sandbox still provides no real balance, K-VWAP valuation, KYT decision, sponsored-gas execution, or transaction submission. Send remains disabled until those dependencies are connected.
 
 The Kiwoom phone-first profile path is implemented against `xlot-wss-dev` and selects `supabase-auth-solapi`. Registration PII is AES-256-GCM encrypted before persistence, the phone lookup uses a separate keyed digest, Supabase Auth owns code generation and verification, and the activated SOLAPI Send SMS Hook only delivers the Auth-owned code. WSS keeps neither the code nor its MAC on that path. The BFF matches the Auth-verified number to the tenant-scoped lookup digest, persists only a domain-separated keyed Auth-subject digest, and then atomically creates the random profile UUID, encrypted private attributes, consent, external institution link, and audit event before purging the intent PII. If delivery is unavailable, the isolated sandbox visibly falls back to the loopback-only MAC-based development code; production never falls back. This still proves phone possession, not carrier-backed legal identity.
 
@@ -126,3 +144,4 @@ The Kiwoom phone-first profile path is implemented against `xlot-wss-dev` and se
 - 2026-09-27: Implemented manifest-selectable `phone-first` and `institution-first` onboarding, with the Kiwoom development profile using encrypted phone-possession registration before its first wallet slot.
 - 2026-09-27: Switched the Kiwoom phone-verification preference to Supabase Auth with a Standard Webhooks-verified SOLAPI Send SMS Hook, retaining only an explicit sandbox fallback until provider secrets are activated.
 - 2026-09-27: Activated the SOLAPI secrets and Supabase Auth Send SMS Hook in `xlot-wss-dev`; live message receipt remains a handset-level smoke test.
+- 2026-09-27: Added explicit host customer confirmation, real 12-word host-only backup and three-word verification, payload-bound SAR attestation, and one-time wallet authorization proof enforcement.

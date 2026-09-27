@@ -75,11 +75,11 @@ export class WssHostClient {
   };
 
   async #respondToAuthentication(requestId: string, purpose: HostAuthenticationPurpose): Promise<void> {
-    let result: HostAuthenticationResult = 'cancelled';
+    let result: HostAuthenticationResult = { status: 'cancelled' };
     try {
-      result = await this.#options.requestAuthentication?.(purpose) ?? 'cancelled';
+      result = await this.#options.requestAuthentication?.(purpose) ?? { status: 'cancelled' };
     } catch {
-      result = 'cancelled';
+      result = { status: 'cancelled' };
     }
     if (!this.#started) return;
     const message: HostToWalletMessage = {

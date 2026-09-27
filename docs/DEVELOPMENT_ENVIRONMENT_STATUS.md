@@ -11,6 +11,7 @@
 - `0002_wss_development_sar.sql` applied and checksum recorded
 - `0003_wss_phone_registration.sql` applied and checksum recorded
 - `0004_wss_supabase_phone_auth.sql` applied and checksum recorded
+- `0005_wss_wallet_host_proofs.sql` applied and checksum recorded
 - 18 `public.wss_%` tables present, including the migration ledger
 - Row Level Security enabled on every WSS table
 - zero table grants to `anon` and `authenticated`
@@ -33,6 +34,8 @@
 - hosted Auth settings returned phone-provider enabled, and the deployed Hook
   was verified `ACTIVE` at version 4 without exposing a credential value
 - Session pooler runtime connection verified from the Institution BFF
+- wallet authorization and SAR key-core proof UUIDs are stored under
+  tenant-scoped unique indexes; signed proof strings are not persisted
 
 ## Verified persistent vertical slice
 
@@ -60,13 +63,22 @@
   creation, nine-network registration, a second FSL wallet slot, wallet
   selection, receive-address display, and fail-closed send checks.
 
+The current code additionally requires an explicit host-owned customer
+confirmation, shows the real 12-word BIP-39 phrase only in the host security
+surface, verifies three randomly selected words, and binds provisioning to
+short-lived host and key-core proofs. A fresh browser verification of this
+updated ceremony is recorded separately by the repository checks rather than
+by sending an automated SMS to a synthetic phone number.
+
 ## Deliberate development limitation
 
 The Reference Host still uses the explicit loopback-only development
 institution key compiled into its local browser demo. That key is not an
 institution integration credential and must never be deployed. A real tenant
 host backend supplies its private institution credential and creates the WSS
-session server-to-server.
+session server-to-server. The development confirmation button is not real
+Kiwoom PIN or biometric authentication; a production host must issue the same
+contract only after its approved authentication SDK succeeds.
 
 The Kiwoom manifest now selects `supabase-auth-solapi`. Supabase Auth owns OTP
 generation and verification, while the deployed Send SMS Hook delivers the

@@ -41,6 +41,37 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .host-feedback { position: absolute; right: 16px; bottom: calc(var(--host-root-nav-height, 62px) + 12px); left: 16px; z-index: 5; min-height: 0; padding: 0; border-radius: 12px; background: transparent; color: transparent; font-size: 11px; line-height: 18px; text-align: center; pointer-events: none; transition: min-height 140ms ease, padding 140ms ease, background 140ms ease, color 140ms ease; }
 .host-feedback:not(:empty) { min-height: 38px; padding: 10px 12px; background: rgb(27 28 32 / 92%); color: #fff; }
 .phone--focus .host-feedback { bottom: 16px; }
+.host-security-layer { position: absolute; inset: 30px 0 0; z-index: 30; display: flex; min-height: 0; flex-direction: column; overflow: hidden; outline: none; background: #fff; color: #19171c; }
+.host-security-header { display: flex; min-height: 52px; flex: 0 0 52px; align-items: center; justify-content: space-between; padding: 0 18px 0 20px; border-bottom: 1px solid #efedf1; background: #fff; }
+.host-security-header > span { font-size: 15px; font-weight: 800; letter-spacing: -.025em; }
+.host-security-header button { display: grid; width: 34px; height: 34px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #3c3840; cursor: pointer; }
+.host-security-header button:disabled { opacity: .45; cursor: wait; }
+.host-security-content { flex: 1; min-height: 0; overflow-y: auto; padding: 32px 20px 24px; scrollbar-width: thin; }
+.host-security-content--seed { padding-top: 24px; }
+.host-security-symbol { display: grid; width: 58px; height: 58px; place-items: center; margin-bottom: 22px; border-radius: 20px; background: #f3ecfb; color: #7d3bdd; }
+.host-security-kicker { margin: 0 0 8px !important; color: #7d3bdd !important; font-size: 9px !important; font-weight: 900; letter-spacing: .11em; }
+.host-security-content h2 { margin: 0; color: #19171c; font-size: 24px; font-weight: 800; letter-spacing: -.045em; line-height: 1.28; }
+.host-security-content > p:not(.host-security-kicker, .host-security-error) { margin: 14px 0 0; color: #77717c; font-size: 12px; line-height: 1.65; }
+.host-security-notice, .host-security-warning { display: flex; align-items: flex-start; gap: 9px; margin-top: 24px; padding: 14px; border-radius: 14px; background: #f6f4f7; color: #5f5964; font-size: 11px; line-height: 1.55; }
+.host-security-notice svg, .host-security-warning svg { flex: 0 0 auto; margin-top: 1px; color: #7d3bdd; }
+.host-seed-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 20px 0 18px; padding: 0; list-style: none; }
+.host-seed-word { display: grid; min-width: 0; grid-template-columns: 22px minmax(0, 1fr); align-items: center; padding: 10px 9px; border: 1px solid #e8e3eb; border-radius: 11px; background: #fbfafc; }
+.host-seed-word span { color: #aaa2ad; font-size: 9px; font-variant-numeric: tabular-nums; }
+.host-seed-word strong { overflow: hidden; color: #27232a; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; text-overflow: ellipsis; }
+.host-security-check { display: flex; align-items: flex-start; gap: 10px; color: #55505a; font-size: 11px; line-height: 1.5; cursor: pointer; }
+.host-security-check input { width: 18px; height: 18px; flex: 0 0 auto; margin: 0; accent-color: #7d3bdd; }
+.host-seed-confirmation { display: grid; gap: 20px; margin-top: 30px; }
+.host-seed-confirmation label { display: grid; gap: 8px; }
+.host-seed-confirmation span { color: #5f5964; font-size: 11px; font-weight: 800; }
+.host-seed-confirmation input { width: 100%; min-height: 42px; padding: 0 2px; border: 0; border-bottom: 1px solid #aaa3ae; border-radius: 0; outline: 0; background: #fff; color: #19171c; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 16px; }
+.host-seed-confirmation input:focus { border-bottom: 2px solid #7d3bdd; }
+.host-security-error { margin: 18px 0 0; color: #c03838; font-size: 11px; font-weight: 700; line-height: 1.5; }
+.host-security-footer { display: flex; flex: 0 0 auto; gap: 9px; padding: 12px 20px max(18px, env(safe-area-inset-bottom)); border-top: 1px solid #f0edf2; background: #fff; }
+.host-security-footer button { min-height: 52px; border: 0; border-radius: 18px; font-size: 14px; font-weight: 800; cursor: pointer; }
+.host-security-primary { flex: 1; background: #7d3bdd; color: #fff; }
+.host-security-secondary { flex: 0 0 104px; background: #eeebf0; color: #4e4852; }
+.host-security-footer button:disabled { opacity: .42; cursor: not-allowed; }
+.host-security-header button:focus-visible, .host-security-footer button:focus-visible, .host-security-check input:focus-visible { outline: 3px solid rgb(125 59 221 / 28%); outline-offset: 2px; }
 .spin { animation: spin 800ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

@@ -167,7 +167,7 @@ export function useWssRuntime(): RuntimeResult {
       bffOriginRef.current = null;
       for (const pending of pendingAuthentication.current.values()) {
         window.clearTimeout(pending.timeout);
-        pending.resolve('cancelled');
+        pending.resolve({ status: 'cancelled' });
       }
       pendingAuthentication.current.clear();
       for (const pending of pendingSecureImports.current.values()) {
@@ -195,13 +195,13 @@ export function useWssRuntime(): RuntimeResult {
   }, []);
 
   const requestHostAuthentication = useCallback((purpose: HostAuthenticationPurpose): Promise<HostAuthenticationResult> => {
-    if (!hostOrigin.current) return Promise.resolve('cancelled');
+    if (!hostOrigin.current) return Promise.resolve({ status: 'cancelled' });
     const requestId = crypto.randomUUID();
     return new Promise((resolve) => {
       const timeout = window.setTimeout(() => {
         pendingAuthentication.current.delete(requestId);
-        resolve('cancelled');
-      }, 60_000);
+        resolve({ status: 'cancelled' });
+      }, 120_000);
       pendingAuthentication.current.set(requestId, { resolve, timeout });
       postToHost(hostOrigin.current!, {
         type: 'took-wss:host-auth-request',
@@ -259,7 +259,7 @@ export function useWssRuntime(): RuntimeResult {
       const timeout = window.setTimeout(() => {
         pendingSecureSarCreations.current.delete(requestId);
         resolve({ status: 'cancelled' });
-      }, 60_000);
+      }, 600_000);
       pendingSecureSarCreations.current.set(requestId, { resolve, timeout });
       postToHost(hostOrigin.current!, {
         type: 'took-wss:secure-sar-create-request',

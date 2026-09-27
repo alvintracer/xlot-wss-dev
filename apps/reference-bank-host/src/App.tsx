@@ -1,19 +1,24 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowsClockwise, Bank, CheckCircle, LockKey, ShieldCheck } from '@phosphor-icons/react';
+import { isRecord } from '@took-wss/contracts';
 import type {
   CreateSessionResponse,
   HostAuthenticationPurpose,
+  HostAuthenticationResult,
   HostCapabilities,
   KeyAdapterId,
+  SecureSarWalletCreationResult,
+  SecureSarWalletPayload,
   WalletShellMode,
   WalletToHostMessage,
 } from '@took-wss/contracts';
 import { WssHostClient } from '@took-wss/host-sdk';
 import { KEY_ADAPTERS } from '@took-wss/key-adapters';
-import { ReferenceHostSarKeyCore } from '@took-wss/sar-key-core';
+import { ReferenceHostSarKeyCore, type PreparedSarWallet } from '@took-wss/sar-key-core';
 import { kiwoomManifest } from '@took-wss/tenant-kiwoom';
 import { referenceBankManifest } from '@took-wss/tenant-reference-bank';
 import { getHostChromeProfile } from './hostChromeRegistry';
+import { HostSecurityOverlay, type HostSecurityView } from './HostSecurityOverlay';
 
 const bffUrl = import.meta.env.VITE_WSS_BFF_URL || 'http://localhost:4100';
 const localDevelopmentInstitutionKey = import.meta.env.DEV ? 'local-wss-development-only' : '';
@@ -56,6 +61,28 @@ const tenantOptions = {
 
 type TenantId = keyof typeof tenantOptions;
 
+type SecurityCeremony =
+  | Extract<HostSecurityView, { type: 'authentication' }>
+  | (Extract<HostSecurityView, { type: 'sar-backup' }> & { prepared: PreparedSarWallet });
+
+function chooseConfirmationIndexes(wordCount: number): number[] {
+  const indexes = new Set<number>();
+  while (indexes.size < Math.min(3, wordCount)) {
+    const random = crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
+    indexes.add(random % wordCount);
+  }
+  return [...indexes].sort((left, right) => left - right);
+}
+
+function sarPayload(prepared: PreparedSarWallet): SecureSarWalletPayload {
+  return {
+    secureProvisionRef: prepared.wallet.keyHandle,
+    addresses: prepared.wallet.addresses,
+    recoveryEnvelopes: prepared.wallet.recoveryEnvelopes,
+    recovery: prepared.wallet.recovery,
+  };
+}
+
 export function App() {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [tenantId, setTenantId] = useState<TenantId>('kiwoom');
@@ -65,22 +92,174 @@ export function App() {
   const [hostFeedback, setHostFeedback] = useState<string | null>(null);
   const [shellMode, setShellMode] = useState<WalletShellMode>('root');
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [securityCeremony, setSecurityCeremony] = useState<SecurityCeremony | null>(null);
+  const sessionTokenRef = useRef<string | null>(null);
+  const securityCeremonyRef = useRef<SecurityCeremony | null>(null);
+  const sarPreparationInProgress = useRef(false);
+  const authenticationResolver = useRef<((result: HostAuthenticationResult) => void) | null>(null);
+  const sarResolver = useRef<((result: SecureSarWalletCreationResult) => void) | null>(null);
   const hostChrome = getHostChromeProfile(tenantOptions[tenantId].presentationProfileId);
   const HostHeader = hostChrome.Header;
   const HostNavigation = hostChrome.Navigation;
   const showRootChrome = shellMode === 'root' || tenantOptions[tenantId].focusedFlow === 'keep-host-chrome';
 
+  const showSecurityCeremony = useCallback((ceremony: SecurityCeremony | null) => {
+    securityCeremonyRef.current = ceremony;
+    setSecurityCeremony(ceremony);
+  }, []);
+
+  const cancelSecurityCeremony = useCallback(() => {
+    const active = securityCeremonyRef.current;
+    if (!active) return;
+    if (active.type === 'authentication') {
+      authenticationResolver.current?.({ status: 'cancelled' });
+      authenticationResolver.current = null;
+    } else {
+      void referenceHostSarKeyCore.discardWallet(active.prepared.wallet.keyHandle);
+      sarResolver.current?.({ status: 'cancelled' });
+      sarResolver.current = null;
+    }
+    showSecurityCeremony(null);
+  }, [showSecurityCeremony]);
+
+  const requestHostAuthentication = useCallback((purpose: HostAuthenticationPurpose): Promise<HostAuthenticationResult> => {
+    if (!import.meta.env.DEV
+      || !session
+      || sessionTokenRef.current !== session.sessionToken
+      || securityCeremonyRef.current) {
+      return Promise.resolve({ status: 'cancelled' });
+    }
+    return new Promise((resolve) => {
+      authenticationResolver.current = resolve;
+      showSecurityCeremony({ id: crypto.randomUUID(), type: 'authentication', purpose });
+    });
+  }, [session, showSecurityCeremony]);
+
+  const approveHostAuthentication = useCallback(async () => {
+    const active = securityCeremonyRef.current;
+    if (!session || active?.type !== 'authentication' || !authenticationResolver.current) {
+      throw new Error('No active host authentication ceremony.');
+    }
+    const activeId = active.id;
+    const activeSessionToken = session.sessionToken;
+    const resolve = authenticationResolver.current;
+    const response = await fetch(`${bffUrl}/v1/development/host-authorizations`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${activeSessionToken}`,
+        'Content-Type': 'application/json',
+        'x-wss-institution-key': localDevelopmentInstitutionKey,
+      },
+      body: JSON.stringify({ purpose: active.purpose }),
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Host authorization was rejected.');
+    const result = await response.json() as unknown;
+    if (!isRecord(result)
+      || result.status !== 'authenticated'
+      || typeof result.proof !== 'string'
+      || typeof result.expiresAt !== 'string'
+      || result.method !== 'development-reference-host') {
+      throw new Error('Unsupported host authorization response.');
+    }
+    if (sessionTokenRef.current !== activeSessionToken
+      || securityCeremonyRef.current?.id !== activeId
+      || authenticationResolver.current !== resolve) return;
+    authenticationResolver.current = null;
+    showSecurityCeremony(null);
+    setHostFeedback('현재 세션에 묶인 일회용 고객 인증 증빙을 발급했습니다.');
+    resolve(result as HostAuthenticationResult);
+  }, [session, showSecurityCeremony]);
+
+  const requestSecureSarWalletCreation = useCallback(async (): Promise<SecureSarWalletCreationResult> => {
+    if (!import.meta.env.DEV
+      || !session
+      || sessionTokenRef.current !== session.sessionToken
+      || securityCeremonyRef.current
+      || sarPreparationInProgress.current) return { status: 'cancelled' };
+    const activeSessionToken = session.sessionToken;
+    sarPreparationInProgress.current = true;
+    let prepared: PreparedSarWallet;
+    try {
+      prepared = await referenceHostSarKeyCore.prepareWallet();
+    } finally {
+      sarPreparationInProgress.current = false;
+    }
+    if (sessionTokenRef.current !== activeSessionToken || securityCeremonyRef.current) {
+      await referenceHostSarKeyCore.discardWallet(prepared.wallet.keyHandle);
+      return { status: 'cancelled' };
+    }
+    return new Promise((resolve) => {
+      sarResolver.current = resolve;
+      showSecurityCeremony({
+        id: crypto.randomUUID(),
+        type: 'sar-backup',
+        mnemonicWords: prepared.mnemonicWords,
+        confirmationIndexes: chooseConfirmationIndexes(prepared.mnemonicWords.length),
+        prepared,
+      });
+    });
+  }, [session, showSecurityCeremony]);
+
+  const confirmSeedBackup = useCallback(async () => {
+    const active = securityCeremonyRef.current;
+    if (!session || active?.type !== 'sar-backup' || !sarResolver.current) {
+      throw new Error('No active SAR backup ceremony.');
+    }
+    const activeId = active.id;
+    const activeSessionToken = session.sessionToken;
+    const resolve = sarResolver.current;
+    const registration = sarPayload(active.prepared);
+    const response = await fetch(`${bffUrl}/v1/development/sar-key-core-attestations`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${activeSessionToken}`,
+        'Content-Type': 'application/json',
+        'x-wss-institution-key': localDevelopmentInstitutionKey,
+      },
+      body: JSON.stringify({ registration }),
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('SAR key-core attestation was rejected.');
+    const result = await response.json() as unknown;
+    if (!isRecord(result) || typeof result.proof !== 'string' || typeof result.expiresAt !== 'string') {
+      throw new Error('Unsupported SAR key-core attestation response.');
+    }
+    if (sessionTokenRef.current !== activeSessionToken
+      || securityCeremonyRef.current?.id !== activeId
+      || sarResolver.current !== resolve) return;
+    sarResolver.current = null;
+    showSecurityCeremony(null);
+    setHostFeedback('복구 구문 확인을 마치고 공개 지갑 정보만 WSS에 전달했습니다.');
+    resolve({ status: 'completed', ...registration, keyCoreAttestationProof: result.proof });
+  }, [session, showSecurityCeremony]);
+
   const selectTenant = (nextTenant: TenantId) => {
+    cancelSecurityCeremony();
     setTenantId(nextTenant);
     setKeyAdapter(tenantOptions[nextTenant].defaultAdapter);
     setSession(null);
+    sessionTokenRef.current = null;
     setEvents([]);
     setHostFeedback(null);
     setShellMode('root');
     setStatus('idle');
   };
 
+  const selectKeyAdapter = (nextAdapter: KeyAdapterId) => {
+    cancelSecurityCeremony();
+    setKeyAdapter(nextAdapter);
+    setSession(null);
+    sessionTokenRef.current = null;
+    setEvents([]);
+    setShellMode('root');
+    setStatus('idle');
+  };
+
   const createSession = async () => {
+    cancelSecurityCeremony();
+    sessionTokenRef.current = null;
+    setSession(null);
     setStatus('loading');
     setEvents([]);
     setShellMode('root');
@@ -95,10 +274,13 @@ export function App() {
         body: JSON.stringify({ tenantId, customerRef: previewCustomerRef, requestedKeyAdapter: keyAdapter }),
       });
       if (!response.ok) throw new Error('Session request rejected.');
-      setSession(await response.json() as CreateSessionResponse);
+      const createdSession = await response.json() as CreateSessionResponse;
+      sessionTokenRef.current = createdSession.sessionToken;
+      setSession(createdSession);
       setStatus('ready');
     } catch {
       setSession(null);
+      sessionTokenRef.current = null;
       setStatus('error');
     }
   };
@@ -116,31 +298,8 @@ export function App() {
         if (event.type === 'took-wss:shell-change') setShellMode(event.mode);
         setEvents((current) => [...current.slice(-5), event]);
       },
-      requestAuthentication: async (purpose: HostAuthenticationPurpose) => {
-        const label = purpose === 'wallet-provisioning' ? '지갑 생성' : purpose === 'transfer-approval' ? '송금 승인' : '지갑 복구';
-        if (!import.meta.env.DEV) {
-          setHostFeedback(`실제 금융사 ${label} 인증 SDK 연동이 필요합니다.`);
-          return 'cancelled';
-        }
-        setHostFeedback(`Reference Host가 ${label} 인증을 확인했습니다.`);
-        await new Promise((resolve) => window.setTimeout(resolve, 500));
-        return 'authenticated';
-      },
-      requestSecureSarWalletCreation: async () => {
-        if (!import.meta.env.DEV) {
-          setHostFeedback('승인된 네이티브 SAR 키 코어 연동이 필요합니다.');
-          return { status: 'cancelled' };
-        }
-        setHostFeedback('고객 기기 키 코어에서 실제 멀티체인 지갑과 SAR 복구 조각을 만들고 있습니다.');
-        const created = await referenceHostSarKeyCore.createWallet();
-        return {
-          status: 'completed',
-          secureProvisionRef: created.keyHandle,
-          addresses: created.addresses,
-          recoveryEnvelopes: created.recoveryEnvelopes,
-          recovery: created.recovery,
-        };
-      },
+      requestAuthentication: requestHostAuthentication,
+      requestSecureSarWalletCreation,
       requestSecureWalletImport: async (method) => {
         const label = method === 'mnemonic' ? '니모닉' : '개인키';
         setHostFeedback(`실제 금융사 ${label} 보안 입력·키 코어 연동이 필요합니다.`);
@@ -149,7 +308,7 @@ export function App() {
     });
     client.start();
     return () => client.stop();
-  }, [session]);
+  }, [requestHostAuthentication, requestSecureSarWalletCreation, session]);
 
   useEffect(() => {
     if (!hostFeedback) return;
@@ -175,7 +334,7 @@ export function App() {
           <legend>Key management</legend>
           {tenantOptions[tenantId].adapters.map((adapter) => (
             <label className="radio-row" key={adapter.id}>
-              <input type="radio" name="key-adapter" value={adapter.id} checked={keyAdapter === adapter.id} onChange={() => { setKeyAdapter(adapter.id); setSession(null); setStatus('idle'); }} />
+              <input type="radio" name="key-adapter" value={adapter.id} checked={keyAdapter === adapter.id} onChange={() => selectKeyAdapter(adapter.id)} />
               <span><LockKey size={18} />{adapter.label}</span>
             </label>
           ))}
@@ -216,6 +375,15 @@ export function App() {
             </div>
           )}
           {showRootChrome ? <HostNavigation onAction={setHostFeedback} /> : null}
+          {securityCeremony ? (
+            <HostSecurityOverlay
+              key={securityCeremony.id}
+              view={securityCeremony}
+              onCancel={cancelSecurityCeremony}
+              onApproveAuthentication={approveHostAuthentication}
+              onConfirmSeedBackup={confirmSeedBackup}
+            />
+          ) : null}
           <div className="host-feedback" role="status" aria-live="polite">{hostFeedback}</div>
         </div>
       </section>

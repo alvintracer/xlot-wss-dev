@@ -51,8 +51,40 @@ describe('host initialization contract', () => {
       type: 'took-wss:host-auth-result',
       protocolVersion: 1,
       requestId: 'request-1',
-      result: 'authenticated',
+      result: {
+        status: 'authenticated',
+        proof: 'signed-host-authorization-proof-123456',
+        expiresAt: '2026-09-27T00:05:00.000Z',
+        method: 'development-reference-host',
+      },
     })).toBe(true);
+    expect(isHostToWalletMessage({
+      type: 'took-wss:secure-sar-create-result',
+      protocolVersion: 1,
+      requestId: 'request-secret-leak',
+      result: {
+        status: 'completed',
+        secureProvisionRef: 'sar-key-reference-123456',
+        keyCoreAttestationProof: 'signed-key-core-attestation-proof-123456',
+        mnemonicWords: Array.from({ length: 12 }, () => 'abandon'),
+        addresses: [{ addressGroupId: 'evm', address: '0x0000000000000000000000000000000000000001' }],
+        recoveryEnvelopes: [1, 2, 3].map((factorIndex) => ({
+          factorIndex,
+          envelopeVersion: 1,
+          algorithm: 'AES-256-GCM',
+          ivBase64: 'AAAAAAAAAAAAAAAA',
+          ciphertextBase64: 'AAAAAAAAAAAAAAAAAAAAAAAA',
+          aad: `sar-key-core-v1:sar-key-reference-123456:factor-${factorIndex}`,
+        })),
+        recovery: {
+          scheme: 'shamir-gf256',
+          threshold: 2,
+          shareCount: 3,
+          recombinationVerified: true,
+          keyCoreVersion: 'sar-key-core-v1',
+        },
+      },
+    })).toBe(false);
     expect(isWalletToHostMessage({
       type: 'took-wss:secure-import-request',
       protocolVersion: 1,
@@ -77,6 +109,7 @@ describe('host initialization contract', () => {
       result: {
         status: 'completed',
         secureProvisionRef: 'sar-key-reference-123456',
+        keyCoreAttestationProof: 'signed-key-core-attestation-proof-123456',
         addresses: [{ addressGroupId: 'evm', address: '0x0000000000000000000000000000000000000001' }],
         recoveryEnvelopes: [1, 2, 3].map((factorIndex) => ({
           factorIndex,

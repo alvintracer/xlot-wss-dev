@@ -282,10 +282,11 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
     return absentHome(manifest);
   }
 
-  async provision({ session, manifest, request }: {
+  async provision({ session, manifest, request, evidence }: {
     session: Session;
     manifest: TenantManifest;
     request: ProvisionWalletRequest;
+    evidence: { hostAuthorizationId: string; keyCoreAttestationId?: string };
   }): Promise<ProvisionWalletResponse> {
     if (!manifest.keyManagement.allowedAdapters.includes(request.keyAdapter)) throw new Error('Requested key adapter is not allowed.');
     if (request.keyAdapter === 'took-sar' && !request.recoverySetupAcknowledged) throw new Error('SAR recovery setup acknowledgement is required.');
@@ -311,6 +312,23 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
         walletId = previous[0].id;
         return;
       }
+      const consumedAuthorizations = await transaction<{ id: string }[]>`
+        SELECT id FROM wss_wallets
+        WHERE tenant_id = ${manifest.tenantId}
+          AND host_authorization_id = ${evidence.hostAuthorizationId}
+        LIMIT 1
+      `;
+      if (consumedAuthorizations[0]) throw new Error('Wallet authorization proof was already consumed.');
+      if (request.source.type === 'secure-new') {
+        if (!evidence.keyCoreAttestationId) throw new Error('Key-core attestation proof is required.');
+        const consumedKeyCoreAttestations = await transaction<{ id: string }[]>`
+          SELECT id FROM wss_wallets
+          WHERE tenant_id = ${manifest.tenantId}
+            AND key_core_attestation_id = ${evidence.keyCoreAttestationId}
+          LIMIT 1
+        `;
+        if (consumedKeyCoreAttestations[0]) throw new Error('Key-core attestation proof was already consumed.');
+      }
 
       const countRows = await transaction<{ count: string }[]>`
         SELECT count(*)::text AS count FROM wss_wallets
@@ -328,11 +346,13 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
       await transaction`
         INSERT INTO wss_wallets (
           id, tenant_id, user_profile_id, key_policy_version, key_adapter,
-          provisioning_origin, status, label, provisioning_idempotency_key, secure_provision_ref_hash
+          provisioning_origin, status, label, provisioning_idempotency_key, secure_provision_ref_hash,
+          host_authorization_id, key_core_attestation_id
         ) VALUES (
           ${walletId}, ${manifest.tenantId}, ${profileId}, ${manifest.keyManagement.policyVersion},
           ${request.keyAdapter}, ${origin}, 'active', ${`${adapterLabel} ${walletNumber}`},
-          ${request.idempotencyKey}, ${secureRefHash}
+          ${request.idempotencyKey}, ${secureRefHash}, ${evidence.hostAuthorizationId},
+          ${evidence.keyCoreAttestationId ?? null}
         )
       `;
 
@@ -382,7 +402,12 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
         ) VALUES (
           ${randomUUID()}, ${manifest.tenantId}, 'wallet.provisioned', 'institution-subject',
           ${session.subject}, ${profileId}, ${walletId}, ${session.sessionId},
-          ${transaction.json({ keyAdapter: request.keyAdapter, origin })}
+          ${transaction.json({
+            keyAdapter: request.keyAdapter,
+            origin,
+            hostAuthorization: 'one-time-proof',
+            keyCoreAttestation: evidence.keyCoreAttestationId ? 'one-time-proof' : 'not-applicable',
+          })}
         )
       `;
     });

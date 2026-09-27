@@ -10,6 +10,8 @@ const phoneRegistrationMigrationUrl = new URL('../db/migrations/0003_wss_phone_r
 const phoneRegistrationMigration = readFileSync(phoneRegistrationMigrationUrl, 'utf8');
 const supabasePhoneAuthMigrationUrl = new URL('../db/migrations/0004_wss_supabase_phone_auth.sql', import.meta.url);
 const supabasePhoneAuthMigration = readFileSync(supabasePhoneAuthMigrationUrl, 'utf8');
+const walletHostProofMigrationUrl = new URL('../db/migrations/0005_wss_wallet_host_proofs.sql', import.meta.url);
+const walletHostProofMigration = readFileSync(walletHostProofMigrationUrl, 'utf8');
 
 describe('WSS identity migration', () => {
   it('parses as PostgreSQL and contains the required identity boundaries', () => {
@@ -91,5 +93,20 @@ describe('WSS Supabase phone Auth migration', () => {
   it('does not add an OTP plaintext column', () => {
     const ddlWithoutComments = supabasePhoneAuthMigration.replace(/--.*$/gm, '');
     expect(ddlWithoutComments).not.toMatch(/\b(otp_code|otp_plaintext|verified_phone)\b/i);
+  });
+});
+
+describe('WSS wallet host proof migration', () => {
+  it('records only one-time proof identifiers with tenant-scoped uniqueness', () => {
+    expect(parse(walletHostProofMigration).length).toBeGreaterThan(3);
+    expect(walletHostProofMigration).toContain('host_authorization_id uuid');
+    expect(walletHostProofMigration).toContain('key_core_attestation_id uuid');
+    expect(walletHostProofMigration).toContain('wss_wallets_host_authorization_once_idx');
+    expect(walletHostProofMigration).toContain('wss_wallets_key_core_attestation_once_idx');
+  });
+
+  it('does not persist a proof token or customer secret', () => {
+    const ddlWithoutComments = walletHostProofMigration.replace(/--.*$/gm, '');
+    expect(ddlWithoutComments).not.toMatch(/\b(proof_token|mnemonic|seed_phrase|private_key|pin)\b/i);
   });
 });
