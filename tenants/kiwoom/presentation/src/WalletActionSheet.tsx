@@ -1,154 +1,481 @@
 import {
   ArrowLeft,
-  ChatCircleDots,
-  Check,
-  DeviceMobile,
-  PaperPlaneTilt,
-  QrCode,
+  CaretRight,
+  CheckCircle,
+  Copy,
+  GasPump,
+  ShareNetwork,
+  ShieldCheck,
+  Wallet,
+  WarningCircle,
   X,
 } from '@phosphor-icons/react';
-import { useEffect, useRef, useState } from 'react';
-import type { HostCapabilities, WalletNetworkView } from '@took-wss/contracts';
+import { QRCodeSVG } from 'qrcode.react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type {
+  HostCapabilities,
+  PrepareTransferRequest,
+  PreparedTransfer,
+  SecureTransactionSigningRequest,
+  SecureTransactionSigningResult,
+  SubmitTransferRequest,
+  TransferExecutionResult,
+  WalletAssetView,
+  WalletNetworkView,
+  WalletProfileSummary,
+} from '@took-wss/contracts';
 
 export type WalletActionMode = 'receive' | 'send' | 'exchange';
-type TransferChannel = 'took' | 'address';
+type SendStep = 'asset' | 'recipient' | 'amount' | 'review' | 'success';
 
 interface WalletActionSheetProps {
   mode: WalletActionMode;
+  wallet: WalletProfileSummary;
+  assets: WalletAssetView[];
   networks: WalletNetworkView[];
   hostCapabilities: HostCapabilities;
   initialChainId?: string;
+  onPrepareTransfer: (request: PrepareTransferRequest) => Promise<PreparedTransfer>;
+  onRequestSecureTransactionSignature: (request: SecureTransactionSigningRequest) => Promise<SecureTransactionSigningResult>;
+  onSubmitTransfer: (request: SubmitTransferRequest) => Promise<TransferExecutionResult>;
   onClose: () => void;
 }
 
-interface TransferChannelTabsProps {
-  mode: 'receive' | 'send';
-  channel: TransferChannel;
-  onChange: (channel: TransferChannel) => void;
+const numberFormatter = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 });
+
+function parseDisplayNumber(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number(value.replace(/[^\d.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function TransferChannelTabs({ mode, channel, onChange }: TransferChannelTabsProps) {
-  const tookLabel = mode === 'receive' ? '툭받기' : '툭주기';
-  const addressLabel = mode === 'receive' ? '주소로 받기' : '주소로 보내기';
+function parseAmountToAtomic(value: string, decimals: number): string | null {
+  const normalized = value.replaceAll(',', '').trim();
+  if (!/^\d+(\.\d+)?$/.test(normalized)) return null;
+  const [whole, fraction = ''] = normalized.split('.');
+  if (fraction.length > decimals) return null;
+  const atomic = `${whole}${fraction.padEnd(decimals, '0')}`.replace(/^0+(?=\d)/, '');
+  try {
+    const result = BigInt(atomic || '0');
+    return result > 0n ? result.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
+function estimatedKrw(asset: WalletAssetView | undefined, amount: string): string | null {
+  const assetKrw = parseDisplayNumber(asset?.fiat?.display);
+  const balance = parseDisplayNumber(asset?.balanceDisplay);
+  const requested = Number(amount.replaceAll(',', ''));
+  if (assetKrw === null || balance === null || balance <= 0 || !Number.isFinite(requested)) return null;
+  return `약 ${numberFormatter.format(assetKrw / balance * requested)}원`;
+}
+
+function abbreviatedAddress(value: string): string {
+  return value.length <= 20 ? value : `${value.slice(0, 10)}…${value.slice(-8)}`;
+}
+
+function safeBigInt(value: string | undefined): bigint {
+  try {
+    return /^\d+$/.test(value ?? '') ? BigInt(value!) : 0n;
+  } catch {
+    return 0n;
+  }
+}
+
+function nativeName(network: WalletNetworkView): string {
+  const labels: Record<string, string> = {
+    ETH: '이더리움', POL: '폴리곤', BNB: '비앤비', SOL: '솔라나', BTC: '비트코인', TRX: '트론', XRP: '엑스알피',
+  };
+  return labels[network.nativeSymbol] ?? network.nativeSymbol;
+}
+
+function FlowHeader({ title, canGoBack, onBack, onClose }: { title: string; canGoBack: boolean; onBack: () => void; onClose: () => void }) {
   return (
-    <div
-      className="kw-transfer-channel-tabs"
-      role="tablist"
-      aria-label={`${tookLabel} 방식`}
-      onKeyDown={(event) => {
-        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-        event.preventDefault();
-        const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
-        const currentIndex = tabs.indexOf(document.activeElement as HTMLButtonElement);
-        const nextIndex = event.key === 'Home'
-          ? 0
-          : event.key === 'End'
-            ? tabs.length - 1
-            : event.key === 'ArrowLeft'
-              ? (currentIndex - 1 + tabs.length) % tabs.length
-              : (currentIndex + 1) % tabs.length;
-        tabs[nextIndex]?.focus();
-        onChange(nextIndex === 0 ? 'took' : 'address');
-      }}
-    >
-      <button
-        id="kw-transfer-channel-took-tab"
-        type="button"
-        role="tab"
-        aria-selected={channel === 'took'}
-        aria-controls="kw-transfer-channel-panel"
-        onClick={() => onChange('took')}
-      >
-        {tookLabel}
-      </button>
-      <button
-        id="kw-transfer-channel-address-tab"
-        type="button"
-        role="tab"
-        aria-selected={channel === 'address'}
-        aria-controls="kw-transfer-channel-panel"
-        onClick={() => onChange('address')}
-      >
-        {addressLabel}
-      </button>
-    </div>
+    <header className="kw-transfer-header">
+      {canGoBack ? (
+        <button type="button" aria-label="이전 화면" onClick={onBack}><ArrowLeft aria-hidden="true" /></button>
+      ) : <span aria-hidden="true" />}
+      <strong>{title}</strong>
+      <button type="button" aria-label="닫기" onClick={onClose}><X aria-hidden="true" /></button>
+    </header>
   );
 }
 
-function TookChannelIntro({ mode, canUseContacts }: { mode: 'receive' | 'send'; canUseContacts: boolean }) {
-  const isReceive = mode === 'receive';
+function NetworkPicker({ networks, onSelect }: { networks: WalletNetworkView[]; onSelect: (network: WalletNetworkView) => void }) {
   return (
-    <div className="kw-took-intro">
-      <div className="kw-took-intro__heading">
-        {isReceive ? <ChatCircleDots aria-hidden="true" /> : <PaperPlaneTilt aria-hidden="true" />}
-        <div>
-          <span>키움 간편 송금</span>
-          <strong>{isReceive ? '주소 없이 간편하게 툭받기' : '받는 사람에게 간편하게 툭주기'}</strong>
-        </div>
-      </div>
-      <p>
-        {isReceive
-          ? '휴대폰 번호나 암호화 메시지로 요청하고, 확인된 수신 경로로 안전하게 연결해요.'
-          : '주소 대신 연락처나 암호화 메시지를 선택하고, 보내기 전에 수신자와 네트워크를 다시 확인해요.'}
-      </p>
-      <div className="kw-took-intro__methods" aria-label="지원 예정 연결 방식">
-        <span><DeviceMobile aria-hidden="true" />{canUseContacts ? '휴대폰 번호' : '연락처 연동 대기'}</span>
-        <span><ChatCircleDots aria-hidden="true" />E2E 메시지</span>
-      </div>
-    </div>
-  );
-}
-
-function NetworkOptions({ networks, onSelect }: { networks: WalletNetworkView[]; onSelect: (chainId: string) => void }) {
-  return (
-    <div className="kw-sheet-options kw-network-options">
+    <div className="kw-transfer-choice-list">
       {networks.map((network) => (
-        <button className="kw-choice" type="button" key={network.chainId} onClick={() => onSelect(network.chainId)}>
-          <span><b>{network.nativeSymbol}</b>{network.network}</span>
-          <Check aria-hidden="true" />
+        <button
+          className="kw-transfer-choice"
+          type="button"
+          key={network.chainId}
+          disabled={network.addressStatus !== 'ready'}
+          onClick={() => onSelect(network)}
+        >
+          <span className="kw-transfer-asset-mark" aria-hidden="true">{network.nativeSymbol.slice(0, 1)}</span>
+          <span>
+            <strong>{nativeName(network)}</strong>
+            <small>{network.network}{network.addressStatus !== 'ready' ? ' · 주소 준비 중' : ''}</small>
+          </span>
+          <CaretRight aria-hidden="true" />
         </button>
       ))}
     </div>
   );
 }
 
-export function WalletActionSheet({ mode, networks, hostCapabilities, initialChainId, onClose }: WalletActionSheetProps) {
-  const [selectedChainId, setSelectedChainId] = useState(initialChainId);
-  const [channel, setChannel] = useState<TransferChannel>('took');
-  const [addressCopied, setAddressCopied] = useState(false);
-  const layerRef = useRef<HTMLDivElement>(null);
-  const selectedNetwork = networks.find((network) => network.chainId === selectedChainId);
-  const transferMode = mode === 'receive' || mode === 'send' ? mode : null;
-  const actionLabel = mode === 'receive' ? '받기' : mode === 'send' ? '보내기' : '환전하기';
-  const isTookChannel = transferMode !== null && channel === 'took';
-  const baseTitle = mode === 'receive'
-    ? isTookChannel ? '어떻게 받을까요?' : '받을 네트워크를 선택해 주세요'
-    : mode === 'send'
-      ? isTookChannel ? '누구에게 툭 줄까요?' : '보낼 네트워크를 선택해 주세요'
-      : '환전할 네트워크를 선택해 주세요';
-  const title = selectedNetwork
-    ? isTookChannel
-      ? `${selectedNetwork.network} ${mode === 'receive' ? '툭받기' : '툭주기'}`
-      : `${selectedNetwork.network} ${mode === 'receive' ? '주소로 받기' : mode === 'send' ? '주소로 보내기' : actionLabel}`
-    : baseTitle;
+function AssetPicker({ assets, onSelect }: { assets: WalletAssetView[]; onSelect: (asset: WalletAssetView) => void }) {
+  if (assets.length === 0) {
+    return (
+      <div className="kw-transfer-empty">
+        <Wallet aria-hidden="true" />
+        <strong>보낼 수 있는 자산이 없어요</strong>
+        <p>먼저 채우기에서 이 지갑의 주소를 확인하고 자산을 받아보세요.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="kw-transfer-choice-list">
+      {assets.map((asset) => {
+        const supported = Boolean(asset.chainId && asset.decimals !== undefined && asset.availableAtomic && asset.transferStatus === 'enabled');
+        return (
+          <button className="kw-transfer-choice" type="button" key={asset.assetId} disabled={!supported} onClick={() => onSelect(asset)}>
+            <span className="kw-transfer-asset-mark" aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
+            <span>
+              <strong>{asset.name}</strong>
+              <small>{asset.network}{supported ? '' : ` · ${asset.transferUnavailableReason ?? '보내기 연동 준비 중'}`}</small>
+            </span>
+            <span className="kw-transfer-choice__balance">
+              <strong>{asset.fiat?.display ?? '-'}</strong>
+              <small>{asset.balanceDisplay} {asset.symbol}</small>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReceiveFlow({
+  wallet,
+  networks,
+  initialChainId,
+  onClose,
+}: Pick<WalletActionSheetProps, 'wallet' | 'networks' | 'initialChainId' | 'onClose'>) {
+  const [selectedNetwork, setSelectedNetwork] = useState<WalletNetworkView | undefined>(() => (
+    networks.find((network) => network.chainId === initialChainId && network.addressStatus === 'ready')
+  ));
+  const [copied, setCopied] = useState(false);
+  const address = selectedNetwork?.address;
+
+  const copyAddress = async () => {
+    if (!address) return;
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1_800);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const shareAddress = async () => {
+    if (!address || !selectedNetwork) return;
+    const shareData = {
+      title: `${selectedNetwork.network} 받기 주소`,
+      text: `${selectedNetwork.network} ${selectedNetwork.nativeSymbol} 받기 주소\n${address}`,
+    };
+    if (navigator.share) {
+      await navigator.share(shareData).catch(() => undefined);
+      return;
+    }
+    await copyAddress();
+  };
+
+  return (
+    <>
+      <FlowHeader title="채우기" canGoBack={Boolean(selectedNetwork)} onBack={() => setSelectedNetwork(undefined)} onClose={onClose} />
+      <div className="kw-transfer-scroll">
+        {!selectedNetwork ? (
+          <div className="kw-transfer-page">
+            <p className="kw-transfer-kicker">{wallet.label}</p>
+            <h2 id="kw-wallet-action-title">어떤 자산을<br />채울까요?</h2>
+            <p className="kw-transfer-lead">받을 네트워크를 선택해 주세요.</p>
+            <NetworkPicker networks={networks} onSelect={setSelectedNetwork} />
+          </div>
+        ) : address ? (
+          <div className="kw-transfer-page kw-receive-page">
+            <p className="kw-transfer-kicker">{selectedNetwork.network}</p>
+            <h2 id="kw-wallet-action-title">이 주소로<br />자산을 보내주세요</h2>
+            <p className="kw-transfer-lead">반드시 {selectedNetwork.network} 네트워크로 보내야 해요.</p>
+            <div className="kw-qr-card">
+              <QRCodeSVG value={address} size={176} level="M" marginSize={2} title={`${selectedNetwork.network} 받기 주소 QR`} />
+              <strong>{selectedNetwork.nativeSymbol} 받기 주소</strong>
+              <button type="button" onClick={() => void copyAddress()}>{abbreviatedAddress(address)}<Copy aria-hidden="true" /></button>
+            </div>
+            {selectedNetwork.chainId === 'xrp' ? (
+              <div className="kw-transfer-warning"><WarningCircle aria-hidden="true" /><span>거래소에서 보낼 때는 목적지 태그 입력 여부를 반드시 확인해 주세요.</span></div>
+            ) : null}
+            <div className="kw-receive-actions">
+              <button type="button" onClick={() => void copyAddress()}><Copy aria-hidden="true" />{copied ? '복사했어요' : '주소 복사'}</button>
+              <button type="button" onClick={() => void shareAddress()}><ShareNetwork aria-hidden="true" />공유하기</button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+function GasSupportDialog({ quote, onClose }: { quote: PreparedTransfer['gasSponsorship']; onClose: () => void }) {
+  return (
+    <div className="kw-gas-dialog-layer">
+      <button type="button" className="kw-gas-dialog-scrim" aria-label="가스비 안내 닫기" onClick={onClose} />
+      <section className="kw-gas-dialog" role="dialog" aria-modal="true" aria-labelledby="kw-gas-dialog-title">
+        <button type="button" className="kw-gas-dialog-close" aria-label="닫기" onClick={onClose}><X aria-hidden="true" /></button>
+        <div className="kw-gas-dialog-icon"><GasPump aria-hidden="true" /></div>
+        <h3 id="kw-gas-dialog-title">가스비 지원</h3>
+        <p>{quote.message}</p>
+        <div className="kw-gas-support-grid">
+          <span>이번 보내기</span>
+          <strong>{quote.status === 'sponsored' ? '가스비 지원 적용' : quote.status === 'eligible' ? '지원 가능' : '네트워크 수수료 직접 결제'}</strong>
+        </div>
+        <button className="kw-button" type="button" autoFocus onClick={onClose}>확인</button>
+      </section>
+    </div>
+  );
+}
+
+function SendFlow({
+  wallet,
+  assets,
+  networks,
+  initialChainId,
+  onPrepareTransfer,
+  onRequestSecureTransactionSignature,
+  onSubmitTransfer,
+  onClose,
+}: WalletActionSheetProps) {
+  const initialAsset = assets.find((item) => item.chainId === initialChainId);
+  const [step, setStep] = useState<SendStep>(initialAsset ? 'recipient' : 'asset');
+  const [asset, setAsset] = useState<WalletAssetView | undefined>(initialAsset);
+  const [recipient, setRecipient] = useState('');
+  const [amount, setAmount] = useState('');
+  const [prepared, setPrepared] = useState<PreparedTransfer | null>(null);
+  const [complianceReason, setComplianceReason] = useState('');
+  const [result, setResult] = useState<TransferExecutionResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [gasDialogOpen, setGasDialogOpen] = useState(false);
+  const [clock, setClock] = useState(() => Date.now());
+  const network = networks.find((candidate) => candidate.chainId === asset?.chainId);
+  const decimals = asset?.decimals;
+  const amountAtomic = decimals === undefined ? null : parseAmountToAtomic(amount, decimals);
+  const available = safeBigInt(asset?.availableAtomic);
+  const validAmount = amountAtomic !== null && BigInt(amountAtomic) <= available;
+  const krw = useMemo(() => estimatedKrw(asset, amount), [asset, amount]);
+  const quoteExpired = prepared ? clock >= Date.parse(prepared.expiresAt) : false;
 
   useEffect(() => {
+    if (step !== 'review' || !prepared) return undefined;
+    setClock(Date.now());
+    const interval = window.setInterval(() => setClock(Date.now()), 1_000);
+    return () => window.clearInterval(interval);
+  }, [prepared, step]);
+
+  const back = () => {
+    setError(null);
+    if (step === 'recipient') setStep('asset');
+    else if (step === 'amount') setStep('recipient');
+    else if (step === 'review') {
+      setPrepared(null);
+      setStep('amount');
+    } else onClose();
+  };
+
+  const selectAsset = (selected: WalletAssetView) => {
+    setAsset(selected);
+    setRecipient('');
+    setAmount('');
+    setPrepared(null);
+    setStep('recipient');
+  };
+
+  const prepare = async () => {
+    if (!asset?.chainId || !amountAtomic || !recipient.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const quote = await onPrepareTransfer({
+        walletId: wallet.walletId,
+        assetId: asset.assetId,
+        chainId: asset.chainId,
+        recipient: recipient.trim(),
+        amountAtomic,
+        channel: 'address',
+        ...(complianceReason.trim() ? { complianceReason: complianceReason.trim() } : {}),
+      });
+      setPrepared(quote);
+      setStep('review');
+    } catch {
+      setError('보내기 조건을 확인하지 못했어요. 주소, 잔액과 네트워크 수수료를 다시 확인해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const execute = async () => {
+    if (!prepared?.signingRequest || quoteExpired) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const signature = await onRequestSecureTransactionSignature(prepared.signingRequest);
+      if (signature.status === 'cancelled') {
+        setError('보내기가 취소됐어요.');
+        return;
+      }
+      if (signature.intentId !== prepared.intentId) throw new Error('Transfer intent mismatch.');
+      const execution = await onSubmitTransfer({
+        intentId: prepared.intentId,
+        signedTransaction: signature.signedTransaction,
+        hostAuthorizationProof: signature.hostAuthorizationProof,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      setResult(execution);
+      setStep('success');
+    } catch {
+      setError('거래를 전송하지 못했어요. 잔액과 네트워크 상태를 확인한 뒤 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reviewBlocked = prepared?.compliance.status === 'block' || prepared?.compliance.status === 'unavailable';
+  const needsReason = prepared?.compliance.status === 'review' && prepared.compliance.reasonRequired && !prepared.signingRequest;
+  const title = step === 'success' ? '보내기 완료' : '보내기';
+
+  return (
+    <>
+      <FlowHeader title={title} canGoBack={step !== 'asset' && step !== 'success'} onBack={back} onClose={onClose} />
+      <div className="kw-transfer-scroll">
+        {step === 'asset' ? (
+          <div className="kw-transfer-page">
+            <p className="kw-transfer-kicker">{wallet.label}</p>
+            <h2 id="kw-wallet-action-title">어떤 자산을<br />보낼까요?</h2>
+            <p className="kw-transfer-lead">보낼 수 있는 잔액이 있는 자산만 보여드려요.</p>
+            <AssetPicker assets={assets} onSelect={selectAsset} />
+          </div>
+        ) : step === 'recipient' && asset ? (
+          <div className="kw-transfer-page kw-transfer-form-page">
+            <p className="kw-transfer-kicker">{asset.network} · {asset.symbol}</p>
+            <h2 id="kw-wallet-action-title">어디로<br />보낼까요?</h2>
+            <label className="kw-transfer-field">
+              <span>받는 지갑 주소</span>
+              <input
+                autoFocus
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={recipient}
+                placeholder={`${asset.network} 주소 입력`}
+                onChange={(event) => setRecipient(event.target.value)}
+              />
+            </label>
+            {error ? <p className="kw-transfer-error" role="alert">{error}</p> : null}
+          </div>
+        ) : step === 'amount' && asset ? (
+          <div className="kw-transfer-page kw-transfer-form-page">
+            <p className="kw-transfer-kicker">{asset.network} · {abbreviatedAddress(recipient)}</p>
+            <h2 id="kw-wallet-action-title">얼마를<br />보낼까요?</h2>
+            <div className="kw-amount-card">
+              <label>
+                <span>보낼 수 있는 금액 {asset.balanceDisplay} {asset.symbol}</span>
+                <span className="kw-amount-input"><input autoFocus inputMode="decimal" value={amount} placeholder="0" onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ''))} /><b>{asset.symbol}</b></span>
+              </label>
+              <small>{krw ?? '원화 환산 정보 없음'}</small>
+            </div>
+            {!validAmount && amount ? <p className="kw-transfer-error" role="alert">보낼 수 있는 금액 안에서 입력해 주세요.</p> : null}
+            {error ? <p className="kw-transfer-error" role="alert">{error}</p> : null}
+          </div>
+        ) : step === 'review' && asset && prepared ? (
+          <div className="kw-transfer-page kw-transfer-review-page">
+            <p className="kw-transfer-kicker">최종 확인</p>
+            <h2 id="kw-wallet-action-title">보내기 전에<br />확인해 주세요</h2>
+            <div className="kw-transfer-hero-amount">
+              <strong>{prepared.amountDisplay} {prepared.assetSymbol}</strong>
+              <span>{prepared.fiatDisplay ?? '원화 환산 정보 없음'}</span>
+            </div>
+            <dl className="kw-transfer-review-list">
+              <div><dt>받는 주소</dt><dd>{abbreviatedAddress(prepared.recipient)}</dd></div>
+              <div><dt>네트워크</dt><dd>{prepared.network}</dd></div>
+              <div><dt>네트워크 수수료</dt><dd>{prepared.networkFee.amountDisplay} {prepared.networkFee.symbol}{prepared.networkFee.fiatDisplay ? <small>{prepared.networkFee.fiatDisplay}</small> : null}</dd></div>
+              <div><dt>수수료 부담</dt><dd><button type="button" onClick={() => setGasDialogOpen(true)}>{prepared.gasSponsorship.status === 'sponsored' ? '서비스 부담 · 적용됨' : '고객 부담 · 상세 보기'}<CaretRight aria-hidden="true" /></button></dd></div>
+              <div><dt>견적 유효시간</dt><dd>{quoteExpired ? '만료됨' : `${new Date(prepared.expiresAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}까지`}</dd></div>
+            </dl>
+            <div className={`kw-compliance-card kw-compliance-card--${prepared.compliance.status}`}>
+              {reviewBlocked ? <WarningCircle aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}
+              <div><strong>{prepared.compliance.status === 'allow' ? '주소 확인 완료' : prepared.compliance.status === 'review' ? '추가 확인이 필요해요' : '보낼 수 없는 주소예요'}</strong><p>{prepared.compliance.message}</p></div>
+            </div>
+            {needsReason ? (
+              <label className="kw-transfer-reason">
+                <span>보내는 이유</span>
+                <textarea value={complianceReason} maxLength={200} placeholder="5자 이상 입력해 주세요" onChange={(event) => setComplianceReason(event.target.value)} />
+              </label>
+            ) : null}
+            {error ? <p className="kw-transfer-error" role="alert">{error}</p> : null}
+          </div>
+        ) : step === 'success' && asset && result ? (
+          <div className="kw-transfer-page kw-transfer-success">
+            <CheckCircle aria-hidden="true" />
+            <h2 id="kw-wallet-action-title">보내기를<br />접수했어요</h2>
+            <p>네트워크에서 거래를 확인하고 있어요.</p>
+            <div><span>보낸 금액</span><strong>{prepared?.amountDisplay} {asset.symbol}</strong></div>
+            <button type="button" onClick={() => void navigator.clipboard.writeText(result.transactionHash)}>거래 해시 복사</button>
+          </div>
+        ) : null}
+      </div>
+      {step === 'recipient' ? (
+        <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={recipient.trim().length < 16} onClick={() => setStep('amount')}>다음</button></footer>
+      ) : step === 'amount' ? (
+        <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={!validAmount || busy} aria-busy={busy} onClick={() => void prepare()}>{busy ? '확인하고 있어요' : '보내기 조건 확인'}</button></footer>
+      ) : step === 'review' ? (
+        <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={busy || (!quoteExpired && (Boolean(reviewBlocked) || (Boolean(needsReason) && complianceReason.trim().length < 5)))} aria-busy={busy} onClick={() => void (quoteExpired || needsReason ? prepare() : execute())}>{busy ? '처리하고 있어요' : quoteExpired ? '견적 다시 확인' : needsReason ? '위험도 다시 확인' : '인증하고 보내기'}</button></footer>
+      ) : step === 'success' ? (
+        <footer className="kw-transfer-footer"><button className="kw-button" type="button" onClick={onClose}>확인</button></footer>
+      ) : null}
+      {gasDialogOpen && prepared ? <GasSupportDialog quote={prepared.gasSponsorship} onClose={() => setGasDialogOpen(false)} /> : null}
+      {network && network.addressStatus !== 'ready' ? <span className="kw-sr-only">선택한 네트워크 주소를 사용할 수 없습니다.</span> : null}
+    </>
+  );
+}
+
+function ExchangeFlow({ networks, onClose }: Pick<WalletActionSheetProps, 'networks' | 'onClose'>) {
+  return (
+    <>
+      <FlowHeader title="환전하기" canGoBack={false} onBack={onClose} onClose={onClose} />
+      <div className="kw-transfer-scroll"><div className="kw-transfer-page"><h2 id="kw-wallet-action-title">어떤 자산을<br />환전할까요?</h2><p className="kw-transfer-lead">거래소 연결과 원화 견적을 지원하는 네트워크를 선택해 주세요.</p><NetworkPicker networks={networks} onSelect={() => undefined} /></div></div>
+    </>
+  );
+}
+
+export function WalletActionSheet(props: WalletActionSheetProps) {
+  const layerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const dialog = layerRef.current?.querySelector<HTMLElement>('.kw-sheet');
-    const focusable = () => Array.from(dialog?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])') ?? []);
-    focusable()[0]?.focus();
+    layerRef.current?.querySelector<HTMLElement>('.kw-transfer-header button, .kw-transfer-choice:not(:disabled), input')?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        props.onClose();
         return;
       }
       if (event.key !== 'Tab') return;
-      const items = focusable();
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
+      const focusScope = layerRef.current?.querySelector<HTMLElement>('.kw-gas-dialog') ?? layerRef.current;
+      const focusable = Array.from(focusScope?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled])') ?? []);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable.at(-1);
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last?.focus();
@@ -162,97 +489,12 @@ export function WalletActionSheet({ mode, networks, hostCapabilities, initialCha
       document.removeEventListener('keydown', onKeyDown);
       previouslyFocused?.focus();
     };
-  }, [onClose]);
-
-  const changeChannel = (nextChannel: TransferChannel) => {
-    setChannel(nextChannel);
-    setSelectedChainId(undefined);
-    setAddressCopied(false);
-  };
-
-  const canCopyReceiveAddress = mode === 'receive'
-    && !isTookChannel
-    && selectedNetwork?.addressStatus === 'ready'
-    && typeof selectedNetwork.address === 'string';
-
-  const copyReceiveAddress = async () => {
-    if (!canCopyReceiveAddress || !selectedNetwork?.address) return;
-    try {
-      await navigator.clipboard.writeText(selectedNetwork.address);
-      setAddressCopied(true);
-    } catch {
-      setAddressCopied(false);
-    }
-  };
+  }, [props.onClose]);
 
   return (
-    <div className="kw-sheet-layer" ref={layerRef}>
-      <button className="kw-sheet-scrim" type="button" aria-label="닫기" onClick={onClose} />
-      <section className="kw-sheet kw-wallet-action-sheet" role="dialog" aria-modal="true" aria-labelledby="kw-wallet-action-title">
-        <button className="kw-icon-button kw-sheet-close" type="button" aria-label="닫기" onClick={onClose}><X aria-hidden="true" /></button>
-        {transferMode ? <TransferChannelTabs mode={transferMode} channel={channel} onChange={changeChannel} /> : null}
-        <div
-          id="kw-transfer-channel-panel"
-          role={transferMode ? 'tabpanel' : undefined}
-          aria-labelledby={transferMode ? `kw-transfer-channel-${channel}-tab` : undefined}
-        >
-          {selectedNetwork ? (
-            <>
-              <button className="kw-sheet-back" type="button" onClick={() => setSelectedChainId(undefined)}><ArrowLeft aria-hidden="true" />네트워크 다시 선택</button>
-              <h2 className="kw-sheet-title" id="kw-wallet-action-title">{title}</h2>
-              <p className="kw-body kw-mt-8">{selectedNetwork.nativeSymbol} · 선택한 지갑 슬롯</p>
-              {mode === 'receive' ? (
-                isTookChannel ? (
-                  <div className="kw-status-panel kw-mt-24">
-                    <ChatCircleDots aria-hidden="true" />
-                    <strong>툭받기 요청 연결을 준비하고 있어요</strong>
-                    <p>실제 수신 주소와 암호화 요청 링크가 모두 준비된 뒤에만 상대방에게 공유할 수 있어요.</p>
-                  </div>
-                ) : selectedNetwork.addressStatus === 'ready' && selectedNetwork.address ? (
-                  <div className="kw-receive-address kw-mt-24">
-                    <QrCode aria-hidden="true" />
-                    <p className="kw-address">{selectedNetwork.address}</p>
-                  </div>
-                ) : (
-                  <div className="kw-status-panel kw-mt-24">
-                    <QrCode aria-hidden="true" />
-                    <strong>수신 주소를 준비하고 있어요</strong>
-                    <p>실제 키 코어가 주소를 반환하기 전에는 QR이나 임의 주소를 표시하지 않습니다.</p>
-                  </div>
-                )
-              ) : mode === 'send' ? (
-                <div className="kw-status-panel kw-mt-24">
-                  {isTookChannel ? <PaperPlaneTilt aria-hidden="true" /> : null}
-                  <strong>{isTookChannel ? '받는 사람 연결을 준비하고 있어요' : '보낼 수 있는 잔액이 없어요'}</strong>
-                  <p>
-                    {isTookChannel
-                      ? '연락처 권한, 수신자 동의, 잔액·수수료·KYT 결과가 준비된 뒤 툭주기가 활성화됩니다.'
-                      : '잔액·주소·수수료·KYT 견적이 준비되면 보내기 절차가 활성화됩니다.'}
-                  </p>
-                </div>
-              ) : (
-                <div className="kw-status-panel kw-mt-24">
-                  <strong>환전 연결을 준비하고 있어요</strong>
-                  <p>실제 K-VWAP 견적과 거래소 실행 연결이 준비되면 환전 절차가 활성화됩니다.</p>
-                </div>
-              )}
-              <button className="kw-button kw-mt-24" type="button" disabled={!canCopyReceiveAddress} onClick={() => void copyReceiveAddress()}>
-                {mode === 'receive'
-                  ? isTookChannel ? '툭받기 준비 중' : canCopyReceiveAddress ? addressCopied ? '주소를 복사했어요' : '주소 복사' : '주소 준비 중'
-                  : mode === 'send'
-                    ? isTookChannel ? '툭주기 준비 중' : '보내기 준비 중'
-                    : '환전 준비 중'}
-              </button>
-            </>
-          ) : (
-            <>
-              <h2 className="kw-sheet-title" id="kw-wallet-action-title">{title}</h2>
-              {transferMode && isTookChannel ? <TookChannelIntro mode={transferMode} canUseContacts={hostCapabilities.canUseContacts} /> : null}
-              <p className="kw-network-options__label">{mode === 'receive' ? '받을 네트워크' : mode === 'send' ? '보낼 네트워크' : '환전할 네트워크'}</p>
-              <NetworkOptions networks={networks} onSelect={setSelectedChainId} />
-            </>
-          )}
-        </div>
+    <div className="kw-transfer-layer" ref={layerRef}>
+      <section className="kw-transfer-flow" role="dialog" aria-modal="true" aria-labelledby="kw-wallet-action-title">
+        {props.mode === 'receive' ? <ReceiveFlow {...props} /> : props.mode === 'send' ? <SendFlow {...props} /> : <ExchangeFlow {...props} />}
       </section>
     </div>
   );

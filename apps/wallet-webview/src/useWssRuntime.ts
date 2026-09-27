@@ -11,13 +11,19 @@ import {
   type CreateRegistrationIntentResponse,
   type HostAuthenticationPurpose,
   type HostAuthenticationResult,
+  type PrepareTransferRequest,
+  type PreparedTransfer,
   type ProvisionWalletRequest,
   type ProvisionWalletResponse,
   type ReadyWalletHomePayload,
   type SecureSarWalletCreationResult,
+  type SecureTransactionSigningRequest,
+  type SecureTransactionSigningResult,
   type SecureWalletImportResult,
   type WalletImportMethod,
   type WalletShellMode,
+  type SubmitTransferRequest,
+  type TransferExecutionResult,
   type WalletToHostMessage,
   type WssRuntimeBootstrap,
   type VerifyPhoneChallengeRequest,
@@ -40,6 +46,9 @@ type RuntimeResult = RuntimeState & {
   verifyPhoneChallenge: (registrationIntentId: string, challengeId: string, request: VerifyPhoneChallengeRequest) => Promise<VerifyPhoneChallengeResponse>;
   provisionWallet: (request: ProvisionWalletRequest) => Promise<ProvisionWalletResponse>;
   selectWallet: (walletId: string) => Promise<ReadyWalletHomePayload>;
+  prepareTransfer: (request: PrepareTransferRequest) => Promise<PreparedTransfer>;
+  requestSecureTransactionSignature: (request: SecureTransactionSigningRequest) => Promise<SecureTransactionSigningResult>;
+  submitTransfer: (request: SubmitTransferRequest) => Promise<TransferExecutionResult>;
 };
 
 const initialState: RuntimeState = { status: 'waiting', bootstrap: null, hostCapabilities: null, error: null };
@@ -83,6 +92,10 @@ export function useWssRuntime(): RuntimeResult {
     resolve: (result: SecureSarWalletCreationResult) => void;
     timeout: number;
   }>());
+  const pendingTransactionSignatures = useRef(new Map<string, {
+    resolve: (result: SecureTransactionSigningResult) => void;
+    timeout: number;
+  }>());
 
   useEffect(() => {
     const parentOrigin = referrerOrigin();
@@ -116,6 +129,14 @@ export function useWssRuntime(): RuntimeResult {
         if (!pending) return;
         window.clearTimeout(pending.timeout);
         pendingSecureSarCreations.current.delete(event.data.requestId);
+        pending.resolve(event.data.result);
+        return;
+      }
+      if (event.data.type === 'took-wss:secure-transaction-sign-result') {
+        const pending = pendingTransactionSignatures.current.get(event.data.requestId);
+        if (!pending) return;
+        window.clearTimeout(pending.timeout);
+        pendingTransactionSignatures.current.delete(event.data.requestId);
         pending.resolve(event.data.result);
         return;
       }
@@ -180,6 +201,11 @@ export function useWssRuntime(): RuntimeResult {
         pending.resolve({ status: 'cancelled' });
       }
       pendingSecureSarCreations.current.clear();
+      for (const pending of pendingTransactionSignatures.current.values()) {
+        window.clearTimeout(pending.timeout);
+        pending.resolve({ status: 'cancelled' });
+      }
+      pendingTransactionSignatures.current.clear();
       window.removeEventListener('message', receive);
     };
   }, []);
@@ -281,6 +307,64 @@ export function useWssRuntime(): RuntimeResult {
     return result;
   }, []);
 
+  const prepareTransferRequest = useCallback(async (request: PrepareTransferRequest): Promise<PreparedTransfer> => {
+    if (!sessionToken.current || !bffOriginRef.current) throw new Error('Wallet session is not ready.');
+    const response = await fetch(`${bffOriginRef.current}/v1/transfers/prepare`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${sessionToken.current}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Transfer preparation was rejected.');
+    const result = await response.json() as PreparedTransfer;
+    if (!isRecord(result)
+      || typeof result.intentId !== 'string'
+      || typeof result.walletId !== 'string'
+      || typeof result.expiresAt !== 'string'
+      || !isRecord(result.compliance)
+      || !isRecord(result.gasSponsorship)) {
+      throw new Error('Unsupported transfer preparation response.');
+    }
+    return result;
+  }, []);
+
+  const requestSecureTransactionSignature = useCallback((request: SecureTransactionSigningRequest): Promise<SecureTransactionSigningResult> => {
+    if (!hostOrigin.current) return Promise.resolve({ status: 'cancelled' });
+    const requestId = crypto.randomUUID();
+    return new Promise((resolve) => {
+      const timeout = window.setTimeout(() => {
+        pendingTransactionSignatures.current.delete(requestId);
+        resolve({ status: 'cancelled' });
+      }, 180_000);
+      pendingTransactionSignatures.current.set(requestId, { resolve, timeout });
+      postToHost(hostOrigin.current!, {
+        type: 'took-wss:secure-transaction-sign-request',
+        protocolVersion: WSS_PROTOCOL_VERSION,
+        requestId,
+        request,
+      });
+    });
+  }, []);
+
+  const submitTransferRequest = useCallback(async (request: SubmitTransferRequest): Promise<TransferExecutionResult> => {
+    if (!sessionToken.current || !bffOriginRef.current) throw new Error('Wallet session is not ready.');
+    const response = await fetch(`${bffOriginRef.current}/v1/transfers/submit`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${sessionToken.current}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Transfer submission was rejected.');
+    const result = await response.json() as TransferExecutionResult;
+    if (!isRecord(result)
+      || typeof result.intentId !== 'string'
+      || (result.status !== 'submitted' && result.status !== 'confirmed')
+      || typeof result.transactionHash !== 'string') {
+      throw new Error('Unsupported transfer result.');
+    }
+    return result;
+  }, []);
+
   const createRegistrationIntent = useCallback(async (request: CreateRegistrationIntentRequest): Promise<CreateRegistrationIntentResponse> => {
     if (!sessionToken.current || !bffOriginRef.current) throw new Error('Wallet session is not ready.');
     const response = await fetch(`${bffOriginRef.current}/v1/registration/intents`, {
@@ -352,5 +436,8 @@ export function useWssRuntime(): RuntimeResult {
     verifyPhoneChallenge,
     provisionWallet,
     selectWallet,
+    prepareTransfer: prepareTransferRequest,
+    requestSecureTransactionSignature,
+    submitTransfer: submitTransferRequest,
   };
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowsClockwise, Bank, CheckCircle, LockKey, ShieldCheck } from '@phosphor-icons/react';
-import { isRecord } from '@took-wss/contracts';
+import { isRecord, isSecureTransactionSigningRequest } from '@took-wss/contracts';
 import type {
   CreateSessionResponse,
   HostAuthenticationPurpose,
@@ -9,6 +9,8 @@ import type {
   KeyAdapterId,
   SecureSarWalletCreationResult,
   SecureSarWalletPayload,
+  SecureTransactionSigningRequest,
+  SecureTransactionSigningResult,
   WalletShellMode,
   WalletToHostMessage,
 } from '@took-wss/contracts';
@@ -63,7 +65,8 @@ type TenantId = keyof typeof tenantOptions;
 
 type SecurityCeremony =
   | Extract<HostSecurityView, { type: 'authentication' }>
-  | (Extract<HostSecurityView, { type: 'sar-backup' }> & { prepared: PreparedSarWallet });
+  | (Extract<HostSecurityView, { type: 'sar-backup' }> & { prepared: PreparedSarWallet })
+  | Extract<HostSecurityView, { type: 'transaction-signing' }>;
 
 function chooseConfirmationIndexes(wordCount: number): number[] {
   const indexes = new Set<number>();
@@ -98,6 +101,7 @@ export function App() {
   const sarPreparationInProgress = useRef(false);
   const authenticationResolver = useRef<((result: HostAuthenticationResult) => void) | null>(null);
   const sarResolver = useRef<((result: SecureSarWalletCreationResult) => void) | null>(null);
+  const transactionSigningResolver = useRef<((result: SecureTransactionSigningResult) => void) | null>(null);
   const hostChrome = getHostChromeProfile(tenantOptions[tenantId].presentationProfileId);
   const HostHeader = hostChrome.Header;
   const HostNavigation = hostChrome.Navigation;
@@ -114,10 +118,13 @@ export function App() {
     if (active.type === 'authentication') {
       authenticationResolver.current?.({ status: 'cancelled' });
       authenticationResolver.current = null;
-    } else {
+    } else if (active.type === 'sar-backup') {
       void referenceHostSarKeyCore.discardWallet(active.prepared.wallet.keyHandle);
       sarResolver.current?.({ status: 'cancelled' });
       sarResolver.current = null;
+    } else {
+      transactionSigningResolver.current?.({ status: 'cancelled' });
+      transactionSigningResolver.current = null;
     }
     showSecurityCeremony(null);
   }, [showSecurityCeremony]);
@@ -254,6 +261,56 @@ export function App() {
     resolve({ status: 'completed', ...registration, keyCoreAttestationProof: result.proof });
   }, [session, showSecurityCeremony]);
 
+  const requestSecureTransactionSignature = useCallback(async (
+    request: SecureTransactionSigningRequest,
+  ): Promise<SecureTransactionSigningResult> => {
+    if (!import.meta.env.DEV
+      || !session
+      || sessionTokenRef.current !== session.sessionToken
+      || securityCeremonyRef.current
+      || transactionSigningResolver.current) return { status: 'cancelled' };
+    const response = await fetch(`${bffUrl}/v1/transfers/${encodeURIComponent(request.intentId)}/approval-payload`, {
+      headers: { Authorization: `Bearer ${session.sessionToken}` },
+      cache: 'no-store',
+    });
+    if (!response.ok) return { status: 'cancelled' };
+    const verifiedRequest = await response.json() as unknown;
+    if (!isSecureTransactionSigningRequest(verifiedRequest)
+      || JSON.stringify(verifiedRequest) !== JSON.stringify(request)
+      || sessionTokenRef.current !== session.sessionToken) return { status: 'cancelled' };
+    return new Promise((resolve) => {
+      transactionSigningResolver.current = resolve;
+      showSecurityCeremony({ id: crypto.randomUUID(), type: 'transaction-signing', request: verifiedRequest });
+    });
+  }, [session, showSecurityCeremony]);
+
+  const approveTransaction = useCallback(async () => {
+    const active = securityCeremonyRef.current;
+    const resolve = transactionSigningResolver.current;
+    if (!session || active?.type !== 'transaction-signing' || !resolve) {
+      throw new Error('No active transaction signing ceremony.');
+    }
+    const activeId = active.id;
+    const activeSessionToken = session.sessionToken;
+    const authorization = await issueDevelopmentHostAuthorization('transfer-approval', activeSessionToken);
+    const signedTransaction = await referenceHostSarKeyCore.signEvmNativeTransactionForAddress(
+      active.request.fromAddress,
+      active.request.transaction,
+    );
+    if (sessionTokenRef.current !== activeSessionToken
+      || securityCeremonyRef.current?.id !== activeId
+      || transactionSigningResolver.current !== resolve) return;
+    transactionSigningResolver.current = null;
+    showSecurityCeremony(null);
+    setHostFeedback('기기에서 거래 서명을 완료했습니다.');
+    resolve({
+      status: 'completed',
+      intentId: active.request.intentId,
+      signedTransaction,
+      hostAuthorizationProof: authorization.proof,
+    });
+  }, [issueDevelopmentHostAuthorization, session, showSecurityCeremony]);
+
   const selectTenant = (nextTenant: TenantId) => {
     cancelSecurityCeremony();
     setTenantId(nextTenant);
@@ -320,6 +377,7 @@ export function App() {
       },
       requestAuthentication: requestHostAuthentication,
       requestSecureSarWalletCreation,
+      requestSecureTransactionSignature,
       requestSecureWalletImport: async (method) => {
         const label = method === 'mnemonic' ? '니모닉' : '개인키';
         setHostFeedback(`실제 금융사 ${label} 보안 입력·키 코어 연동이 필요합니다.`);
@@ -328,7 +386,7 @@ export function App() {
     });
     client.start();
     return () => client.stop();
-  }, [requestHostAuthentication, requestSecureSarWalletCreation, session]);
+  }, [requestHostAuthentication, requestSecureSarWalletCreation, requestSecureTransactionSignature, session]);
 
   useEffect(() => {
     if (!hostFeedback) return;
@@ -402,6 +460,7 @@ export function App() {
               onCancel={cancelSecurityCeremony}
               onApproveAuthentication={approveHostAuthentication}
               onConfirmSeedBackup={confirmSeedBackup}
+              onApproveTransaction={approveTransaction}
             />
           ) : null}
           <div className="host-feedback" role="status" aria-live="polite">{hostFeedback}</div>

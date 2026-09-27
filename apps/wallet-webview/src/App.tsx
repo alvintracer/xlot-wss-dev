@@ -42,6 +42,9 @@ export function App() {
         onVerifyPhoneChallenge={runtime.verifyPhoneChallenge}
         onProvisionWallet={runtime.provisionWallet}
         onSelectWallet={runtime.selectWallet}
+        onPrepareTransfer={runtime.prepareTransfer}
+        onRequestSecureTransactionSignature={runtime.requestSecureTransactionSignature}
+        onSubmitTransfer={runtime.submitTransfer}
       />
     </Suspense>
   );

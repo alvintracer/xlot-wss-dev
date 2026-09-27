@@ -10,6 +10,12 @@ verify_jwt = false
 # not carry a Supabase user JWT, so gateway JWT verification must stay disabled.
 verify_jwt = false
 
+[functions.wallet-price-quote]
+verify_jwt = true
+
+[functions.kyt-screen]
+verify_jwt = true
+
 # `scripts/activate-supabase-phone-auth.mjs` pushes these settings only after
 # the hook and SOLAPI secrets are present. The values below contain no secret.
 [auth.sms]

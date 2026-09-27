@@ -11,7 +11,13 @@ import {
 import { useEffect, useState } from 'react';
 import type {
   HostCapabilities,
+  PrepareTransferRequest,
+  PreparedTransfer,
   ReadyWalletHomePayload,
+  SecureTransactionSigningRequest,
+  SecureTransactionSigningResult,
+  SubmitTransferRequest,
+  TransferExecutionResult,
   WalletAssetView,
   WalletHomePayload,
 } from '@took-wss/contracts';
@@ -26,6 +32,9 @@ interface WalletHomeProps {
   onStartCreate: () => void;
   onAddWallet: () => void;
   onSelectWallet: (walletId: string) => Promise<void>;
+  onPrepareTransfer: (request: PrepareTransferRequest) => Promise<PreparedTransfer>;
+  onRequestSecureTransactionSignature: (request: SecureTransactionSigningRequest) => Promise<SecureTransactionSigningResult>;
+  onSubmitTransfer: (request: SubmitTransferRequest) => Promise<TransferExecutionResult>;
   onFocusedOverlayChange: (focused: boolean) => void;
 }
 
@@ -49,7 +58,7 @@ function AssetRow({ asset, hideBalance, onOpen }: { asset: WalletAssetView; hide
         <span className="kw-asset-sub">{asset.network}</span>
       </span>
       <span className="kw-asset-value">
-        <strong>{hideBalance ? '••••' : asset.fiat?.display ?? '원화 환산 준비 중'}</strong>
+        <strong>{hideBalance ? '••••' : asset.fiat?.display ?? '-'}</strong>
         <small className={asset.fiat?.stale ? 'kw-muted' : undefined}>{hideBalance ? '••••' : `${asset.balanceDisplay} ${asset.symbol}${asset.fiat?.stale ? ' · 지연' : ''}`}</small>
       </span>
     </button>
@@ -91,6 +100,9 @@ function ReadyWallet({
   onNavigate,
   onAddWallet,
   onSelectWallet,
+  onPrepareTransfer,
+  onRequestSecureTransactionSignature,
+  onSubmitTransfer,
   onFocusedOverlayChange,
 }: {
   hostCapabilities: HostCapabilities;
@@ -98,6 +110,9 @@ function ReadyWallet({
   onNavigate: (route: string) => void;
   onAddWallet: () => void;
   onSelectWallet: (walletId: string) => Promise<void>;
+  onPrepareTransfer: (request: PrepareTransferRequest) => Promise<PreparedTransfer>;
+  onRequestSecureTransactionSignature: (request: SecureTransactionSigningRequest) => Promise<SecureTransactionSigningResult>;
+  onSubmitTransfer: (request: SubmitTransferRequest) => Promise<TransferExecutionResult>;
   onFocusedOverlayChange: (focused: boolean) => void;
 }) {
   const [openAction, setOpenAction] = useState<OpenAction | null>(null);
@@ -126,11 +141,9 @@ function ReadyWallet({
     onFocusedOverlayChange(false);
     onAddWallet();
   };
-  const valuationLabel = walletHome.valuation.status === 'live'
+  const valuationLabel = walletHome.valuation.status === 'live' && walletHome.valuation.provider === 'bonanza'
     ? 'K-VWAP 원화 기준'
-    : walletHome.valuation.status === 'sandbox'
-      ? 'K-VWAP 샌드박스 기준'
-      : '원화 평가 연결 대기';
+    : '자산 조회 기준';
   const recoveryLabel = walletHome.recovery.profile === 'sar-2-of-3'
     ? walletHome.wallet.origin === 'imported' ? '가져온 지갑 · SAR 자가복구' : 'SAR 자가복구'
     : walletHome.wallet.keyAdapter === 'fsl-mpc' ? 'FSL MPC' : 'Thirdweb MPC';
@@ -152,7 +165,7 @@ function ReadyWallet({
             <button type="button" aria-label="잔액 새로고침" onClick={() => onNavigate(`wallets/${walletHome.wallet.walletId}/refresh`)}><ArrowClockwise aria-hidden="true" /></button>
           </div>
         </div>
-        <strong className="kw-hero">{balanceHidden ? '••••' : walletHome.totalFiat?.display ?? '원화 환산 준비 중'}</strong>
+        <strong className="kw-hero">{balanceHidden ? '••••' : walletHome.totalFiat?.display ?? '—'}</strong>
         <p className="kw-caption kw-mt-8">{formatValuationTime(walletHome.valuation.asOf)} · {valuationLabel}{walletHome.totalFiat?.stale ? ' · 업데이트 지연' : ''}</p>
         <div className="kw-asset-action-rail" aria-label="선택한 지갑 주요 기능">
           <button type="button" onClick={() => showAction('receive')}>채우기</button>
@@ -168,10 +181,6 @@ function ReadyWallet({
             <p>{recoveryLabel} · 지원 네트워크 {walletHome.networks.length}개</p>
           </div>
           <span>{walletHome.assets.length}개</span>
-        </div>
-        <div className="kw-selected-wallet-scope">
-          <ShieldCheck aria-hidden="true" />
-          <span>현재 선택한 지갑 슬롯의 자산만 보여드려요.</span>
         </div>
         <WalletAddressList networks={walletHome.networks} />
         {walletHome.assets.length > 0 ? (
@@ -192,21 +201,20 @@ function ReadyWallet({
             <p>채우기를 눌러 이 지갑으로 디지털자산을 받아보세요.</p>
           </div>
         )}
-        {walletHome.valuation.status === 'sandbox' ? (
-          <div className="kw-inline-notice kw-inline-notice--neutral kw-mt-20">
-            <ShieldCheck className="kw-icon kw-icon--small" aria-hidden="true" />
-            <span>현재 자산 조회는 계약 검증용 샌드박스입니다. 실제 자산과 시세는 선택한 지갑 ID로 키 코어·K-VWAP을 조회한 뒤 표시됩니다.</span>
-          </div>
-        ) : null}
       </section>
 
       {openAction ? (
         <WalletActionSheet
           key={`${openAction.mode}-${openAction.chainId ?? 'select'}`}
           mode={openAction.mode}
+          wallet={walletHome.wallet}
+          assets={walletHome.assets}
           networks={walletHome.networks}
           hostCapabilities={hostCapabilities}
           initialChainId={openAction.chainId}
+          onPrepareTransfer={onPrepareTransfer}
+          onRequestSecureTransactionSignature={onRequestSecureTransactionSignature}
+          onSubmitTransfer={onSubmitTransfer}
           onClose={closeAction}
         />
       ) : null}
@@ -257,6 +265,9 @@ export function WalletHome(props: WalletHomeProps) {
       onNavigate={onNavigate}
       onAddWallet={props.onAddWallet}
       onSelectWallet={props.onSelectWallet}
+      onPrepareTransfer={props.onPrepareTransfer}
+      onRequestSecureTransactionSignature={props.onRequestSecureTransactionSignature}
+      onSubmitTransfer={props.onSubmitTransfer}
       onFocusedOverlayChange={props.onFocusedOverlayChange}
     />
   );

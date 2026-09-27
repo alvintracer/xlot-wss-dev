@@ -54,6 +54,11 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .host-security-content > p:not(.host-security-kicker, .host-security-error) { margin: 14px 0 0; color: #77717c; font-size: 12px; line-height: 1.65; }
 .host-security-notice, .host-security-warning { display: flex; align-items: flex-start; gap: 9px; margin-top: 24px; padding: 14px; border-radius: 14px; background: #f6f4f7; color: #5f5964; font-size: 11px; line-height: 1.55; }
 .host-security-notice svg, .host-security-warning svg { flex: 0 0 auto; margin-top: 1px; color: #7d3bdd; }
+.host-transfer-summary { display: grid; gap: 0; margin: 24px 0 0; overflow: hidden; border: 1px solid #ece8ef; border-radius: 16px; background: #fff; }
+.host-transfer-summary div { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding: 14px; border-top: 1px solid #f0edf2; }
+.host-transfer-summary div:first-child { border-top: 0; }
+.host-transfer-summary dt { color: #8a838f; font-size: 11px; }
+.host-transfer-summary dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: #312c35; font-size: 12px; font-weight: 700; text-align: right; }
 .host-seed-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 20px 0 18px; padding: 0; list-style: none; }
 .host-seed-word { display: grid; min-width: 0; grid-template-columns: 22px minmax(0, 1fr); align-items: center; padding: 10px 9px; border: 1px solid #e8e3eb; border-radius: 11px; background: #fbfafc; }
 .host-seed-word span { color: #aaa2ad; font-size: 9px; font-variant-numeric: tabular-nums; }

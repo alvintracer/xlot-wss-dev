@@ -1,6 +1,6 @@
 import { CheckCircle, Key, LockKey, ShieldCheck, WarningCircle, X } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
-import type { HostAuthenticationPurpose } from '@took-wss/contracts';
+import type { HostAuthenticationPurpose, SecureTransactionSigningRequest } from '@took-wss/contracts';
 
 export type HostSecurityView =
   | {
@@ -13,6 +13,11 @@ export type HostSecurityView =
       type: 'sar-backup';
       mnemonicWords: readonly string[];
       confirmationIndexes: readonly number[];
+    }
+  | {
+      id: string;
+      type: 'transaction-signing';
+      request: SecureTransactionSigningRequest;
     };
 
 interface HostSecurityOverlayProps {
@@ -20,6 +25,7 @@ interface HostSecurityOverlayProps {
   onCancel: () => void;
   onApproveAuthentication: () => Promise<void>;
   onConfirmSeedBackup: () => Promise<void>;
+  onApproveTransaction: () => Promise<void>;
 }
 
 const purposeCopy: Record<HostAuthenticationPurpose, string> = {
@@ -33,6 +39,7 @@ export function HostSecurityOverlay({
   onCancel,
   onApproveAuthentication,
   onConfirmSeedBackup,
+  onApproveTransaction,
 }: HostSecurityOverlayProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const [seedStep, setSeedStep] = useState<'reveal' | 'confirm'>('reveal');
@@ -77,6 +84,17 @@ export function HostSecurityOverlay({
     }
   };
 
+  const approveTransaction = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await onApproveTransaction();
+    } catch {
+      setError('보내기 서명을 완료하지 못했어요. 네트워크와 지갑 상태를 확인해 주세요.');
+      setBusy(false);
+    }
+  };
+
   return (
     <section ref={dialogRef} className="host-security-layer" role="dialog" aria-modal="true" aria-labelledby="host-security-title" tabIndex={-1}>
       <header className="host-security-header">
@@ -100,6 +118,30 @@ export function HostSecurityOverlay({
           <footer className="host-security-footer">
             <button className="host-security-primary" type="button" disabled={busy} aria-busy={busy} autoFocus onClick={() => void approveAuthentication()}>
               {busy ? '고객 확인 중이에요' : '기기 인증으로 확인'}
+            </button>
+          </footer>
+        </>
+      ) : view.type === 'transaction-signing' ? (
+        <>
+          <div className="host-security-content">
+            <div className="host-security-symbol" aria-hidden="true"><ShieldCheck size={34} weight="regular" /></div>
+            <p className="host-security-kicker">보내기 최종 확인</p>
+            <h2 id="host-security-title">받는 주소와 금액을<br />한 번 더 확인해 주세요</h2>
+            <dl className="host-transfer-summary">
+              <div><dt>보낼 자산</dt><dd>{view.request.amountDisplay} {view.request.assetSymbol}</dd></div>
+              <div><dt>네트워크</dt><dd>{view.request.network}</dd></div>
+              <div><dt>받는 주소</dt><dd>{view.request.recipient}</dd></div>
+            </dl>
+            <div className="host-security-notice">
+              <LockKey size={19} aria-hidden="true" />
+              <span>기기 인증이 끝나면 이 거래 한 건에만 사용할 수 있는 서명을 만들어요.</span>
+            </div>
+            {error ? <p className="host-security-error" role="alert">{error}</p> : null}
+          </div>
+          <footer className="host-security-footer host-security-footer--split">
+            <button className="host-security-secondary" type="button" disabled={busy} onClick={onCancel}>취소</button>
+            <button className="host-security-primary" type="button" disabled={busy} aria-busy={busy} autoFocus onClick={() => void approveTransaction()}>
+              {busy ? '확인하고 있어요' : '인증하고 보내기'}
             </button>
           </footer>
         </>

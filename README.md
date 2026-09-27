@@ -15,6 +15,8 @@ Every project selects a versioned recovery requirement at creation time: `sar-re
 - `services/institution-bff/db` — WSS identity, account linking, wallet ownership, encrypted development-envelope, consent, and audit migrations
 - `supabase/functions/wss-dev-sar-vault` — read-only, development-only encrypted SAR-envelope retrieval after session and ownership verification
 - `supabase/functions/wss-auth-send-sms` — Supabase Auth Send SMS Hook that delivers Auth-owned OTPs through SOLAPI
+- `supabase/functions/wallet-price-quote` — server-side Bonanza K-VWAP-first portfolio/reference quote gateway with labeled market fallback
+- `supabase/functions/kyt-screen` — TranSight KYT gateway that fails closed when the provider is unavailable
 - `packages/contracts` — versioned manifests, session, and WebView bridge contracts
 - `packages/host-sdk` — host-to-wallet WebView/iframe SDK
 - `packages/key-adapters` — SAR/MPC/FSL MPC adapter boundary
@@ -73,7 +75,7 @@ Verify the Studio new-project recovery-policy presets and existing-project polic
 npm run verify:studio
 ```
 
-Verify the focused Kiwoom wallet slice—host authentication, actual host-key-core SAR creation, independent wallet-slot selection, selected-wallet network capabilities, K-VWAP sandbox state, real receive addresses, and send safety gates:
+Verify the focused Kiwoom wallet slice—host authentication, actual host-key-core SAR creation, independent wallet-slot selection, selected-wallet network capabilities, provider-aware KRW state, real receive QR, and balance-backed send safety gates:
 
 ```bash
 npm run verify:kiwoom-wallet

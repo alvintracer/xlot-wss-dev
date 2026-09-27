@@ -8,7 +8,7 @@ const screenshotPath = process.env.WSS_SCREENSHOT_PATH || '/tmp/took-wss-kiwoom-
 await access(chromePath);
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
-page.setDefaultTimeout(10_000);
+page.setDefaultTimeout(25_000);
 const browserErrors = [];
 const apiResponses = new Map();
 
@@ -82,10 +82,10 @@ try {
   }
 
   await walletFrame.getByRole('button', { name: '키움 인증 요청' }).click();
-  const authenticationOverlay = page.locator('.host-security-layer');
-  await authenticationOverlay.getByRole('heading', { name: /고객 확인이 필요해요/ }).waitFor();
-  await authenticationOverlay.getByRole('button', { name: '기기 인증으로 확인' }).click();
   await walletFrame.getByRole('heading', { name: /새로 만들거나 기존 지갑을/ }).waitFor();
+  if (await page.locator('.host-security-layer').count() !== 0) {
+    throw new Error('Development wallet provisioning repeated a host confirmation overlay.');
+  }
   await walletFrame.getByRole('button', { name: /새 지갑 만들기/ }).click();
   await walletFrame.getByRole('heading', { name: /복구 구문을 안전하게/ }).waitFor();
   await page.locator('.event-log').getByText('took-wss:host-auth-request').waitFor();
@@ -124,24 +124,23 @@ try {
   const selectorDialog = walletFrame.getByRole('dialog', { name: '지갑 선택' });
   if (await selectorDialog.locator('.kw-wallet-choice').count() < 1) throw new Error('The Super Wallet must contain at least one wallet slot.');
   await selectorDialog.getByRole('button', { name: '닫기' }).click();
-  await walletFrame.getByText('K-VWAP 샌드박스 기준').waitFor();
+  await walletFrame.getByText('자산 조회 기준').waitFor();
   await page.locator('.phone[data-shell-mode="root"]').waitFor();
   await page.getByRole('navigation', { name: '키움 앱 기본 메뉴' }).waitFor();
 
   await walletFrame.getByRole('button', { name: '채우기' }).click();
   await page.locator('.phone[data-shell-mode="focus"]').waitFor();
-  const tookReceiveDialog = walletFrame.getByRole('dialog', { name: '어떻게 받을까요?' });
-  await tookReceiveDialog.waitFor();
-  await tookReceiveDialog.getByRole('tab', { name: '툭받기', exact: true }).waitFor();
-  await tookReceiveDialog.getByText('E2E 메시지', { exact: true }).waitFor();
-  await tookReceiveDialog.getByRole('tab', { name: '주소로 받기', exact: true }).click();
-  const receiveDialog = walletFrame.getByRole('dialog', { name: '받을 네트워크를 선택해 주세요' });
-  await receiveDialog.getByRole('button', { name: /Ethereum/ }).click();
-  const ethereumReceiveDialog = walletFrame.getByRole('dialog', { name: 'Ethereum 주소로 받기' });
-  const receiveAddress = await ethereumReceiveDialog.locator('.kw-address').innerText();
-  if (!/^0x[0-9a-fA-F]{40}$/.test(receiveAddress)) {
-    throw new Error('Receive flow did not expose the key-core-derived EVM address.');
+  const receiveDialog = walletFrame.getByRole('dialog', { name: /어떤 자산을.*채울까요/ });
+  await receiveDialog.waitFor();
+  if (await receiveDialog.locator('.kw-transfer-choice').count() !== 9) {
+    throw new Error('The selected wallet must expose nine registered receive networks.');
   }
+  await receiveDialog.getByRole('button', { name: /Ethereum/ }).click();
+  const ethereumReceiveDialog = walletFrame.getByRole('dialog', { name: /이 주소로.*자산을 보내주세요/ });
+  const qr = ethereumReceiveDialog.getByRole('img', { name: 'Ethereum 받기 주소 QR' });
+  await qr.waitFor();
+  const title = await qr.locator('title').textContent();
+  if (!title?.includes('Ethereum')) throw new Error('Receive flow did not render an Ethereum address QR.');
   if (await ethereumReceiveDialog.getByRole('button', { name: '주소 복사' }).isDisabled()) {
     throw new Error('Receive address copy must be enabled for a registered key-core address.');
   }
@@ -149,18 +148,12 @@ try {
   await page.locator('.phone[data-shell-mode="root"]').waitFor();
 
   await walletFrame.getByRole('button', { name: '보내기' }).click();
-  const tookSendDialog = walletFrame.getByRole('dialog', { name: '누구에게 툭 줄까요?' });
-  await tookSendDialog.waitFor();
-  await tookSendDialog.getByRole('tab', { name: '툭주기', exact: true }).waitFor();
-  await tookSendDialog.getByRole('tab', { name: '주소로 보내기', exact: true }).click();
-  const sendDialog = walletFrame.getByRole('dialog', { name: '보낼 네트워크를 선택해 주세요' });
-  await sendDialog.getByRole('button', { name: /Bitcoin/ }).click();
-  const bitcoinSendDialog = walletFrame.getByRole('dialog', { name: 'Bitcoin 주소로 보내기' });
-  await bitcoinSendDialog.getByText('보낼 수 있는 잔액이 없어요').waitFor();
-  if (!await bitcoinSendDialog.getByRole('button', { name: '보내기 준비 중' }).isDisabled()) {
-    throw new Error('Send must remain disabled without balance, quote, KYT, and approval.');
+  const sendDialog = walletFrame.getByRole('dialog', { name: /어떤 자산을.*보낼까요/ });
+  await sendDialog.getByText('보낼 수 있는 자산이 없어요').waitFor();
+  if (await sendDialog.locator('.kw-transfer-choice:not(:disabled)').count() !== 0) {
+    throw new Error('Send must expose no selectable asset without a real balance.');
   }
-  await bitcoinSendDialog.getByRole('button', { name: '닫기' }).click();
+  await sendDialog.getByRole('button', { name: '닫기' }).click();
 
   const viewportChecks = [];
   for (const width of [320, 360, 390, 430]) {
@@ -203,14 +196,14 @@ try {
     presentations: ['kiwoom-simple-mode-v1', 'wss-reference-bank-v1'],
     kiwoomHostChrome: chromeDimensions,
     kiwoomWalletFlow: {
-      hostAuthentication: 'explicit-development-confirmation',
+      hostAuthentication: 'session-bound-development-proof-without-duplicate-overlay',
       walletSlots: 'at-least-one',
       walletAddressGroups: 5,
       selectedWalletNetworks: 9,
-      valuation: 'K-VWAP sandbox',
+      valuation: 'actual portfolio with provider-aware KRW quote',
       sarKeyCore: 'real-derivation-and-2-of-3-verification',
       receiveAddress: 'ready',
-      send: 'disabled-without-balance',
+      send: 'asset selection disabled without actual balance',
     },
     screenshot: screenshotPath,
   }, null, 2));

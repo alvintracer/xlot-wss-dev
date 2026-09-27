@@ -42,4 +42,25 @@ describe('reference host SAR key core', () => {
     await core.discardWallet(prepared.wallet.keyHandle);
     await expect(core.verifyRecovery(prepared.wallet.keyHandle, [0, 1])).resolves.toBe(false);
   });
+
+  it('reconstructs the EVM signer only inside the key core and signs the exact native transaction', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    const wallet = await core.createWallet();
+    const from = wallet.addresses.find(({ addressGroupId }) => addressGroupId === 'evm')!.address;
+    const signed = await core.signEvmNativeTransactionForAddress(from, {
+      chainId: 1,
+      nonce: 3,
+      to: '0x0000000000000000000000000000000000000001',
+      value: '1000000000000000',
+      gasLimit: '21000',
+      gasPrice: '20000000000',
+    });
+    const transaction = ethers.Transaction.from(signed);
+
+    expect(transaction.from).toBe(from);
+    expect(transaction.to).toBe('0x0000000000000000000000000000000000000001');
+    expect(transaction.value).toBe(1_000_000_000_000_000n);
+    expect(transaction.chainId).toBe(1n);
+    expect(JSON.stringify({ signed })).not.toMatch(/mnemonic|privateKey|seedPhrase|recoveryShare|entropy/i);
+  });
 });

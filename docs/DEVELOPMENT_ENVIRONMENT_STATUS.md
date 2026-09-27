@@ -12,7 +12,8 @@
 - `0003_wss_phone_registration.sql` applied and checksum recorded
 - `0004_wss_supabase_phone_auth.sql` applied and checksum recorded
 - `0005_wss_wallet_host_proofs.sql` applied and checksum recorded
-- 18 `public.wss_%` tables present, including the migration ledger
+- `0006_wss_transfer_lifecycle.sql` applied and checksum recorded
+- 20 `public.wss_%` tables present, including the migration ledger
 - Row Level Security enabled on every WSS table
 - zero table grants to `anon` and `authenticated`
 - deployment marker verified as `proposal-and-early-function-sandbox`
@@ -36,6 +37,11 @@
 - Session pooler runtime connection verified from the Institution BFF
 - wallet authorization and SAR key-core proof UUIDs are stored under
   tenant-scoped unique indexes; signed proof strings are not persisted
+- `wallet-price-quote` and fail-closed `kyt-screen` Edge Functions deployed;
+  their gateway JWT checks remain enabled and the BFF calls them server-side
+- transfer intent and execution tables deployed with RLS and no browser-role
+  grants; raw signatures, signed transactions, proof tokens, and key material
+  are not columns in either table
 
 ## Verified persistent vertical slice
 
@@ -61,7 +67,17 @@
   MAC;
 - the headless browser completed registration, session-bound wallet authorization, real SAR
   creation, nine-network registration, a second FSL wallet slot, wallet
-  selection, receive-address display, and fail-closed send checks.
+  selection, actual QR receive-address display, and fail-closed balance-backed
+  send selection.
+
+The current native-asset adapter queries the registered address on all nine
+configured chains. The EVM-native execution slice additionally performs live
+fee estimation, KYT, host confirmation, SAR key-core signing, signed-payload
+verification, broadcast, and intent/execution audit. A funded development
+wallet plus configured TranSight credentials are required for a live-send smoke
+test; without KYT credentials the flow intentionally blocks. Token inventory,
+permit/Solana/TRON relayers, non-EVM signing, and confirmation reconciliation
+remain open.
 
 The current code silently exchanges the already active Reference Host customer
 session for a one-time, purpose-bound wallet-authorization proof after initial

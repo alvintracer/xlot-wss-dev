@@ -128,6 +128,42 @@ describe('host initialization contract', () => {
         },
       },
     })).toBe(true);
+    const signingRequest = {
+      intentId: 'intent-1',
+      walletId: 'wallet-1',
+      chainId: 'ethereum',
+      network: 'Ethereum',
+      assetSymbol: 'ETH',
+      amountDisplay: '0.01',
+      fromAddress: '0x0000000000000000000000000000000000000002',
+      recipient: '0x0000000000000000000000000000000000000001',
+      transaction: {
+        type: 'evm-native',
+        chainId: 1,
+        nonce: 0,
+        to: '0x0000000000000000000000000000000000000001',
+        value: '10000000000000000',
+        gasLimit: '21000',
+        gasPrice: '20000000000',
+      },
+    } as const;
+    expect(isWalletToHostMessage({
+      type: 'took-wss:secure-transaction-sign-request',
+      protocolVersion: 1,
+      requestId: 'request-4',
+      request: signingRequest,
+    })).toBe(true);
+    expect(isHostToWalletMessage({
+      type: 'took-wss:secure-transaction-sign-result',
+      protocolVersion: 1,
+      requestId: 'request-4',
+      result: {
+        status: 'completed',
+        intentId: 'intent-1',
+        signedTransaction: '0x1234',
+        hostAuthorizationProof: 'signed-host-authorization-proof-123456',
+      },
+    })).toBe(true);
   });
 });
 

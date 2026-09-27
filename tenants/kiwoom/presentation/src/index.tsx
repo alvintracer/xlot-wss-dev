@@ -61,6 +61,9 @@ export default function KiwoomWalletPresentation(props: WalletPresentationProps)
               onStartCreate={() => setCreationMode('initial')}
               onAddWallet={() => setCreationMode('add')}
               onSelectWallet={selectWallet}
+              onPrepareTransfer={props.onPrepareTransfer}
+              onRequestSecureTransactionSignature={props.onRequestSecureTransactionSignature}
+              onSubmitTransfer={props.onSubmitTransfer}
               onFocusedOverlayChange={setOverlayFocus}
             />
           </div>

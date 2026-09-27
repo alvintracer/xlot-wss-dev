@@ -9,7 +9,7 @@ export default function GenericWalletPresentation({ manifest, walletHome, onNavi
       ? '보유 자산이 없습니다'
       : walletHome.status === 'unavailable'
         ? '자산을 불러오지 못했습니다'
-        : walletHome.totalFiat?.display ?? '원화 환산 준비 중';
+        : walletHome.totalFiat?.display ?? '—';
 
   return (
     <main className="generic-wallet" style={{ '--tenant-primary': manifest.brand.primaryColor } as CSSProperties}>

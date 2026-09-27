@@ -32,6 +32,7 @@ import {
   verifyOtpMac,
 } from './phoneRegistration.js';
 import { SupabasePhoneAuthClient } from './supabasePhoneAuth.js';
+import { queryWalletPortfolio } from './assetPortfolio.js';
 
 type Session = Omit<WssSessionClaims, 'nonce'>;
 
@@ -248,7 +249,8 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
       WHERE tenant_id = ${manifest.tenantId} AND wallet_id = ${selected.id}
     `;
     const addresses = new Map(accountRows.map((account) => [account.address_group_id, account.address_display]));
-    const asOf = new Date().toISOString();
+    const networks = networksForManifest(manifest, addresses);
+    const portfolio = await queryWalletPortfolio(networks);
     const summaries: WalletProfileSummary[] = walletRows.map((wallet) => ({
       walletId: wallet.id,
       label: wallet.label,
@@ -260,10 +262,10 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
       status: 'ready',
       wallet,
       wallets: summaries,
-      totalFiat: { currency: 'KRW', display: '0원', asOf, stale: false },
-      assets: [],
-      networks: networksForManifest(manifest, addresses),
-      valuation: { currency: 'KRW', provider: manifest.providers.quote, status: 'sandbox', asOf },
+      ...(portfolio.totalFiat ? { totalFiat: portfolio.totalFiat } : {}),
+      assets: portfolio.assets,
+      networks,
+      valuation: portfolio.valuation,
       recovery: {
         profile: selected.key_adapter === 'took-sar' ? 'sar-2-of-3' : 'provider-policy',
         status: 'sandbox-ready',

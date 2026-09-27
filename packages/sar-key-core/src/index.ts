@@ -39,6 +39,15 @@ export interface PreparedSarWallet {
   wallet: SarWalletCreationResult;
 }
 
+export interface EvmNativeTransactionToSign {
+  chainId: number;
+  nonce: number;
+  to: string;
+  value: string;
+  gasLimit: string;
+  gasPrice: string;
+}
+
 interface SarShareStore {
   put(keyHandle: string, share: Uint8Array): Promise<void>;
   get(keyHandle: string): Promise<Uint8Array | null>;
@@ -304,6 +313,40 @@ export class ReferenceHostSarKeyCore {
     await Promise.all(this.#stores.map((store) => store.delete(keyHandle)));
     this.#publicAddresses.delete(keyHandle);
     this.#developmentVaultKeys.delete(keyHandle);
+  }
+
+  async signEvmNativeTransactionForAddress(
+    fromAddress: string,
+    transaction: EvmNativeTransactionToSign,
+  ): Promise<string> {
+    const matching = [...this.#publicAddresses.entries()].find(([, addresses]) => (
+      addresses.some((address) => address.addressGroupId === 'evm' && address.address.toLowerCase() === fromAddress.toLowerCase())
+    ));
+    if (!matching) throw new Error('No key handle is available for this wallet address.');
+    const [keyHandle] = matching;
+    const shares = await Promise.all([this.#stores[0].get(keyHandle), this.#stores[1].get(keyHandle)]);
+    if (shares.some((share) => share === null)) throw new Error('SAR shares are unavailable.');
+    const entropy = await combine(shares as Uint8Array[]);
+    let seed = new Uint8Array();
+    try {
+      const mnemonic = ethers.Mnemonic.fromEntropy(entropy).phrase;
+      seed = Uint8Array.from(ethers.getBytes(ethers.Mnemonic.fromPhrase(mnemonic).computeSeed()));
+      const signer = ethers.HDNodeWallet.fromSeed(seed).derivePath("m/44'/60'/0'/0/0");
+      if (signer.address.toLowerCase() !== fromAddress.toLowerCase()) throw new Error('Derived signer address mismatch.');
+      return await signer.signTransaction({
+        type: 0,
+        chainId: transaction.chainId,
+        nonce: transaction.nonce,
+        to: transaction.to,
+        value: BigInt(transaction.value),
+        gasLimit: BigInt(transaction.gasLimit),
+        gasPrice: BigInt(transaction.gasPrice),
+      });
+    } finally {
+      entropy.fill(0);
+      seed.fill(0);
+      for (const share of shares) share?.fill(0);
+    }
   }
 
   async verifyRecovery(keyHandle: string, storeIndexes: readonly [number, number]): Promise<boolean> {

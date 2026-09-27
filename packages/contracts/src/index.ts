@@ -206,9 +206,16 @@ export interface WalletProfileSummary {
 
 export interface WalletAssetView {
   assetId: string;
+  chainId?: string;
+  addressGroupId?: string;
   symbol: string;
   name: string;
   network: string;
+  decimals?: number;
+  availableAtomic?: string;
+  tokenAddress?: string;
+  transferStatus?: 'enabled' | 'unavailable';
+  transferUnavailableReason?: string;
   balanceAtomic: string;
   balanceDisplay: string;
   fiat?: {
@@ -217,6 +224,95 @@ export interface WalletAssetView {
     asOf: string;
     stale: boolean;
   };
+}
+
+export type TransferChannel = 'address' | 'phone' | 'message';
+
+export interface PrepareTransferRequest {
+  walletId: string;
+  assetId: string;
+  chainId: string;
+  recipient: string;
+  amountAtomic: string;
+  channel: TransferChannel;
+  complianceReason?: string;
+}
+
+export interface PreparedTransfer {
+  intentId: string;
+  walletId: string;
+  assetId: string;
+  chainId: string;
+  network: string;
+  assetSymbol: string;
+  fromAddress: string;
+  recipient: string;
+  amountAtomic: string;
+  amountDisplay: string;
+  fiatDisplay?: string;
+  networkFee: {
+    symbol: string;
+    amountAtomic: string;
+    amountDisplay: string;
+    fiatDisplay?: string;
+  };
+  gasSponsorship: {
+    status: 'sponsored' | 'eligible' | 'not-eligible' | 'unavailable';
+    method?: 'evm-permit-relay' | 'solana-relay' | 'tron-jit';
+    message: string;
+  };
+  compliance: {
+    status: 'allow' | 'review' | 'block' | 'unavailable';
+    riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    riskScore?: number;
+    reasonRequired: boolean;
+    message: string;
+  };
+  signingRequest?: SecureTransactionSigningRequest;
+  expiresAt: string;
+}
+
+export interface SecureTransactionSigningRequest {
+  intentId: string;
+  walletId: string;
+  chainId: string;
+  network: string;
+  assetSymbol: string;
+  amountDisplay: string;
+  fromAddress: string;
+  recipient: string;
+  transaction: {
+    type: 'evm-native';
+    chainId: number;
+    nonce: number;
+    to: string;
+    value: string;
+    gasLimit: string;
+    gasPrice: string;
+  };
+}
+
+export type SecureTransactionSigningResult =
+  | {
+      status: 'completed';
+      intentId: string;
+      signedTransaction: string;
+      hostAuthorizationProof: string;
+    }
+  | { status: 'cancelled' };
+
+export interface SubmitTransferRequest {
+  intentId: string;
+  signedTransaction: string;
+  hostAuthorizationProof: string;
+  idempotencyKey: string;
+}
+
+export interface TransferExecutionResult {
+  intentId: string;
+  status: 'submitted' | 'confirmed';
+  transactionHash: string;
+  explorerUrl?: string;
 }
 
 export interface WalletNetworkView {
@@ -293,6 +389,9 @@ export interface WalletPresentationProps {
   onVerifyPhoneChallenge: (registrationIntentId: string, challengeId: string, request: VerifyPhoneChallengeRequest) => Promise<VerifyPhoneChallengeResponse>;
   onProvisionWallet: (request: ProvisionWalletRequest) => Promise<ProvisionWalletResponse>;
   onSelectWallet: (walletId: string) => Promise<ReadyWalletHomePayload>;
+  onPrepareTransfer: (request: PrepareTransferRequest) => Promise<PreparedTransfer>;
+  onRequestSecureTransactionSignature: (request: SecureTransactionSigningRequest) => Promise<SecureTransactionSigningResult>;
+  onSubmitTransfer: (request: SubmitTransferRequest) => Promise<TransferExecutionResult>;
 }
 
 export type ReadyWalletHomePayload = Extract<WalletHomePayload, { status: 'ready' }>;
@@ -346,6 +445,12 @@ export type HostToWalletMessage =
       protocolVersion: 1;
       requestId: string;
       result: SecureSarWalletCreationResult;
+    }
+  | {
+      type: 'took-wss:secure-transaction-sign-result';
+      protocolVersion: 1;
+      requestId: string;
+      result: SecureTransactionSigningResult;
     };
 
 export type WalletToHostMessage =
@@ -356,6 +461,12 @@ export type WalletToHostMessage =
   | { type: 'took-wss:host-auth-request'; protocolVersion: 1; requestId: string; purpose: HostAuthenticationPurpose }
   | { type: 'took-wss:secure-sar-create-request'; protocolVersion: 1; requestId: string }
   | { type: 'took-wss:secure-import-request'; protocolVersion: 1; requestId: string; method: WalletImportMethod }
+  | {
+      type: 'took-wss:secure-transaction-sign-request';
+      protocolVersion: 1;
+      requestId: string;
+      request: SecureTransactionSigningRequest;
+    }
   | { type: 'took-wss:error'; protocolVersion: 1; code: string };
 
 export interface CreateSessionRequest {
@@ -415,9 +526,16 @@ export function isWalletHomePayload(value: unknown): value is WalletHomePayload 
     && typeof fiat.stale === 'boolean';
   const isAsset = (asset: unknown) => isRecord(asset)
     && typeof asset.assetId === 'string'
+    && (asset.chainId === undefined || typeof asset.chainId === 'string')
+    && (asset.addressGroupId === undefined || typeof asset.addressGroupId === 'string')
     && typeof asset.symbol === 'string'
     && typeof asset.name === 'string'
     && typeof asset.network === 'string'
+    && (asset.decimals === undefined || (Number.isInteger(asset.decimals) && Number(asset.decimals) >= 0))
+    && (asset.availableAtomic === undefined || typeof asset.availableAtomic === 'string')
+    && (asset.tokenAddress === undefined || typeof asset.tokenAddress === 'string')
+    && (asset.transferStatus === undefined || asset.transferStatus === 'enabled' || asset.transferStatus === 'unavailable')
+    && (asset.transferUnavailableReason === undefined || typeof asset.transferUnavailableReason === 'string')
     && typeof asset.balanceAtomic === 'string'
     && typeof asset.balanceDisplay === 'string'
     && (asset.fiat === undefined || isFiat(asset.fiat));
@@ -491,6 +609,16 @@ export function isHostToWalletMessage(value: unknown): value is HostToWalletMess
     if (value.result.status === 'cancelled') return true;
     return value.result.status === 'completed' && isSecureSarWalletRegistration(value.result);
   }
+  if (value.type === 'took-wss:secure-transaction-sign-result') {
+    if (typeof value.requestId !== 'string' || !isRecord(value.result)) return false;
+    if (value.result.status === 'cancelled') return true;
+    return value.result.status === 'completed'
+      && typeof value.result.intentId === 'string'
+      && typeof value.result.signedTransaction === 'string'
+      && value.result.signedTransaction.startsWith('0x')
+      && typeof value.result.hostAuthorizationProof === 'string'
+      && value.result.hostAuthorizationProof.length > 20;
+  }
   return false;
 }
 
@@ -509,8 +637,34 @@ export function isWalletToHostMessage(value: unknown): value is WalletToHostMess
     return typeof value.requestId === 'string'
       && (value.method === 'mnemonic' || value.method === 'private-key');
   }
+  if (value.type === 'took-wss:secure-transaction-sign-request') {
+    return typeof value.requestId === 'string' && isSecureTransactionSigningRequest(value.request);
+  }
   if (value.type === 'took-wss:error') return typeof value.code === 'string';
   return false;
+}
+
+export function isSecureTransactionSigningRequest(value: unknown): value is SecureTransactionSigningRequest {
+  if (!isRecord(value)
+    || typeof value.intentId !== 'string'
+    || typeof value.walletId !== 'string'
+    || typeof value.chainId !== 'string'
+    || typeof value.network !== 'string'
+    || typeof value.assetSymbol !== 'string'
+    || typeof value.amountDisplay !== 'string'
+    || typeof value.fromAddress !== 'string'
+    || typeof value.recipient !== 'string'
+    || !isRecord(value.transaction)) return false;
+  return value.transaction.type === 'evm-native'
+    && Number.isSafeInteger(value.transaction.chainId)
+    && Number.isSafeInteger(value.transaction.nonce)
+    && typeof value.transaction.to === 'string'
+    && typeof value.transaction.value === 'string'
+    && /^\d+$/.test(value.transaction.value)
+    && typeof value.transaction.gasLimit === 'string'
+    && /^\d+$/.test(value.transaction.gasLimit)
+    && typeof value.transaction.gasPrice === 'string'
+    && /^\d+$/.test(value.transaction.gasPrice);
 }
 
 function containsForbiddenWalletSecret(value: unknown): boolean {

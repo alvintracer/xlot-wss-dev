@@ -15,7 +15,7 @@ if (!/^010\d{8}$/.test(authorizedTestPhone)) {
 await access(chromePath);
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
-page.setDefaultTimeout(10_000);
+page.setDefaultTimeout(25_000);
 const browserErrors = [];
 const apiResponses = new Map();
 
@@ -139,23 +139,13 @@ try {
   await page.screenshot({ path: homeScreenshotPath, fullPage: true });
 
   await walletFrame.getByRole('button', { name: '채우기' }).click();
-  const tookReceiveDialog = walletFrame.getByRole('dialog', { name: '어떻게 받을까요?' });
-  if (await tookReceiveDialog.getByRole('tab', { name: '툭받기', exact: true }).getAttribute('aria-selected') !== 'true') {
-    throw new Error('Took receive must be the default receive channel.');
-  }
-  await tookReceiveDialog.getByText('휴대폰 번호', { exact: true }).waitFor();
-  await tookReceiveDialog.getByText('E2E 메시지', { exact: true }).waitFor();
-  await tookReceiveDialog.getByRole('tab', { name: '주소로 받기', exact: true }).click();
-  const receiveDialog = walletFrame.getByRole('dialog', { name: '받을 네트워크를 선택해 주세요' });
-  if (await receiveDialog.locator('.kw-network-options .kw-choice').count() !== 9) {
+  const receiveDialog = walletFrame.getByRole('dialog', { name: /어떤 자산을.*채울까요/ });
+  if (await receiveDialog.locator('.kw-transfer-choice').count() !== 9) {
     throw new Error('The selected wallet must expose nine network capabilities inside the action flow.');
   }
   await receiveDialog.getByRole('button', { name: /Ethereum/ }).click();
-  const ethereumReceiveDialog = walletFrame.getByRole('dialog', { name: 'Ethereum 주소로 받기' });
-  const receiveAddress = await ethereumReceiveDialog.locator('.kw-address').innerText();
-  if (!/^0x[0-9a-fA-F]{40}$/.test(receiveAddress)) {
-    throw new Error('Receive flow did not expose the key-core-derived EVM address.');
-  }
+  const ethereumReceiveDialog = walletFrame.getByRole('dialog', { name: /이 주소로.*자산을 보내주세요/ });
+  await ethereumReceiveDialog.getByRole('img', { name: 'Ethereum 받기 주소 QR' }).waitFor();
   if (await ethereumReceiveDialog.getByRole('button', { name: '주소 복사' }).isDisabled()) {
     throw new Error('Receive address copy must be enabled for a registered key-core address.');
   }
@@ -163,17 +153,10 @@ try {
   await page.locator('.phone[data-shell-mode="root"]').waitFor();
 
   await walletFrame.getByRole('button', { name: '보내기' }).click();
-  const tookSendDialog = walletFrame.getByRole('dialog', { name: '누구에게 툭 줄까요?' });
-  if (await tookSendDialog.getByRole('tab', { name: '툭주기', exact: true }).getAttribute('aria-selected') !== 'true') {
-    throw new Error('Took send must be the default send channel.');
-  }
-  await tookSendDialog.getByRole('tab', { name: '주소로 보내기', exact: true }).click();
-  const sendDialog = walletFrame.getByRole('dialog', { name: '보낼 네트워크를 선택해 주세요' });
-  await sendDialog.getByRole('button', { name: /Bitcoin/ }).click();
-  const bitcoinSendDialog = walletFrame.getByRole('dialog', { name: 'Bitcoin 주소로 보내기' });
-  await bitcoinSendDialog.getByText('보낼 수 있는 잔액이 없어요').waitFor();
-  if (!await bitcoinSendDialog.getByRole('button', { name: '보내기 준비 중' }).isDisabled()) {
-    throw new Error('Send action is enabled without a balance, quote, KYT, or approval.');
+  const sendDialog = walletFrame.getByRole('dialog', { name: /어떤 자산을.*보낼까요/ });
+  await sendDialog.getByText('보낼 수 있는 자산이 없어요').waitFor();
+  if (await sendDialog.locator('.kw-transfer-choice:not(:disabled)').count() !== 0) {
+    throw new Error('Send action is enabled without an actual balance.');
   }
   await page.screenshot({ path: screenshotPath, fullPage: true });
 

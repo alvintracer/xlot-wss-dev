@@ -1022,6 +1022,671 @@
   line-height: 20px;
 }
 
+.kw-root .kw-transfer-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  background: #fff;
+}
+
+.kw-root .kw-transfer-flow {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  background: #fff;
+}
+
+.kw-root .kw-transfer-header {
+  display: grid;
+  min-height: var(--kw-layout-header-height);
+  flex: 0 0 var(--kw-layout-header-height);
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  padding: 0 8px;
+  background: #fff;
+}
+
+.kw-root .kw-transfer-header > strong {
+  overflow: hidden;
+  color: var(--kw-color-text-primary);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kw-root .kw-transfer-header button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--kw-color-text-primary);
+}
+
+.kw-root .kw-transfer-header svg {
+  width: 23px;
+  height: 23px;
+}
+
+.kw-root .kw-transfer-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.kw-root .kw-transfer-page {
+  min-height: 100%;
+  padding: 34px 20px 32px;
+}
+
+.kw-root .kw-transfer-kicker {
+  margin: 0 0 8px;
+  color: var(--kw-color-text-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.kw-root .kw-transfer-page > h2 {
+  margin: 0;
+  color: var(--kw-color-text-primary);
+  font-size: var(--kw-type-flow-title-size);
+  font-weight: var(--kw-type-flow-title-weight);
+  letter-spacing: -.025em;
+  line-height: var(--kw-type-flow-title-line-height);
+}
+
+.kw-root .kw-transfer-lead {
+  margin: 12px 0 0;
+  color: var(--kw-color-text-muted);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.kw-root .kw-transfer-choice-list {
+  display: grid;
+  gap: 0;
+  margin-top: 38px;
+}
+
+.kw-root .kw-transfer-choice {
+  display: grid;
+  width: 100%;
+  min-height: 72px;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid #f0eef2;
+  background: transparent;
+  color: var(--kw-color-text-primary);
+  text-align: left;
+}
+
+.kw-root .kw-transfer-choice:disabled {
+  opacity: .42;
+}
+
+.kw-root .kw-transfer-asset-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--kw-color-surface-lavender);
+  color: var(--kw-color-text-purple);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.kw-root .kw-transfer-choice > span:not(.kw-transfer-asset-mark) {
+  min-width: 0;
+}
+
+.kw-root .kw-transfer-choice strong,
+.kw-root .kw-transfer-choice small {
+  display: block;
+}
+
+.kw-root .kw-transfer-choice strong {
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kw-root .kw-transfer-choice small {
+  margin-top: 2px;
+  color: var(--kw-color-text-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.kw-root .kw-transfer-choice > svg {
+  width: 20px;
+  height: 20px;
+  color: var(--kw-color-text-muted);
+}
+
+.kw-root .kw-transfer-choice__balance {
+  padding-left: 6px;
+  text-align: right;
+}
+
+.kw-root .kw-transfer-choice__balance strong {
+  font-size: 14px;
+}
+
+.kw-root .kw-transfer-choice__balance small {
+  white-space: nowrap;
+}
+
+.kw-root .kw-transfer-empty {
+  display: grid;
+  justify-items: center;
+  margin-top: 62px;
+  text-align: center;
+}
+
+.kw-root .kw-transfer-empty > svg {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 18px;
+  color: #aaa4ae;
+}
+
+.kw-root .kw-transfer-empty strong {
+  font-size: 17px;
+}
+
+.kw-root .kw-transfer-empty p {
+  max-width: 250px;
+  margin: 7px 0 0;
+  color: var(--kw-color-text-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.kw-root .kw-receive-page {
+  text-align: left;
+}
+
+.kw-root .kw-qr-card {
+  display: grid;
+  justify-items: center;
+  margin-top: 30px;
+  padding: 24px 20px 20px;
+  border: 1px solid #ede9f0;
+  border-radius: 22px;
+  background: #fff;
+}
+
+.kw-root .kw-qr-card > svg {
+  width: min(176px, 56vw);
+  height: auto;
+}
+
+.kw-root .kw-qr-card > strong {
+  margin-top: 16px;
+  font-size: 15px;
+}
+
+.kw-root .kw-qr-card > button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--kw-color-text-muted);
+  font-size: 13px;
+}
+
+.kw-root .kw-qr-card > button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.kw-root .kw-transfer-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 16px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: #f7f5f8;
+  color: var(--kw-color-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.kw-root .kw-transfer-warning svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: var(--kw-color-text-purple);
+}
+
+.kw-root .kw-receive-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.kw-root .kw-receive-actions button {
+  display: inline-flex;
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 17px;
+  background: var(--kw-color-surface-quiet);
+  color: var(--kw-color-text-body);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.kw-root .kw-receive-actions svg {
+  width: 19px;
+  height: 19px;
+}
+
+.kw-root .kw-transfer-form-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.kw-root .kw-transfer-field {
+  display: block;
+  margin-top: 64px;
+}
+
+.kw-root .kw-transfer-field > span,
+.kw-root .kw-transfer-reason > span {
+  display: block;
+  color: var(--kw-color-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.kw-root .kw-transfer-field input {
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--kw-color-input-border);
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--kw-color-text-primary);
+  font-size: 18px;
+  line-height: 28px;
+}
+
+.kw-root .kw-transfer-field input:focus {
+  border-bottom-color: var(--kw-color-brand-primary);
+}
+
+.kw-root .kw-transfer-field input::placeholder {
+  color: var(--kw-color-text-placeholder);
+}
+
+.kw-root .kw-transfer-field-hint {
+  margin: 10px 0 0;
+  color: var(--kw-color-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.kw-root .kw-amount-card {
+  margin-top: 46px;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--kw-color-surface-quiet);
+}
+
+.kw-root .kw-amount-card label > span:first-child {
+  color: var(--kw-color-text-muted);
+  font-size: 12px;
+}
+
+.kw-root .kw-amount-input {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.kw-root .kw-amount-input input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--kw-color-text-primary);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+}
+
+.kw-root .kw-amount-input b {
+  flex: 0 0 auto;
+  font-size: 17px;
+}
+
+.kw-root .kw-amount-card > small {
+  display: block;
+  margin-top: 6px;
+  color: var(--kw-color-text-muted);
+  font-size: 13px;
+}
+
+.kw-root .kw-transfer-error {
+  margin: 14px 0 0;
+  color: var(--kw-color-error);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.kw-root .kw-transfer-footer {
+  flex: 0 0 auto;
+  padding: 10px 20px max(16px, var(--kw-safe-bottom, 0px));
+  border-top: 1px solid #f1eff2;
+  background: #fff;
+}
+
+.kw-root .kw-transfer-hero-amount {
+  display: grid;
+  justify-items: end;
+  margin-top: 34px;
+  padding: 18px 0 24px;
+}
+
+.kw-root .kw-transfer-hero-amount strong {
+  font-size: 26px;
+  letter-spacing: -.04em;
+}
+
+.kw-root .kw-transfer-hero-amount span {
+  margin-top: 4px;
+  color: var(--kw-color-text-muted);
+  font-size: 13px;
+}
+
+.kw-root .kw-transfer-review-list {
+  margin: 0;
+  border-top: 1px solid #efedf0;
+}
+
+.kw-root .kw-transfer-review-list > div {
+  display: grid;
+  width: 100%;
+  min-height: 58px;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid #efedf0;
+  background: transparent;
+  color: var(--kw-color-text-primary);
+}
+
+.kw-root .kw-transfer-review-list dt {
+  color: var(--kw-color-text-muted);
+  font-size: 13px;
+  text-align: left;
+}
+
+.kw-root .kw-transfer-review-list dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.kw-root .kw-transfer-review-list dd small {
+  display: block;
+  margin-top: 2px;
+  color: var(--kw-color-text-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.kw-root .kw-transfer-review-list dd > button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-height: 40px;
+  margin: -8px -8px -8px auto;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+}
+
+.kw-root .kw-transfer-review-list dd > button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.kw-root .kw-compliance-card {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+  padding: 15px;
+  border-radius: 15px;
+  background: #f2f8f5;
+}
+
+.kw-root .kw-compliance-card--review {
+  background: #fff8e9;
+}
+
+.kw-root .kw-compliance-card--block,
+.kw-root .kw-compliance-card--unavailable {
+  background: #fff1f1;
+}
+
+.kw-root .kw-compliance-card > svg {
+  width: 23px;
+  height: 23px;
+  color: #27875e;
+}
+
+.kw-root .kw-compliance-card--review > svg { color: #ad7116; }
+.kw-root .kw-compliance-card--block > svg,
+.kw-root .kw-compliance-card--unavailable > svg { color: #c74747; }
+
+.kw-root .kw-compliance-card strong {
+  display: block;
+  font-size: 14px;
+}
+
+.kw-root .kw-compliance-card p {
+  margin: 3px 0 0;
+  color: var(--kw-color-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.kw-root .kw-transfer-reason {
+  display: block;
+  margin-top: 18px;
+}
+
+.kw-root .kw-transfer-reason textarea {
+  width: 100%;
+  min-height: 84px;
+  margin-top: 7px;
+  padding: 12px;
+  resize: vertical;
+  border: 1px solid var(--kw-color-border);
+  border-radius: 14px;
+  outline: 0;
+  font: inherit;
+  font-size: 13px;
+}
+
+.kw-root .kw-transfer-reason textarea:focus {
+  border-color: var(--kw-color-brand-primary);
+}
+
+.kw-root .kw-transfer-success {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.kw-root .kw-transfer-success > svg {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 24px;
+  color: var(--kw-color-brand-primary);
+}
+
+.kw-root .kw-transfer-success > p {
+  margin: 10px 0 0;
+  color: var(--kw-color-text-muted);
+  font-size: 14px;
+}
+
+.kw-root .kw-transfer-success > div {
+  display: grid;
+  gap: 3px;
+  margin-top: 30px;
+  padding: 16px 28px;
+  border-radius: 17px;
+  background: var(--kw-color-surface-quiet);
+}
+
+.kw-root .kw-transfer-success > div span {
+  color: var(--kw-color-text-muted);
+  font-size: 12px;
+}
+
+.kw-root .kw-transfer-success > button {
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--kw-color-text-purple);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.kw-root .kw-gas-dialog-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-end;
+}
+
+.kw-root .kw-gas-dialog-scrim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  background: rgb(0 0 0 / 46%);
+}
+
+.kw-root .kw-gas-dialog {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 30px 20px max(18px, var(--kw-safe-bottom, 0px));
+  border-radius: 22px 22px 0 0;
+  background: #fff;
+}
+
+.kw-root .kw-gas-dialog-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+}
+
+.kw-root .kw-gas-dialog-close svg { width: 21px; height: 21px; }
+
+.kw-root .kw-gas-dialog-icon {
+  display: grid;
+  width: 50px;
+  height: 50px;
+  place-items: center;
+  border-radius: 17px;
+  background: var(--kw-color-surface-lavender);
+  color: var(--kw-color-text-purple);
+}
+
+.kw-root .kw-gas-dialog-icon svg { width: 27px; height: 27px; }
+
+.kw-root .kw-gas-dialog h3 {
+  margin: 18px 0 0;
+  font-size: 21px;
+}
+
+.kw-root .kw-gas-dialog > p {
+  margin: 8px 0 0;
+  color: var(--kw-color-text-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.kw-root .kw-gas-support-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 22px 0;
+  padding: 15px;
+  border-radius: 14px;
+  background: var(--kw-color-surface-quiet);
+  font-size: 13px;
+}
+
+.kw-root .kw-gas-support-grid span { color: var(--kw-color-text-muted); }
+.kw-root .kw-gas-support-grid strong { text-align: right; }
+
+.kw-root .kw-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (max-width: 339px) {
   .kw-root .kw-seed-preview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kw-root .kw-wallet-selector { font-size: 14px; }

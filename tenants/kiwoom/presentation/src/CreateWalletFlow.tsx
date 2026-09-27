@@ -662,7 +662,7 @@ export function CreateWalletFlow({
       <div className="kw-status-mark" aria-hidden="true"><CirclesThreePlus className="kw-icon" /></div>
       <div className="kw-status-copy">
         <h1 className="kw-flow-title">새 지갑 슬롯을<br />등록하고 있어요</h1>
-        <p className="kw-body kw-mt-12">선택한 지갑의 지원 네트워크와 원화 평가 연결 상태를 확인합니다.</p>
+        <p className="kw-body kw-mt-12">지원 네트워크와 받을 주소를 준비하고 있어요.</p>
       </div>
     </FlowShell>
   );

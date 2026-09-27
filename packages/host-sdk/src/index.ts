@@ -6,6 +6,8 @@ import {
   type HostAuthenticationResult,
   type HostToWalletMessage,
   type SecureSarWalletCreationResult,
+  type SecureTransactionSigningRequest,
+  type SecureTransactionSigningResult,
   type SecureWalletImportResult,
   type WalletImportMethod,
   type WalletToHostMessage,
@@ -21,6 +23,7 @@ export interface WssHostClientOptions {
   requestAuthentication?: (purpose: HostAuthenticationPurpose) => Promise<HostAuthenticationResult>;
   requestSecureSarWalletCreation?: () => Promise<SecureSarWalletCreationResult>;
   requestSecureWalletImport?: (method: WalletImportMethod) => Promise<SecureWalletImportResult>;
+  requestSecureTransactionSignature?: (request: SecureTransactionSigningRequest) => Promise<SecureTransactionSigningResult>;
 }
 
 export class WssHostClient {
@@ -71,6 +74,11 @@ export class WssHostClient {
       void this.#respondToSecureSarWalletCreation(event.data.requestId);
       return;
     }
+    if (event.data.type === 'took-wss:secure-transaction-sign-request') {
+      this.#options.onEvent?.(event.data);
+      void this.#respondToSecureTransactionSignature(event.data.requestId, event.data.request);
+      return;
+    }
     this.#options.onEvent?.(event.data);
   };
 
@@ -118,6 +126,23 @@ export class WssHostClient {
     if (!this.#started) return;
     const message: HostToWalletMessage = {
       type: 'took-wss:secure-sar-create-result',
+      protocolVersion: WSS_PROTOCOL_VERSION,
+      requestId,
+      result,
+    };
+    this.#options.frame.contentWindow?.postMessage(message, this.#options.walletOrigin);
+  }
+
+  async #respondToSecureTransactionSignature(requestId: string, request: SecureTransactionSigningRequest): Promise<void> {
+    let result: SecureTransactionSigningResult = { status: 'cancelled' };
+    try {
+      result = await this.#options.requestSecureTransactionSignature?.(request) ?? { status: 'cancelled' };
+    } catch {
+      result = { status: 'cancelled' };
+    }
+    if (!this.#started) return;
+    const message: HostToWalletMessage = {
+      type: 'took-wss:secure-transaction-sign-result',
       protocolVersion: WSS_PROTOCOL_VERSION,
       requestId,
       result,

@@ -11,7 +11,9 @@ import {
   type CreateRegistrationIntentRequest,
   type HostAuthenticationPurpose,
   type KeyAdapterId,
+  type PrepareTransferRequest,
   type ProvisionWalletRequest,
+  type SubmitTransferRequest,
   type TenantManifest,
   type WssRuntimeBootstrap,
 } from '@took-wss/contracts';
@@ -27,6 +29,7 @@ import {
 } from './hostProof.js';
 import { RegistrationError } from './phoneRegistration.js';
 import { identityRegistrationProviders, walletProvisioningProviders, walletQueryProviders } from './walletQueryProviders.js';
+import { getTransferSigningRequest, prepareTransfer, submitTransfer } from './transferService.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const port = Number(process.env.PORT || 4100);
@@ -165,6 +168,35 @@ function parseRegistrationIntentRequest(value: unknown): CreateRegistrationInten
     throw new RegistrationError('invalid_registration_request');
   }
   return value as unknown as CreateRegistrationIntentRequest;
+}
+
+function parsePrepareTransferRequest(value: unknown): PrepareTransferRequest {
+  if (!isRecord(value)
+    || typeof value.walletId !== 'string'
+    || typeof value.assetId !== 'string'
+    || typeof value.chainId !== 'string'
+    || typeof value.recipient !== 'string'
+    || typeof value.amountAtomic !== 'string'
+    || value.channel !== 'address'
+    || (value.complianceReason !== undefined && typeof value.complianceReason !== 'string')) {
+    throw new Error('invalid_transfer_request');
+  }
+  return value as unknown as PrepareTransferRequest;
+}
+
+function parseSubmitTransferRequest(value: unknown): SubmitTransferRequest {
+  if (!isRecord(value)
+    || typeof value.intentId !== 'string'
+    || typeof value.signedTransaction !== 'string'
+    || !value.signedTransaction.startsWith('0x')
+    || typeof value.hostAuthorizationProof !== 'string'
+    || value.hostAuthorizationProof.length <= 20
+    || typeof value.idempotencyKey !== 'string'
+    || value.idempotencyKey.length < 8
+    || value.idempotencyKey.length > 128) {
+    throw new Error('invalid_transfer_submission');
+  }
+  return value as unknown as SubmitTransferRequest;
 }
 
 function sessionFromClaims(claims: ReturnType<typeof verifySessionToken>) {
@@ -388,6 +420,64 @@ async function handleWalletHome(request: IncomingMessage, response: ServerRespon
   sendJson(response, 200, await provider.getHome({ session, manifest, walletId }));
 }
 
+async function handlePrepareTransfer(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const manifest = tenants.get(claims.tenantId);
+  if (!manifest || !manifest.enabledModules.includes('send-receive') || !manifest.enabledModules.includes('kyt')) {
+    sendJson(response, 403, { error: 'transfer_policy_mismatch' });
+    return;
+  }
+  const provider = walletQueryProviders.get(manifest.tenantId);
+  if (!provider) {
+    sendJson(response, 503, { error: 'wallet_query_provider_unavailable' });
+    return;
+  }
+  const session = sessionFromClaims(claims);
+  const transferRequest = parsePrepareTransferRequest(await readJson(request));
+  const home = await provider.getHome({ session, manifest, walletId: transferRequest.walletId });
+  if (home.status !== 'ready') {
+    sendJson(response, 404, { error: 'wallet_not_found' });
+    return;
+  }
+  sendJson(response, 201, await prepareTransfer({ session, home, request: transferRequest }));
+}
+
+async function handleSubmitTransfer(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const manifest = tenants.get(claims.tenantId);
+  if (!manifest || !manifest.enabledModules.includes('send-receive')) {
+    sendJson(response, 403, { error: 'transfer_policy_mismatch' });
+    return;
+  }
+  const session = sessionFromClaims(claims);
+  const submission = parseSubmitTransferRequest(await readJson(request));
+  const authorization = verifyHostProof(submission.hostAuthorizationProof, sessionSecret);
+  assertProofSession(authorization, session);
+  if (authorization.kind !== 'wallet-authorization' || authorization.purpose !== 'transfer-approval') {
+    sendJson(response, 403, { error: 'transfer_authorization_required' });
+    return;
+  }
+  sendJson(response, 202, await submitTransfer({
+    session,
+    request: submission,
+    authorizationId: authorization.proofId,
+  }));
+}
+
+async function handleTransferApprovalPayload(request: IncomingMessage, response: ServerResponse, intentId: string): Promise<void> {
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const manifest = tenants.get(claims.tenantId);
+  if (!manifest || !manifest.enabledModules.includes('send-receive')) {
+    sendJson(response, 403, { error: 'transfer_policy_mismatch' });
+    return;
+  }
+  if (intentId.length < 8 || intentId.length > 160) {
+    sendJson(response, 400, { error: 'invalid_transfer_intent' });
+    return;
+  }
+  sendJson(response, 200, getTransferSigningRequest({ session: sessionFromClaims(claims), intentId }));
+}
+
 async function identityContext(request: IncomingMessage) {
   const claims = verifySessionToken(bearerToken(request), sessionSecret);
   const manifest = tenants.get(claims.tenantId);
@@ -498,6 +588,19 @@ const server = createServer(async (request, response) => {
     }
     if (request.method === 'POST' && url.pathname === '/v1/wallets/provision') {
       await handleProvisionWallet(request, response);
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/transfers/prepare') {
+      await handlePrepareTransfer(request, response);
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/transfers/submit') {
+      await handleSubmitTransfer(request, response);
+      return;
+    }
+    const transferApprovalMatch = url.pathname.match(/^\/v1\/transfers\/([^/]+)\/approval-payload$/);
+    if (request.method === 'GET' && transferApprovalMatch) {
+      await handleTransferApprovalPayload(request, response, decodeURIComponent(transferApprovalMatch[1]!));
       return;
     }
     const walletHomeMatch = url.pathname.match(/^\/v1\/wallets\/([^/]+)\/home$/);

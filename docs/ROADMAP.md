@@ -37,9 +37,14 @@
    - The Kiwoom development slice covers host authentication, actual new-SAR creation, a fail-closed secure-import entry path, idempotent sandbox registration, and independent wallet slots with per-wallet network capabilities.
    - The development BFF never receives a seed, private key, plaintext recovery share, completed SAR secret, or envelope key and remains unavailable in production. It does not fabricate balances.
 3. ◐ Add receive/send flows, KRW input, quote expiry, KYT decision, customer approval, and receipt screens.
-   - Address-based receive exposes the selected wallet's real public address after key-core registration.
-   - Send network selection fails closed until balance, quote, KYT, and approval are available.
-4. Add audit event references without storing signing material.
+   - Address-based receive now renders the selected wallet's real public address as a QR and supports copy/share.
+   - The development query adapter reads real native balances on all nine configured networks and calls the provider-aware KRW quote gateway.
+   - EVM native send now performs amount/fee preparation, fail-closed KYT, host-owned customer confirmation, key-core signing, signed-transaction verification, broadcast, and submitted-receipt display.
+   - Native-coin transfers are correctly marked ineligible for sponsorship. ERC-20/SPL/TRC inventory and the existing permit/Solana/TRON relayer adapters remain the next execution slice.
+   - TranSight and Bonanza credentials remain deployment configuration gates; missing KYT blocks sending and a non-Bonanza quote is never labeled K-VWAP.
+4. ◐ Add audit event references without storing signing material.
+   - `wss_transfer_intents` and `wss_transfer_executions` persist policy decisions, one-time proof UUIDs, idempotency hashes, and transaction hashes without proof tokens, signatures, or raw transactions.
+   - Durable resume/reconciliation and confirmation webhooks remain open.
 5. Add Android/iOS native WebView wrappers using the same bridge contract.
 6. ◐ Add browser and native end-to-end tests for origin, nonce, expiry, and replay rejection.
    - Unit/contract coverage now verifies signature tampering, expiry, session mismatch, payload binding, secret-field rejection, and provider-level one-time proof consumption.
@@ -56,8 +61,10 @@ Current browser coverage includes Reference Host session issuance, signed bootst
 
 ## Phase 3 — institutional providers
 
-1. TranSight KYT adapter with fail-closed policy and contract tests.
-2. Bonanza K-VWAP adapter with source count, freshness, TTL, and receipt evidence.
+1. ◐ TranSight KYT adapter with fail-closed policy and contract tests.
+   - The Edge gateway and BFF fail-closed path are deployed; production credentials, response-contract fixtures, monitoring, and reason-retention approval remain.
+2. ◐ Bonanza K-VWAP adapter with source count, freshness, TTL, and receipt evidence.
+   - The deployed quote gateway prefers fresh Bonanza snapshots and labels market fallback separately; production gateway credentials and receipt evidence remain.
 3. Generic execution adapter for chain capability and fee abstraction.
 4. Webhook signing, delivery retries, reconciliation, and operations console.
 

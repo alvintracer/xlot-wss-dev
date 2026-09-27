@@ -90,6 +90,8 @@ The ready wallet-home payload contains:
 
 Switching wallets calls `GET /v1/wallets/:walletId/home`. The server resolves wallet ownership from the authenticated WSS session and returns the selected wallet details plus the wallet-slot summary index. A client-provided wallet ID is never sufficient authorization.
 
+The development query adapter reads each registered address from its real chain endpoint and returns only positive native-asset balances. KRW valuation calls the server-side `wallet-price-quote` gateway: Bonanza K-VWAP is preferred when configured, while a fallback provider is labeled as a market reference and never presented as K-VWAP. A failed balance boundary returns an unavailable valuation instead of silently turning an unknown balance into zero.
+
 Provisioning calls `POST /v1/wallets/provision` with a key adapter and a provider-new, host-secure-new, or opaque secure-import source. A host-secure-new source contains only the public address groups, an opaque key-core reference, and non-secret SAR setup metadata. Every successful call adds one wallet slot; it does not add one slot per network.
 
 The call also carries a short-lived host-authorization proof bound to the
@@ -121,7 +123,7 @@ Kiwoom behavior stays under `tenants/kiwoom` or provider adapter packages. The s
 
 ## 7. Current development boundary
 
-The Reference Host now creates a real random took SAR wallet in its
+The Reference Host now creates a real random SAR wallet in its
 customer-side development key core. It shows the actual 12-word phrase only
 in a host-owned security overlay and requires three random word positions to
 be confirmed before registration. It derives the EVM, Solana, Bitcoin, TRON,
@@ -135,7 +137,11 @@ This development session assertion must not be treated as production identity
 assurance; a production host can invoke its PIN/biometric SDK when policy
 requires step-up.
 
-When the development database is connected, the BFF persists the Kiwoom WSS profile, wallet slot, public address rows, audit event, three customer-side AES-GCM recovery-envelope ciphertexts, and only the UUIDs of the consumed host proofs in `xlot-wss-dev`. The plaintext shares, recovery phrase, proof strings, and envelope key are not persisted; key material remains in volatile Reference Host memory and is lost on reload. This is therefore a real wallet/address, ceremony, proof-binding, and ciphertext-persistence path, but not production storage or durable device-loss recovery. Production remains fail-closed without an approved native key core, independently controlled encrypted factor stores, institution/native device attestation, recovery-factor providers, and security review. The current A/B/C recovery screen records acknowledgement but does not yet enroll three independent durable factors. The sandbox still provides no real balance, K-VWAP valuation, KYT decision, sponsored-gas execution, or transaction submission. Send remains disabled until those dependencies are connected.
+When the development database is connected, the BFF persists the Kiwoom WSS profile, wallet slot, public address rows, audit event, three customer-side AES-GCM recovery-envelope ciphertexts, and only the UUIDs of the consumed host proofs in `xlot-wss-dev`. The plaintext shares, recovery phrase, proof strings, signed raw transactions, and envelope key are not persisted; key material remains in volatile Reference Host memory and is lost on reload. This is therefore a real wallet/address, ceremony, proof-binding, ciphertext-persistence, and EVM-native transfer path, but not production storage or durable device-loss recovery. Production remains fail-closed without an approved native key core, independently controlled encrypted factor stores, institution/native device attestation, recovery-factor providers, and security review. The current A/B/C recovery screen records acknowledgement but does not yet enroll three independent durable factors.
+
+The selected wallet now queries real native balances for Ethereum, Polygon, Arbitrum, Base, BNB Chain, Solana, Bitcoin, TRON, and XRP. Receive renders an actual QR from the registered address and supports copy/share. The first executable send slice covers EVM native assets: actual gas estimation, expiring preparation, fail-closed KYT, a host-owned customer confirmation, SAR key-core signing, signed-payload verification, broadcast, and persisted intent/execution audit. The deployed price gateway prefers Bonanza K-VWAP when its gateway is configured and otherwise labels the fallback honestly. The deployed KYT gateway blocks sending when TranSight is unavailable.
+
+Remaining development gaps are explicit: ERC-20/SPL/TRC token inventory, permit/Solana/TRON sponsorship execution, non-EVM signing/broadcast adapters, durable transfer resumption after a BFF restart, transaction confirmation/reconciliation, and production provider secrets. The gas-support sheet therefore reports the exact eligibility of the current asset and does not claim sponsorship for a native-coin transfer.
 
 The Kiwoom phone-first profile path is implemented against `xlot-wss-dev` and selects `supabase-auth-solapi`. Registration PII is AES-256-GCM encrypted before persistence, the phone lookup uses a separate keyed digest, Supabase Auth owns code generation and verification, and the activated SOLAPI Send SMS Hook only delivers the Auth-owned code. WSS keeps neither the code nor its MAC on that path. The BFF matches the Auth-verified number to the tenant-scoped lookup digest, persists only a domain-separated keyed Auth-subject digest, and then atomically creates the random profile UUID, encrypted private attributes, consent, external institution link, and audit event before purging the intent PII. If delivery is unavailable, the isolated sandbox visibly falls back to the loopback-only MAC-based development code; production never falls back. This still proves phone possession, not carrier-backed legal identity.
 
@@ -153,3 +159,6 @@ The Kiwoom phone-first profile path is implemented against `xlot-wss-dev` and se
 - 2026-09-27: Added explicit host customer confirmation, real 12-word host-only backup and three-word verification, payload-bound SAR attestation, and one-time wallet authorization proof enforcement.
 - 2026-09-27: Removed the redundant post-SMS host-confirmation UI from initial wallet onboarding. The Reference Host now issues the same session/purpose-bound one-time proof in the background and opens the wallet start-method screen directly; proof enforcement remains unchanged.
 - 2026-09-27: Rewrote recovery and secure-import copy in customer language and removed visible `took` branding from WSS customer surfaces. Internal package and bridge identifiers remain implementation-only.
+- 2026-09-27: Replaced the placeholder action sheet with Kiwoom-style focused `채우기` and `보내기` flows, including actual address QR/copy/share, balance-backed asset selection, KRW display, gas-support detail, KYT state, host confirmation, and receipt UI.
+- 2026-09-27: Added real nine-network native-balance reads, provider-aware KRW valuation, and an EVM-native prepare/sign/broadcast path. Transfer intent and execution audit tables were applied to `xlot-wss-dev`; secrets and raw signed transactions are excluded.
+- 2026-09-27: Deployed `wallet-price-quote` and fail-closed `kyt-screen` to `xlot-wss-dev`. Bonanza and TranSight production credentials remain an explicit configuration gate.
