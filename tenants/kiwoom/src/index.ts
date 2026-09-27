@@ -61,6 +61,9 @@ export const kiwoomManifest = assertTenantManifest({
     quote: 'bonanza-k-vwap',
   },
   chains: ['ethereum', 'polygon', 'arbitrum', 'base', 'bnb', 'solana', 'bitcoin', 'tron', 'xrp'],
+  assetPolicy: {
+    stablecoins: ['USDC', 'USDT', 'RLUSD', 'PYUSD', 'USDG', 'DAI', 'USDS', 'FDUSD', 'USDP', 'GUSD', 'XUSD', 'EURC', 'JPYC', 'XSGD'],
+  },
 } satisfies TenantManifest);
 
 const moduleErrors = validateModuleSelection(kiwoomManifest.enabledModules);

@@ -18,6 +18,12 @@ describe('Kiwoom tenant profile', () => {
     expect(kiwoomManifest.enabledModules).toEqual(expect.arrayContaining(['kyt', 'k-vwap', 'gas-sponsorship', 'super-wallet']));
   });
 
+  it('enables a broad, explicit stablecoin policy', () => {
+    expect(kiwoomManifest.assetPolicy.stablecoins).toEqual(expect.arrayContaining([
+      'USDC', 'USDT', 'RLUSD', 'PYUSD', 'USDG', 'DAI', 'USDS', 'FDUSD', 'USDP', 'GUSD', 'XUSD', 'EURC', 'JPYC', 'XSGD',
+    ]));
+  });
+
   it('binds visible UI to the screenshot-derived Kiwoom simple-mode profile', () => {
     expect(kiwoomManifest.presentation).toEqual({
       profileId: 'kiwoom-simple-mode-v1',

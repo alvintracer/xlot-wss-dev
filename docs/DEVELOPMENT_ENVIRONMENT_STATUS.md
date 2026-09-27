@@ -39,6 +39,9 @@
   tenant-scoped unique indexes; signed proof strings are not persisted
 - `wallet-price-quote` and fail-closed `kyt-screen` Edge Functions deployed;
   their gateway JWT checks remain enabled and the BFF calls them server-side
+- the updated `wallet-price-quote` deployment returned a fresh labeled
+  market-reference quote for all 14 configured Kiwoom stablecoin symbols with
+  no unavailable asset on 2026-09-27
 - transfer intent and execution tables deployed with RLS and no browser-role
   grants; raw signatures, signed transactions, proof tokens, and key material
   are not columns in either table
@@ -70,14 +73,19 @@
   selection, actual QR receive-address display, and fail-closed balance-backed
   send selection.
 
-The current native-asset adapter queries the registered address on all nine
-configured chains. The EVM-native execution slice additionally performs live
-fee estimation, KYT, host confirmation, SAR key-core signing, signed-payload
-verification, broadcast, and intent/execution audit. A funded development
-wallet plus configured TranSight credentials are required for a live-send smoke
-test; without KYT credentials the flow intentionally blocks. Token inventory,
-permit/Solana/TRON relayers, non-EVM signing, and confirmation reconciliation
-remain open.
+The current asset adapter queries native balances on all nine configured chains
+and tenant-enabled stablecoin balances across EVM, Solana, TRON, and XRP Ledger.
+The curated registry contains 14 symbols and 45 chain-specific deployments.
+The receive flow lists zero-balance supported assets by asset and network. The
+EVM execution slice supports both native coins and allowlisted ERC-20 tokens,
+including live fee estimation, KYT, host confirmation, SAR key-core signing,
+exact signed-payload verification, broadcast, and intent/execution audit. A
+funded development wallet plus configured TranSight credentials are required
+for a live-send smoke test; without KYT credentials the flow intentionally
+blocks. Token inventory, price coverage, and direct ERC-20 execution are
+implemented; permit/Solana/TRON relay execution, non-EVM token signing, and
+confirmation reconciliation remain open. A direct ERC-20 send still requires
+native gas even when the relay quote reports that the asset is eligible.
 
 The current code silently exchanges the already active Reference Host customer
 session for a one-time, purpose-bound wallet-authorization proof after initial

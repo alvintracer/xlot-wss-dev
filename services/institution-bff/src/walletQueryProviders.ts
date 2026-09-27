@@ -11,6 +11,7 @@ import type {
   WssSessionClaims,
   WssIdentityState,
 } from '@took-wss/contracts';
+import { supportedReceiveAssets } from './assetPortfolio.js';
 import type { IdentityRegistrationProvider, WalletProvisioningProvider, WalletQueryProvider } from '@took-wss/provider-adapters';
 import { DevelopmentPostgresWalletProvider } from './databaseWalletProvider.js';
 
@@ -146,6 +147,7 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
     const adapterLabel = request.keyAdapter === 'took-sar'
       ? origin === 'imported' ? '가져온 자가복구 지갑' : '자가복구 지갑'
       : request.keyAdapter === 'fsl-mpc' ? 'FSL MPC 지갑' : 'Thirdweb MPC 지갑';
+    const networks = createSandboxNetworks(manifest, request.source.type === 'secure-new' ? request.source.addresses : []);
     const walletHome: ReadyWalletHomePayload = {
       status: 'ready',
       wallet: {
@@ -157,7 +159,8 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
       wallets: [],
       totalFiat: { currency: 'KRW', display: '0원', asOf, stale: false },
       assets: [],
-      networks: createSandboxNetworks(manifest, request.source.type === 'secure-new' ? request.source.addresses : []),
+      receiveAssets: supportedReceiveAssets(networks, manifest.assetPolicy.stablecoins),
+      networks,
       valuation: {
         currency: 'KRW',
         provider: manifest.providers.quote,

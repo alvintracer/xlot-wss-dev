@@ -140,12 +140,12 @@ try {
 
   await walletFrame.getByRole('button', { name: '채우기' }).click();
   const receiveDialog = walletFrame.getByRole('dialog', { name: /어떤 자산을.*채울까요/ });
-  if (await receiveDialog.locator('.kw-transfer-choice').count() !== 9) {
-    throw new Error('The selected wallet must expose nine network capabilities inside the action flow.');
+  if (await receiveDialog.locator('.kw-transfer-choice').count() !== 54) {
+    throw new Error('The selected wallet must expose nine native assets plus 45 configured stablecoin deployments.');
   }
-  await receiveDialog.getByRole('button', { name: /Ethereum/ }).click();
+  await receiveDialog.getByRole('button', { name: /USD Coin.*Ethereum/ }).click();
   const ethereumReceiveDialog = walletFrame.getByRole('dialog', { name: /이 주소로.*자산을 보내주세요/ });
-  await ethereumReceiveDialog.getByRole('img', { name: 'Ethereum 받기 주소 QR' }).waitFor();
+  await ethereumReceiveDialog.getByRole('img', { name: 'USDC 받기 주소 QR' }).waitFor();
   if (await ethereumReceiveDialog.getByRole('button', { name: '주소 복사' }).isDisabled()) {
     throw new Error('Receive address copy must be enabled for a registered key-core address.');
   }
@@ -179,6 +179,7 @@ try {
     identityOnboarding: 'encrypted-profile-and-phone-possession',
     walletAddressGroups: 5,
     selectedWalletNetworks: 9,
+    selectedWalletReceiveAssets: 54,
     sarKeyCore: 'real-derivation-and-2-of-3-verification',
     receive: 'real-address-copy-enabled',
     send: 'blocked-until-balance-quote-kyt-approval',

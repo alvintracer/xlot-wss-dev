@@ -209,6 +209,7 @@ function ReadyWallet({
           mode={openAction.mode}
           wallet={walletHome.wallet}
           assets={walletHome.assets}
+          receiveAssets={walletHome.receiveAssets}
           networks={walletHome.networks}
           hostCapabilities={hostCapabilities}
           initialChainId={openAction.chainId}

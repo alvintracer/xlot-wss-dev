@@ -132,15 +132,15 @@ try {
   await page.locator('.phone[data-shell-mode="focus"]').waitFor();
   const receiveDialog = walletFrame.getByRole('dialog', { name: /어떤 자산을.*채울까요/ });
   await receiveDialog.waitFor();
-  if (await receiveDialog.locator('.kw-transfer-choice').count() !== 9) {
-    throw new Error('The selected wallet must expose nine registered receive networks.');
+  if (await receiveDialog.locator('.kw-transfer-choice').count() !== 54) {
+    throw new Error('The selected wallet must expose nine native assets plus 45 configured stablecoin deployments.');
   }
-  await receiveDialog.getByRole('button', { name: /Ethereum/ }).click();
+  await receiveDialog.getByRole('button', { name: /USD Coin.*Ethereum/ }).click();
   const ethereumReceiveDialog = walletFrame.getByRole('dialog', { name: /이 주소로.*자산을 보내주세요/ });
-  const qr = ethereumReceiveDialog.getByRole('img', { name: 'Ethereum 받기 주소 QR' });
+  const qr = ethereumReceiveDialog.getByRole('img', { name: 'USDC 받기 주소 QR' });
   await qr.waitFor();
   const title = await qr.locator('title').textContent();
-  if (!title?.includes('Ethereum')) throw new Error('Receive flow did not render an Ethereum address QR.');
+  if (!title?.includes('USDC')) throw new Error('Receive flow did not render the selected USDC address QR.');
   if (await ethereumReceiveDialog.getByRole('button', { name: '주소 복사' }).isDisabled()) {
     throw new Error('Receive address copy must be enabled for a registered key-core address.');
   }
@@ -200,6 +200,7 @@ try {
       walletSlots: 'at-least-one',
       walletAddressGroups: 5,
       selectedWalletNetworks: 9,
+      selectedWalletReceiveAssets: 54,
       valuation: 'actual portfolio with provider-aware KRW quote',
       sarKeyCore: 'real-derivation-and-2-of-3-verification',
       receiveAddress: 'ready',

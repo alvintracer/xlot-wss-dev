@@ -39,14 +39,17 @@ export interface PreparedSarWallet {
   wallet: SarWalletCreationResult;
 }
 
-export interface EvmNativeTransactionToSign {
+export interface EvmTransactionToSign {
   chainId: number;
   nonce: number;
   to: string;
   value: string;
   gasLimit: string;
   gasPrice: string;
+  data?: string;
 }
+
+export type EvmNativeTransactionToSign = EvmTransactionToSign;
 
 interface SarShareStore {
   put(keyHandle: string, share: Uint8Array): Promise<void>;
@@ -315,9 +318,9 @@ export class ReferenceHostSarKeyCore {
     this.#developmentVaultKeys.delete(keyHandle);
   }
 
-  async signEvmNativeTransactionForAddress(
+  async signEvmTransactionForAddress(
     fromAddress: string,
-    transaction: EvmNativeTransactionToSign,
+    transaction: EvmTransactionToSign,
   ): Promise<string> {
     const matching = [...this.#publicAddresses.entries()].find(([, addresses]) => (
       addresses.some((address) => address.addressGroupId === 'evm' && address.address.toLowerCase() === fromAddress.toLowerCase())
@@ -341,12 +344,20 @@ export class ReferenceHostSarKeyCore {
         value: BigInt(transaction.value),
         gasLimit: BigInt(transaction.gasLimit),
         gasPrice: BigInt(transaction.gasPrice),
+        data: transaction.data ?? '0x',
       });
     } finally {
       entropy.fill(0);
       seed.fill(0);
       for (const share of shares) share?.fill(0);
     }
+  }
+
+  async signEvmNativeTransactionForAddress(
+    fromAddress: string,
+    transaction: EvmNativeTransactionToSign,
+  ): Promise<string> {
+    return this.signEvmTransactionForAddress(fromAddress, transaction);
   }
 
   async verifyRecovery(keyHandle: string, storeIndexes: readonly [number, number]): Promise<boolean> {

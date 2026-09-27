@@ -37,10 +37,11 @@
    - The Kiwoom development slice covers host authentication, actual new-SAR creation, a fail-closed secure-import entry path, idempotent sandbox registration, and independent wallet slots with per-wallet network capabilities.
    - The development BFF never receives a seed, private key, plaintext recovery share, completed SAR secret, or envelope key and remains unavailable in production. It does not fabricate balances.
 3. ◐ Add receive/send flows, KRW input, quote expiry, KYT decision, customer approval, and receipt screens.
-   - Address-based receive now renders the selected wallet's real public address as a QR and supports copy/share.
-   - The development query adapter reads real native balances on all nine configured networks and calls the provider-aware KRW quote gateway.
-   - EVM native send now performs amount/fee preparation, fail-closed KYT, host-owned customer confirmation, key-core signing, signed-transaction verification, broadcast, and submitted-receipt display.
-   - Native-coin transfers are correctly marked ineligible for sponsorship. ERC-20/SPL/TRC inventory and the existing permit/Solana/TRON relayer adapters remain the next execution slice.
+   - Address-based receive now lets the customer select the asset and network, renders the selected wallet's real public address as a QR, and supports copy/share.
+   - The shared registry contains 14 stablecoin symbols and 45 mainnet deployments. Tenant manifests select symbols; chain, transport, contract/mint/issuer, decimals, and canonical/bridged status remain centrally validated.
+   - The development query adapter reads real native balances on all nine configured networks plus configured ERC-20, SPL, TRC-20, and XRPL issued-currency balances, then calls the provider-aware KRW quote gateway.
+   - EVM native and allowlisted ERC-20 send perform amount/fee preparation, fail-closed KYT, host-owned customer confirmation, key-core signing, exact signed-transaction verification, broadcast, and submitted-receipt display.
+   - Native-coin transfers are correctly marked ineligible for sponsorship. ERC-20 relay eligibility is labeled separately from actual relay execution; SPL/TRC/XRPL signing and the permit/Solana/TRON relayer execution paths remain the next execution slice.
    - TranSight and Bonanza credentials remain deployment configuration gates; missing KYT blocks sending and a non-Bonanza quote is never labeled K-VWAP.
 4. ◐ Add audit event references without storing signing material.
    - `wss_transfer_intents` and `wss_transfer_executions` persist policy decisions, one-time proof UUIDs, idempotency hashes, and transaction hashes without proof tokens, signatures, or raw transactions.

@@ -293,7 +293,7 @@ export function App() {
     const activeId = active.id;
     const activeSessionToken = session.sessionToken;
     const authorization = await issueDevelopmentHostAuthorization('transfer-approval', activeSessionToken);
-    const signedTransaction = await referenceHostSarKeyCore.signEvmNativeTransactionForAddress(
+    const signedTransaction = await referenceHostSarKeyCore.signEvmTransactionForAddress(
       active.request.fromAddress,
       active.request.transaction,
     );

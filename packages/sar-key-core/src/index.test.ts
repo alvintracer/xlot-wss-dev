@@ -63,4 +63,29 @@ describe('reference host SAR key core', () => {
     expect(transaction.chainId).toBe(1n);
     expect(JSON.stringify({ signed })).not.toMatch(/mnemonic|privateKey|seedPhrase|recoveryShare|entropy/i);
   });
+
+  it('signs an ERC-20 transfer calldata without exposing key material', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    const wallet = await core.createWallet();
+    const from = wallet.addresses.find(({ addressGroupId }) => addressGroupId === 'evm')!.address;
+    const token = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+    const recipient = '0x0000000000000000000000000000000000000001';
+    const data = new ethers.Interface(['function transfer(address to, uint256 amount)'])
+      .encodeFunctionData('transfer', [recipient, 1_000_000n]);
+    const signed = await core.signEvmTransactionForAddress(from, {
+      chainId: 1,
+      nonce: 4,
+      to: token,
+      value: '0',
+      gasLimit: '65000',
+      gasPrice: '20000000000',
+      data,
+    });
+    const transaction = ethers.Transaction.from(signed);
+
+    expect(transaction.from).toBe(from);
+    expect(transaction.to).toBe(token);
+    expect(transaction.value).toBe(0n);
+    expect(transaction.data).toBe(data);
+  });
 });

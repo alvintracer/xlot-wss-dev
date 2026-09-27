@@ -47,6 +47,9 @@ export const referenceBankManifest = assertTenantManifest({
     quote: 'mock',
   },
   chains: ['ethereum', 'base', 'polygon', 'solana'],
+  assetPolicy: {
+    stablecoins: ['USDC', 'USDT', 'RLUSD', 'PYUSD', 'XUSD', 'EURC', 'XSGD'],
+  },
 } satisfies TenantManifest);
 
 const moduleErrors = validateModuleSelection(referenceBankManifest.enabledModules);

@@ -250,7 +250,7 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
     `;
     const addresses = new Map(accountRows.map((account) => [account.address_group_id, account.address_display]));
     const networks = networksForManifest(manifest, addresses);
-    const portfolio = await queryWalletPortfolio(networks);
+    const portfolio = await queryWalletPortfolio(networks, manifest.assetPolicy.stablecoins);
     const summaries: WalletProfileSummary[] = walletRows.map((wallet) => ({
       walletId: wallet.id,
       label: wallet.label,
@@ -264,6 +264,7 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
       wallets: summaries,
       ...(portfolio.totalFiat ? { totalFiat: portfolio.totalFiat } : {}),
       assets: portfolio.assets,
+      receiveAssets: portfolio.receiveAssets,
       networks,
       valuation: portfolio.valuation,
       recovery: {

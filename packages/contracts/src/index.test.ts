@@ -153,6 +153,30 @@ describe('host initialization contract', () => {
       requestId: 'request-4',
       request: signingRequest,
     })).toBe(true);
+    const erc20SigningRequest = {
+      ...signingRequest,
+      assetSymbol: 'USDC',
+      transaction: {
+        ...signingRequest.transaction,
+        type: 'evm-erc20',
+        to: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+        value: '0',
+        gasLimit: '65000',
+        data: '0xa9059cbb0000000000000000000000000000000000000000000000000000000000000001',
+      },
+    } as const;
+    expect(isWalletToHostMessage({
+      type: 'took-wss:secure-transaction-sign-request',
+      protocolVersion: 1,
+      requestId: 'request-5',
+      request: erc20SigningRequest,
+    })).toBe(true);
+    expect(isWalletToHostMessage({
+      type: 'took-wss:secure-transaction-sign-request',
+      protocolVersion: 1,
+      requestId: 'request-6',
+      request: { ...erc20SigningRequest, transaction: { ...erc20SigningRequest.transaction, data: undefined } },
+    })).toBe(false);
     expect(isHostToWalletMessage({
       type: 'took-wss:secure-transaction-sign-result',
       protocolVersion: 1,
@@ -203,6 +227,7 @@ describe('key management policy', () => {
     },
     providers: { execution: 'took-router', compliance: 'mock', quote: 'mock' },
     chains: ['ethereum'],
+    assetPolicy: { stablecoins: ['USDC'] },
   };
 
   it('allows a tenant to omit SAR and choose a provider wallet', () => {
@@ -272,6 +297,7 @@ describe('wallet home transport states', () => {
       wallets: [wallet],
       totalFiat: { currency: 'KRW', display: '0원', asOf: '2026-09-27T00:00:00.000Z', stale: false },
       assets: [],
+      receiveAssets: [],
       valuation: { currency: 'KRW', provider: 'bonanza-k-vwap', status: 'sandbox', asOf: '2026-09-27T00:00:00.000Z' },
       recovery: { profile: 'sar-2-of-3', status: 'sandbox-ready', policyVersion: 1 },
       source: 'wallet-query',
@@ -301,6 +327,7 @@ describe('wallet home transport states', () => {
       wallets: [{ ...selectedWallet, walletId: 'wallet-2', label: 'Wallet 2' }],
       totalFiat: { currency: 'KRW', display: '0원', asOf: '2026-09-27T00:00:00.000Z', stale: false },
       assets: [],
+      receiveAssets: [],
       networks: [],
       valuation: { currency: 'KRW', provider: 'bonanza-k-vwap', status: 'sandbox', asOf: '2026-09-27T00:00:00.000Z' },
       recovery: { profile: 'sar-2-of-3', status: 'sandbox-ready', policyVersion: 1 },

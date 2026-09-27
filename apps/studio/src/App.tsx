@@ -57,6 +57,7 @@ const newProjectManifest = assertTenantManifest({
   },
   providers: { execution: 'took-router', compliance: 'mock', quote: 'mock' },
   chains: ['ethereum', 'base', 'solana'],
+  assetPolicy: { stablecoins: ['USDC', 'USDT'] },
 } satisfies TenantManifest);
 
 const templates = {

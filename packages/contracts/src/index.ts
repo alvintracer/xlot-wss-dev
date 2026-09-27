@@ -136,6 +136,9 @@ export interface TenantManifest {
     quote: 'bonanza-k-vwap' | 'mock';
   };
   chains: string[];
+  assetPolicy: {
+    stablecoins: string[];
+  };
 }
 
 export type WssIdentityState =
@@ -226,6 +229,17 @@ export interface WalletAssetView {
   };
 }
 
+export interface WalletReceiveAssetView {
+  assetId: string;
+  chainId: string;
+  addressGroupId: string;
+  symbol: string;
+  name: string;
+  network: string;
+  tokenAddress?: string;
+  canonical: boolean;
+}
+
 export type TransferChannel = 'address' | 'phone' | 'message';
 
 export interface PrepareTransferRequest {
@@ -282,13 +296,14 @@ export interface SecureTransactionSigningRequest {
   fromAddress: string;
   recipient: string;
   transaction: {
-    type: 'evm-native';
+    type: 'evm-native' | 'evm-erc20';
     chainId: number;
     nonce: number;
     to: string;
     value: string;
     gasLimit: string;
     gasPrice: string;
+    data?: string;
   };
 }
 
@@ -361,6 +376,7 @@ export type WalletHomePayload =
         stale: boolean;
       };
       assets: WalletAssetView[];
+      receiveAssets: WalletReceiveAssetView[];
       networks: WalletNetworkView[];
       valuation: WalletValuationView;
       recovery: WalletRecoveryView;
@@ -549,6 +565,15 @@ export function isWalletHomePayload(value: unknown): value is WalletHomePayload 
     && (network.addressStatus === 'ready' || network.addressStatus === 'pending-core' || network.addressStatus === 'unavailable')
     && (network.address === undefined || typeof network.address === 'string')
     && (network.addressStatus !== 'ready' || typeof network.address === 'string');
+  const isReceiveAsset = (asset: unknown) => isRecord(asset)
+    && typeof asset.assetId === 'string'
+    && typeof asset.chainId === 'string'
+    && typeof asset.addressGroupId === 'string'
+    && typeof asset.symbol === 'string'
+    && typeof asset.name === 'string'
+    && typeof asset.network === 'string'
+    && (asset.tokenAddress === undefined || typeof asset.tokenAddress === 'string')
+    && typeof asset.canonical === 'boolean';
   const isValuation = (valuation: unknown) => isRecord(valuation)
     && valuation.currency === 'KRW'
     && typeof valuation.provider === 'string'
@@ -569,6 +594,8 @@ export function isWalletHomePayload(value: unknown): value is WalletHomePayload 
       && (value.totalFiat === undefined || isFiat(value.totalFiat))
       && Array.isArray(value.assets)
       && value.assets.every(isAsset)
+      && Array.isArray(value.receiveAssets)
+      && value.receiveAssets.every(isReceiveAsset)
       && Array.isArray(value.networks)
       && value.networks.every(isNetwork)
       && isValuation(value.valuation)
@@ -655,7 +682,7 @@ export function isSecureTransactionSigningRequest(value: unknown): value is Secu
     || typeof value.fromAddress !== 'string'
     || typeof value.recipient !== 'string'
     || !isRecord(value.transaction)) return false;
-  return value.transaction.type === 'evm-native'
+  return (value.transaction.type === 'evm-native' || value.transaction.type === 'evm-erc20')
     && Number.isSafeInteger(value.transaction.chainId)
     && Number.isSafeInteger(value.transaction.nonce)
     && typeof value.transaction.to === 'string'
@@ -664,7 +691,9 @@ export function isSecureTransactionSigningRequest(value: unknown): value is Secu
     && typeof value.transaction.gasLimit === 'string'
     && /^\d+$/.test(value.transaction.gasLimit)
     && typeof value.transaction.gasPrice === 'string'
-    && /^\d+$/.test(value.transaction.gasPrice);
+    && /^\d+$/.test(value.transaction.gasPrice)
+    && (value.transaction.data === undefined || (typeof value.transaction.data === 'string' && /^0x(?:[0-9a-fA-F]{2})*$/.test(value.transaction.data)))
+    && (value.transaction.type !== 'evm-erc20' || (typeof value.transaction.data === 'string' && value.transaction.data.length >= 10));
 }
 
 function containsForbiddenWalletSecret(value: unknown): boolean {
@@ -785,6 +814,13 @@ export function assertTenantManifest(value: TenantManifest): TenantManifest {
     throw new Error('Default key adapter must be allowed by the tenant.');
   }
   if (!value.enabledModules.includes('wallet-home')) throw new Error('wallet-home is required.');
+  if (!Array.isArray(value.assetPolicy.stablecoins)
+    || value.assetPolicy.stablecoins.some((symbol) => !/^[A-Z0-9]{2,12}$/.test(symbol))) {
+    throw new Error('Stablecoin policy must contain uppercase asset symbols.');
+  }
+  if (new Set(value.assetPolicy.stablecoins).size !== value.assetPolicy.stablecoins.length) {
+    throw new Error('Stablecoin policy symbols must be unique.');
+  }
   const sarAdapterEnabled = value.keyManagement.allowedAdapters.includes('took-sar');
   const sarModuleEnabled = value.enabledModules.includes('sar-recovery');
   if (sarAdapterEnabled !== sarModuleEnabled) {

@@ -1,4 +1,10 @@
-import type { WalletAssetView, WalletNetworkView, WalletValuationView } from '@took-wss/contracts';
+import type {
+  WalletAssetView,
+  WalletNetworkView,
+  WalletReceiveAssetView,
+  WalletValuationView,
+} from '@took-wss/contracts';
+import { stablecoinsForPolicy, type StablecoinDeployment } from './stablecoinRegistry.js';
 
 export interface NativeAssetConfig {
   name: string;
@@ -21,14 +27,30 @@ const nativeAssets: Readonly<Record<string, NativeAssetConfig>> = {
   xrp: { name: '엑스알피', symbol: 'XRP', decimals: 6, rpcUrl: 'https://s1.ripple.com:51234', rpcEnvironment: 'WSS_XRP_RPC_URL' },
 };
 
+const SOLANA_TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+const SOLANA_TOKEN_2022_PROGRAM = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+
 interface PriceSnapshot {
   krw: number;
   provider: string;
   asOf: string;
 }
 
+interface ScannedBalance {
+  network: WalletNetworkView;
+  config: NativeAssetConfig;
+  deployment?: StablecoinDeployment;
+  balance: bigint;
+}
+
+interface NetworkScan {
+  balances: ScannedBalance[];
+  complete: boolean;
+}
+
 export interface WalletPortfolioResult {
   assets: WalletAssetView[];
+  receiveAssets: WalletReceiveAssetView[];
   totalFiat?: { currency: 'KRW'; display: string; asOf: string; stale: boolean };
   valuation: WalletValuationView;
 }
@@ -64,51 +86,216 @@ async function jsonRpc(url: string, method: string, params: unknown[]): Promise<
   });
   if (!response.ok) throw new Error(`RPC ${response.status}`);
   const payload = await response.json() as { result?: unknown; error?: unknown };
-  if (payload.error !== undefined || payload.result === undefined) throw new Error('RPC result unavailable');
+  const embeddedError = payload.result && typeof payload.result === 'object' && 'error' in payload.result
+    ? (payload.result as { error?: unknown }).error
+    : undefined;
+  if (payload.error !== undefined || embeddedError !== undefined || payload.result === undefined) {
+    const error = payload.error ?? embeddedError;
+    const detail = typeof error === 'string' ? error : JSON.stringify(error ?? {});
+    throw new Error(`RPC result unavailable: ${detail}`);
+  }
   return payload.result;
 }
 
-async function nativeBalance(network: WalletNetworkView, config: NativeAssetConfig): Promise<bigint> {
-  if (!network.address) return 0n;
+function erc20BalanceOfData(address: string): string {
+  return `0x70a08231${address.toLowerCase().replace(/^0x/, '').padStart(64, '0')}`;
+}
+
+async function scanEvm(
+  network: WalletNetworkView,
+  config: NativeAssetConfig,
+  deployments: StablecoinDeployment[],
+): Promise<NetworkScan> {
+  const requests = [
+    { jsonrpc: '2.0', id: 0, method: 'eth_getBalance', params: [network.address, 'latest'] },
+    ...deployments.map((item, index) => ({
+      jsonrpc: '2.0',
+      id: index + 1,
+      method: 'eth_call',
+      params: [{ to: item.tokenAddress, data: erc20BalanceOfData(network.address!) }, 'latest'],
+    })),
+  ];
+  const response = await fetchWithTimeout(endpoint(config), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requests),
+  });
+  if (!response.ok) throw new Error(`RPC ${response.status}`);
+  const payload = await response.json() as Array<{ id?: number; result?: string; error?: unknown }>;
+  if (!Array.isArray(payload)) throw new Error('Invalid EVM batch result');
+  const byId = new Map(payload.map((item) => [item.id, item]));
+  const native = byId.get(0);
+  if (!native?.result || native.error) throw new Error('EVM native balance unavailable');
+  const balances: ScannedBalance[] = [{ network, config, balance: BigInt(native.result) }];
+  let complete = true;
+  deployments.forEach((deployment, index) => {
+    const item = byId.get(index + 1);
+    if (!item?.result || item.error) {
+      complete = false;
+      return;
+    }
+    balances.push({ network, config, deployment, balance: BigInt(item.result) });
+  });
+  return { balances, complete };
+}
+
+async function scanSolana(
+  network: WalletNetworkView,
+  config: NativeAssetConfig,
+  deployments: StablecoinDeployment[],
+): Promise<NetworkScan> {
+  const [nativeResult, classicTokenResult, token2022Result] = await Promise.allSettled([
+    jsonRpc(endpoint(config), 'getBalance', [network.address, { commitment: 'confirmed' }]),
+    jsonRpc(endpoint(config), 'getTokenAccountsByOwner', [
+      network.address,
+      { programId: SOLANA_TOKEN_PROGRAM },
+      { encoding: 'jsonParsed', commitment: 'confirmed' },
+    ]),
+    jsonRpc(endpoint(config), 'getTokenAccountsByOwner', [
+      network.address,
+      { programId: SOLANA_TOKEN_2022_PROGRAM },
+      { encoding: 'jsonParsed', commitment: 'confirmed' },
+    ]),
+  ]);
+  if (nativeResult.status === 'rejected') throw nativeResult.reason;
+  if (!nativeResult.value || typeof nativeResult.value !== 'object' || !('value' in nativeResult.value)) {
+    throw new Error('Invalid Solana balance');
+  }
+  const balances: ScannedBalance[] = [{
+    network,
+    config,
+    balance: BigInt(String((nativeResult.value as { value: unknown }).value)),
+  }];
+  const tokenResults = [classicTokenResult, token2022Result];
+  const accounts = tokenResults.flatMap((result) => result.status === 'fulfilled'
+    ? ((result.value as {
+        value?: Array<{ account?: { data?: { parsed?: { info?: { mint?: string; tokenAmount?: { amount?: string } } } } } }>;
+      }).value ?? [])
+    : []);
+  const totals = new Map<string, bigint>();
+  for (const account of accounts) {
+    const info = account.account?.data?.parsed?.info;
+    if (!info?.mint || !/^\d+$/.test(info.tokenAmount?.amount ?? '')) continue;
+    totals.set(info.mint, (totals.get(info.mint) ?? 0n) + BigInt(info.tokenAmount!.amount!));
+  }
+  for (const deployment of deployments) {
+    balances.push({ network, config, deployment, balance: totals.get(deployment.tokenAddress) ?? 0n });
+  }
+  return { balances, complete: tokenResults.every((result) => result.status === 'fulfilled') };
+}
+
+async function scanBitcoin(network: WalletNetworkView, config: NativeAssetConfig): Promise<NetworkScan> {
   const url = endpoint(config);
-  if (config.evmChainId) {
-    const result = await jsonRpc(url, 'eth_getBalance', [network.address, 'latest']);
-    if (typeof result !== 'string') throw new Error('Invalid EVM balance');
-    return BigInt(result);
-  }
-  if (network.chainId === 'solana') {
-    const result = await jsonRpc(url, 'getBalance', [network.address, { commitment: 'confirmed' }]);
-    if (!result || typeof result !== 'object' || !('value' in result)) throw new Error('Invalid Solana balance');
-    return BigInt(String((result as { value: unknown }).value));
-  }
-  if (network.chainId === 'bitcoin') {
-    const response = await fetchWithTimeout(`${url.replace(/\/$/, '')}/address/${encodeURIComponent(network.address)}`);
-    if (!response.ok) throw new Error(`Bitcoin API ${response.status}`);
-    const result = await response.json() as {
-      chain_stats?: { funded_txo_sum?: number; spent_txo_sum?: number };
-      mempool_stats?: { funded_txo_sum?: number; spent_txo_sum?: number };
-    };
-    const confirmed = BigInt(result.chain_stats?.funded_txo_sum ?? 0) - BigInt(result.chain_stats?.spent_txo_sum ?? 0);
-    const pending = BigInt(result.mempool_stats?.funded_txo_sum ?? 0) - BigInt(result.mempool_stats?.spent_txo_sum ?? 0);
-    return confirmed + pending;
-  }
-  if (network.chainId === 'tron') {
-    const response = await fetchWithTimeout(`${url.replace(/\/$/, '')}/v1/accounts/${encodeURIComponent(network.address)}`);
-    if (!response.ok) throw new Error(`TRON API ${response.status}`);
-    const result = await response.json() as { data?: Array<{ balance?: number }> };
-    return BigInt(result.data?.[0]?.balance ?? 0);
-  }
-  if (network.chainId === 'xrp') {
-    try {
-      const result = await jsonRpc(url, 'account_info', [{ account: network.address, ledger_index: 'validated' }]);
-      if (!result || typeof result !== 'object' || !('account_data' in result)) return 0n;
-      const balance = (result as { account_data?: { Balance?: string } }).account_data?.Balance;
-      return balance ? BigInt(balance) : 0n;
-    } catch {
-      return 0n;
+  const response = await fetchWithTimeout(`${url.replace(/\/$/, '')}/address/${encodeURIComponent(network.address!)}`);
+  if (!response.ok) throw new Error(`Bitcoin API ${response.status}`);
+  const result = await response.json() as {
+    chain_stats?: { funded_txo_sum?: number; spent_txo_sum?: number };
+    mempool_stats?: { funded_txo_sum?: number; spent_txo_sum?: number };
+  };
+  const confirmed = BigInt(result.chain_stats?.funded_txo_sum ?? 0) - BigInt(result.chain_stats?.spent_txo_sum ?? 0);
+  const pending = BigInt(result.mempool_stats?.funded_txo_sum ?? 0) - BigInt(result.mempool_stats?.spent_txo_sum ?? 0);
+  return { balances: [{ network, config, balance: confirmed + pending }], complete: true };
+}
+
+async function scanTron(
+  network: WalletNetworkView,
+  config: NativeAssetConfig,
+  deployments: StablecoinDeployment[],
+): Promise<NetworkScan> {
+  const url = endpoint(config);
+  const response = await fetchWithTimeout(`${url.replace(/\/$/, '')}/v1/accounts/${encodeURIComponent(network.address!)}`);
+  if (!response.ok) throw new Error(`TRON API ${response.status}`);
+  const result = await response.json() as {
+    data?: Array<{ balance?: number; trc20?: Array<Record<string, string>> }>;
+  };
+  const account = result.data?.[0];
+  const tokenBalances = new Map<string, bigint>();
+  for (const entry of account?.trc20 ?? []) {
+    for (const [address, amount] of Object.entries(entry)) {
+      if (/^\d+$/.test(amount)) tokenBalances.set(address, BigInt(amount));
     }
   }
-  return 0n;
+  return {
+    balances: [
+      { network, config, balance: BigInt(account?.balance ?? 0) },
+      ...deployments.map((deployment) => ({
+        network,
+        config,
+        deployment,
+        balance: tokenBalances.get(deployment.tokenAddress) ?? 0n,
+      })),
+    ],
+    complete: true,
+  };
+}
+
+function decimalToAtomic(value: string, decimals: number): bigint {
+  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
+  if (!match) return 0n;
+  const sign = match[1] === '-' ? -1n : 1n;
+  const fraction = (match[3] ?? '').padEnd(decimals, '0').slice(0, decimals);
+  return sign * (BigInt(match[2]!) * (10n ** BigInt(decimals)) + BigInt(fraction || '0'));
+}
+
+async function scanXrp(
+  network: WalletNetworkView,
+  config: NativeAssetConfig,
+  deployments: StablecoinDeployment[],
+): Promise<NetworkScan> {
+  const url = endpoint(config);
+  const [accountResult, linesResult] = await Promise.allSettled([
+    jsonRpc(url, 'account_info', [{ account: network.address, ledger_index: 'validated' }]),
+    jsonRpc(url, 'account_lines', [{ account: network.address, ledger_index: 'validated' }]),
+  ]);
+  const accountNotFound = [accountResult, linesResult].every((result) => (
+    result.status === 'rejected'
+    && result.reason instanceof Error
+    && result.reason.message.includes('actNotFound')
+  ));
+  if (accountNotFound) {
+    return {
+      balances: [
+        { network, config, balance: 0n },
+        ...deployments.map((deployment) => ({ network, config, deployment, balance: 0n })),
+      ],
+      complete: true,
+    };
+  }
+  const nativeBalance = accountResult.status === 'fulfilled'
+    ? BigInt((accountResult.value as { account_data?: { Balance?: string } }).account_data?.Balance ?? 0)
+    : 0n;
+  const balances: ScannedBalance[] = [{ network, config, balance: nativeBalance }];
+  if (linesResult.status === 'rejected') {
+    return { balances, complete: accountResult.status === 'fulfilled' };
+  }
+  const lines = (linesResult.value as { lines?: Array<{ account?: string; currency?: string; balance?: string }> }).lines ?? [];
+  for (const deployment of deployments) {
+    const line = lines.find((candidate) => (
+      candidate.account === deployment.issuerAddress
+      && (candidate.currency === deployment.currencyCode || candidate.currency === deployment.symbol)
+    ));
+    balances.push({
+      network,
+      config,
+      deployment,
+      balance: decimalToAtomic(line?.balance ?? '0', deployment.decimals),
+    });
+  }
+  return { balances, complete: accountResult.status === 'fulfilled' };
+}
+
+async function scanNetwork(
+  network: WalletNetworkView,
+  deployments: StablecoinDeployment[],
+): Promise<NetworkScan> {
+  const config = nativeAssets[network.chainId];
+  if (!config || !network.address || network.addressStatus !== 'ready') return { balances: [], complete: true };
+  if (config.evmChainId) return scanEvm(network, config, deployments);
+  if (network.chainId === 'solana') return scanSolana(network, config, deployments);
+  if (network.chainId === 'bitcoin') return scanBitcoin(network, config);
+  if (network.chainId === 'tron') return scanTron(network, config, deployments);
+  if (network.chainId === 'xrp') return scanXrp(network, config, deployments);
+  return { balances: [], complete: true };
 }
 
 export function formatUnits(value: bigint, decimals: number, maximumFractionDigits = 8): string {
@@ -145,40 +332,75 @@ async function priceSnapshots(symbols: string[]): Promise<Map<string, PriceSnaps
     if (!price.assetKey || !Number.isFinite(price.krw) || Number(price.krw) <= 0) return [];
     return [[price.assetKey, {
       krw: Number(price.krw),
-      provider: price.providerKrw || 'took-market',
+      provider: price.providerKrw || 'market-reference',
       asOf: price.sourceUpdatedAtKrw || new Date().toISOString(),
     }] as const];
   }));
 }
 
-export async function queryWalletPortfolio(networks: WalletNetworkView[]): Promise<WalletPortfolioResult> {
-  const asOf = new Date().toISOString();
-  const settled = await Promise.allSettled(networks.map(async (network) => {
-    const config = nativeAssets[network.chainId];
-    if (!config || network.addressStatus !== 'ready') return null;
-    const balance = await nativeBalance(network, config);
-    return { network, config, balance };
-  }));
-  const holdings = settled.flatMap((result) => (
-    result.status === 'fulfilled' && result.value && result.value.balance > 0n ? [result.value] : []
-  ));
-  const balanceQueriesComplete = settled.every((result) => result.status === 'fulfilled');
-  const prices = await priceSnapshots(holdings.map(({ config }) => config.symbol)).catch(() => new Map<string, PriceSnapshot>());
-  const assets = holdings.map(({ network, config, balance }): WalletAssetView => {
-    const displayBalance = formatUnits(balance, config.decimals);
-    const price = prices.get(config.symbol);
-    const numericBalance = Number(displayBalance.replaceAll(',', ''));
-    return {
+export function supportedReceiveAssets(
+  networks: WalletNetworkView[],
+  enabledStablecoins: readonly string[],
+): WalletReceiveAssetView[] {
+  const deployments = stablecoinsForPolicy(networks.map(({ chainId }) => chainId), enabledStablecoins);
+  return networks.flatMap((network) => {
+    if (network.addressStatus !== 'ready' || !nativeAssets[network.chainId]) return [];
+    const config = nativeAssets[network.chainId]!;
+    const native: WalletReceiveAssetView = {
       assetId: `${network.chainId}:native`,
       chainId: network.chainId,
       addressGroupId: network.addressGroupId,
       symbol: config.symbol,
       name: config.name,
       network: network.network,
-      decimals: config.decimals,
+      canonical: true,
+    };
+    return [native, ...deployments.filter(({ chainId }) => chainId === network.chainId).map((deployment) => ({
+      assetId: deployment.assetId,
+      chainId: deployment.chainId,
+      addressGroupId: network.addressGroupId,
+      symbol: deployment.symbol,
+      name: deployment.name,
+      network: network.network,
+      tokenAddress: deployment.tokenAddress,
+      canonical: deployment.canonical,
+    }))];
+  });
+}
+
+export async function queryWalletPortfolio(
+  networks: WalletNetworkView[],
+  enabledStablecoins: readonly string[],
+): Promise<WalletPortfolioResult> {
+  const asOf = new Date().toISOString();
+  const deployments = stablecoinsForPolicy(networks.map(({ chainId }) => chainId), enabledStablecoins);
+  const settled = await Promise.allSettled(networks.map((network) => (
+    scanNetwork(network, deployments.filter(({ chainId }) => chainId === network.chainId))
+  )));
+  const scans = settled.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
+  const holdings = scans.flatMap(({ balances }) => balances.filter(({ balance }) => balance > 0n));
+  const balanceQueriesComplete = settled.every((result) => result.status === 'fulfilled' && result.value.complete);
+  const prices = await priceSnapshots(holdings.map(({ config, deployment }) => deployment?.symbol ?? config.symbol))
+    .catch(() => new Map<string, PriceSnapshot>());
+  const assets = holdings.map(({ network, config, deployment, balance }): WalletAssetView => {
+    const decimals = deployment?.decimals ?? config.decimals;
+    const symbol = deployment?.symbol ?? config.symbol;
+    const displayBalance = formatUnits(balance, decimals);
+    const price = prices.get(symbol);
+    const numericBalance = Number(displayBalance.replaceAll(',', ''));
+    const canTransfer = Boolean(config.evmChainId && (!deployment || deployment.transport === 'evm-erc20'));
+    return {
+      assetId: deployment?.assetId ?? `${network.chainId}:native`,
+      chainId: network.chainId,
+      addressGroupId: network.addressGroupId,
+      symbol,
+      name: deployment?.name ?? config.name,
+      network: network.network,
+      decimals,
       availableAtomic: balance.toString(),
-      transferStatus: config.evmChainId ? 'enabled' : 'unavailable',
-      ...(!config.evmChainId ? { transferUnavailableReason: '이 네트워크의 보내기 서명 연동을 준비하고 있어요.' } : {}),
+      ...(deployment ? { tokenAddress: deployment.tokenAddress } : {}),
+      transferStatus: canTransfer ? 'enabled' : 'unavailable',
+      ...(!canTransfer ? { transferUnavailableReason: '이 네트워크의 보내기 서명 연동을 준비하고 있어요.' } : {}),
       balanceAtomic: balance.toString(),
       balanceDisplay: displayBalance,
       ...(price && Number.isFinite(numericBalance) ? {
@@ -199,7 +421,10 @@ export async function queryWalletPortfolio(networks: WalletNetworkView[]): Promi
   const providers = [...new Set([...prices.values()].map((price) => price.provider))];
   return {
     assets,
-    ...(balanceQueriesComplete && allPriced ? { totalFiat: { currency: 'KRW' as const, display: formatKrw(total), asOf, stale: assets.some((asset) => asset.fiat?.stale) } } : {}),
+    receiveAssets: supportedReceiveAssets(networks, enabledStablecoins),
+    ...(balanceQueriesComplete && allPriced ? {
+      totalFiat: { currency: 'KRW' as const, display: formatKrw(total), asOf, stale: assets.some((asset) => asset.fiat?.stale) },
+    } : {}),
     valuation: {
       currency: 'KRW',
       provider: providers.length === 1 ? providers[0]! : providers.length > 1 ? 'hybrid' : 'unavailable',

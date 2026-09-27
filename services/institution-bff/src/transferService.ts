@@ -12,6 +12,7 @@ import type {
 import { formatUnits, nativeAssetConfig, nativeAssetRpcUrl } from './assetPortfolio.js';
 import { recordAuthorizedTransfer, recordPreparedTransfer, recordSubmittedTransfer } from './transferAuditStore.js';
 import { quoteGasSponsorship } from './gasSponsorship.js';
+import { stablecoinByAssetId } from './stablecoinRegistry.js';
 
 type Session = Omit<WssSessionClaims, 'nonce'>;
 
@@ -132,7 +133,14 @@ export async function prepareTransfer(input: {
   const config = nativeAssetConfig(request.chainId);
   const rpcUrl = nativeAssetRpcUrl(request.chainId);
   if (!asset || !network?.address || network.addressStatus !== 'ready' || !config || !rpcUrl) throw new Error('asset_not_available');
-  if (!config.evmChainId || asset.tokenAddress) throw new Error('secure_signer_not_available_for_asset');
+  if (!config.evmChainId) throw new Error('secure_signer_not_available_for_asset');
+  const stablecoin = asset.tokenAddress ? stablecoinByAssetId(asset.assetId) : undefined;
+  if (asset.tokenAddress && (
+    !stablecoin
+    || stablecoin.transport !== 'evm-erc20'
+    || stablecoin.chainId !== request.chainId
+    || stablecoin.tokenAddress.toLowerCase() !== asset.tokenAddress.toLowerCase()
+  )) throw new Error('unsupported_token_contract');
   if (!ethers.isAddress(request.recipient)) throw new Error('invalid_recipient');
   if (request.recipient.toLowerCase() === network.address.toLowerCase()) throw new Error('self_transfer_not_allowed');
   const amount = parseAtomic(request.amountAtomic);
@@ -140,19 +148,31 @@ export async function prepareTransfer(input: {
   if (amount > available) throw new Error('insufficient_balance');
 
   const provider = new ethers.JsonRpcProvider(rpcUrl, config.evmChainId, { staticNetwork: true });
+  const transactionData = stablecoin
+    ? new ethers.Interface(['function transfer(address to, uint256 amount)']).encodeFunctionData('transfer', [request.recipient, amount])
+    : undefined;
+  const transactionTo = stablecoin?.tokenAddress ?? request.recipient;
+  const transactionValue = stablecoin ? 0n : amount;
   const [nonce, feeData, gasLimit] = await Promise.all([
     provider.getTransactionCount(network.address, 'pending'),
     provider.getFeeData(),
-    provider.estimateGas({ from: network.address, to: request.recipient, value: amount }),
+    provider.estimateGas({
+      from: network.address,
+      to: transactionTo,
+      value: transactionValue,
+      ...(transactionData ? { data: transactionData } : {}),
+    }),
   ]);
   const gasPrice = feeData.gasPrice ?? feeData.maxFeePerGas;
   if (!gasPrice) throw new Error('network_fee_unavailable');
   const feeAtomic = gasLimit * gasPrice;
-  if (amount + feeAtomic > available) throw new Error('insufficient_balance_for_fee');
-  const amountDisplay = formatUnits(amount, config.decimals);
+  const nativeAsset = home.assets.find((candidate) => candidate.assetId === `${request.chainId}:native`);
+  const nativeAvailable = stablecoin ? BigInt(nativeAsset?.availableAtomic ?? '0') : available;
+  if ((stablecoin ? feeAtomic : amount + feeAtomic) > nativeAvailable) throw new Error('insufficient_balance_for_fee');
+  const amountDisplay = formatUnits(amount, asset.decimals ?? config.decimals);
   const feeDisplay = formatUnits(feeAtomic, config.decimals);
   const fiatDisplay = estimatedFiat(amountDisplay, asset.fiat?.display, asset.balanceDisplay);
-  const feeFiatDisplay = estimatedFiat(feeDisplay, asset.fiat?.display, asset.balanceDisplay);
+  const feeFiatDisplay = estimatedFiat(feeDisplay, nativeAsset?.fiat?.display, nativeAsset?.balanceDisplay ?? '0');
   const gasSponsorship = await quoteGasSponsorship({ asset, network, amountDisplay });
   const compliance = await screenRecipient(request.chainId, request.recipient, 0);
   const reviewSatisfied = compliance.status !== 'review' || (request.complianceReason?.trim().length ?? 0) >= 5;
@@ -169,13 +189,14 @@ export async function prepareTransfer(input: {
         fromAddress: network.address,
         recipient: request.recipient,
         transaction: {
-          type: 'evm-native' as const,
+          type: stablecoin ? 'evm-erc20' as const : 'evm-native' as const,
           chainId: config.evmChainId,
           nonce,
-          to: request.recipient,
-          value: amount.toString(),
+          to: transactionTo,
+          value: transactionValue.toString(),
           gasLimit: gasLimit.toString(),
           gasPrice: gasPrice.toString(),
+          ...(transactionData ? { data: transactionData } : {}),
         },
       }
     : undefined;
@@ -238,12 +259,13 @@ export async function submitTransfer(input: {
   const transaction = ethers.Transaction.from(input.request.signedTransaction);
   if (!transaction.from
     || transaction.from.toLowerCase() !== signing.fromAddress.toLowerCase()
-    || transaction.to?.toLowerCase() !== signing.recipient.toLowerCase()
+    || transaction.to?.toLowerCase() !== signing.transaction.to.toLowerCase()
     || transaction.chainId !== BigInt(signing.transaction.chainId)
     || transaction.nonce !== signing.transaction.nonce
     || transaction.value !== BigInt(signing.transaction.value)
     || transaction.gasLimit !== BigInt(signing.transaction.gasLimit)
-    || transaction.gasPrice !== BigInt(signing.transaction.gasPrice)) {
+    || transaction.gasPrice !== BigInt(signing.transaction.gasPrice)
+    || transaction.data.toLowerCase() !== (signing.transaction.data ?? '0x').toLowerCase()) {
     throw new Error('signed_transaction_mismatch');
   }
   const rpcUrl = nativeAssetRpcUrl(stored.prepared.chainId);

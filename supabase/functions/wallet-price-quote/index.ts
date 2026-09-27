@@ -18,9 +18,18 @@ const marketIds: Readonly<Record<string, string>> = {
   XRP: "ripple",
   USDC: "usd-coin",
   USDT: "tether",
+  RLUSD: "ripple-usd",
   DAI: "dai",
   PYUSD: "paypal-usd",
+  USDG: "global-dollar",
+  USDS: "usds",
+  FDUSD: "first-digital-usd",
+  USDP: "paxos-standard",
+  GUSD: "gemini-dollar",
+  XUSD: "straitsx-xusd",
   EURC: "euro-coin",
+  JPYC: "jpy-coin",
+  XSGD: "xsgd",
 };
 
 interface PriceResult {

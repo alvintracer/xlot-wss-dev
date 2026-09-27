@@ -23,6 +23,7 @@ import type {
   WalletAssetView,
   WalletNetworkView,
   WalletProfileSummary,
+  WalletReceiveAssetView,
 } from '@took-wss/contracts';
 
 export type WalletActionMode = 'receive' | 'send' | 'exchange';
@@ -32,6 +33,7 @@ interface WalletActionSheetProps {
   mode: WalletActionMode;
   wallet: WalletProfileSummary;
   assets: WalletAssetView[];
+  receiveAssets: WalletReceiveAssetView[];
   networks: WalletNetworkView[];
   hostCapabilities: HostCapabilities;
   initialChainId?: string;
@@ -157,16 +159,41 @@ function AssetPicker({ assets, onSelect }: { assets: WalletAssetView[]; onSelect
   );
 }
 
+function ReceiveAssetPicker({
+  assets,
+  onSelect,
+}: {
+  assets: WalletReceiveAssetView[];
+  onSelect: (asset: WalletReceiveAssetView) => void;
+}) {
+  return (
+    <div className="kw-transfer-choice-list">
+      {assets.map((asset) => (
+        <button className="kw-transfer-choice" type="button" key={asset.assetId} onClick={() => onSelect(asset)}>
+          <span className="kw-transfer-asset-mark" aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
+          <span>
+            <strong>{asset.name}</strong>
+            <small>{asset.network}{asset.canonical ? '' : ' · 브리지 자산'}</small>
+          </span>
+          <CaretRight aria-hidden="true" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ReceiveFlow({
   wallet,
+  receiveAssets,
   networks,
   initialChainId,
   onClose,
-}: Pick<WalletActionSheetProps, 'wallet' | 'networks' | 'initialChainId' | 'onClose'>) {
-  const [selectedNetwork, setSelectedNetwork] = useState<WalletNetworkView | undefined>(() => (
-    networks.find((network) => network.chainId === initialChainId && network.addressStatus === 'ready')
+}: Pick<WalletActionSheetProps, 'wallet' | 'receiveAssets' | 'networks' | 'initialChainId' | 'onClose'>) {
+  const [selectedAsset, setSelectedAsset] = useState<WalletReceiveAssetView | undefined>(() => (
+    receiveAssets.find((asset) => asset.chainId === initialChainId)
   ));
   const [copied, setCopied] = useState(false);
+  const selectedNetwork = networks.find((network) => network.chainId === selectedAsset?.chainId);
   const address = selectedNetwork?.address;
 
   const copyAddress = async () => {
@@ -181,10 +208,10 @@ function ReceiveFlow({
   };
 
   const shareAddress = async () => {
-    if (!address || !selectedNetwork) return;
+    if (!address || !selectedNetwork || !selectedAsset) return;
     const shareData = {
-      title: `${selectedNetwork.network} 받기 주소`,
-      text: `${selectedNetwork.network} ${selectedNetwork.nativeSymbol} 받기 주소\n${address}`,
+      title: `${selectedAsset.symbol} 받기 주소`,
+      text: `${selectedNetwork.network} ${selectedAsset.symbol} 받기 주소\n${address}`,
     };
     if (navigator.share) {
       await navigator.share(shareData).catch(() => undefined);
@@ -195,27 +222,27 @@ function ReceiveFlow({
 
   return (
     <>
-      <FlowHeader title="채우기" canGoBack={Boolean(selectedNetwork)} onBack={() => setSelectedNetwork(undefined)} onClose={onClose} />
+      <FlowHeader title="채우기" canGoBack={Boolean(selectedAsset)} onBack={() => setSelectedAsset(undefined)} onClose={onClose} />
       <div className="kw-transfer-scroll">
-        {!selectedNetwork ? (
+        {!selectedAsset ? (
           <div className="kw-transfer-page">
             <p className="kw-transfer-kicker">{wallet.label}</p>
             <h2 id="kw-wallet-action-title">어떤 자산을<br />채울까요?</h2>
-            <p className="kw-transfer-lead">받을 네트워크를 선택해 주세요.</p>
-            <NetworkPicker networks={networks} onSelect={setSelectedNetwork} />
+            <p className="kw-transfer-lead">자산과 받을 네트워크를 선택해 주세요.</p>
+            <ReceiveAssetPicker assets={receiveAssets} onSelect={setSelectedAsset} />
           </div>
-        ) : address ? (
+        ) : selectedNetwork && address ? (
           <div className="kw-transfer-page kw-receive-page">
-            <p className="kw-transfer-kicker">{selectedNetwork.network}</p>
+            <p className="kw-transfer-kicker">{selectedNetwork.network} · {selectedAsset.symbol}</p>
             <h2 id="kw-wallet-action-title">이 주소로<br />자산을 보내주세요</h2>
-            <p className="kw-transfer-lead">반드시 {selectedNetwork.network} 네트워크로 보내야 해요.</p>
+            <p className="kw-transfer-lead">반드시 {selectedNetwork.network} 네트워크의 {selectedAsset.symbol}만 보내주세요.</p>
             <div className="kw-qr-card">
-              <QRCodeSVG value={address} size={176} level="M" marginSize={2} title={`${selectedNetwork.network} 받기 주소 QR`} />
-              <strong>{selectedNetwork.nativeSymbol} 받기 주소</strong>
+              <QRCodeSVG value={address} size={176} level="M" marginSize={2} title={`${selectedAsset.symbol} 받기 주소 QR`} />
+              <strong>{selectedAsset.symbol} 받기 주소</strong>
               <button type="button" onClick={() => void copyAddress()}>{abbreviatedAddress(address)}<Copy aria-hidden="true" /></button>
             </div>
             {selectedNetwork.chainId === 'xrp' ? (
-              <div className="kw-transfer-warning"><WarningCircle aria-hidden="true" /><span>거래소에서 보낼 때는 목적지 태그 입력 여부를 반드시 확인해 주세요.</span></div>
+              <div className="kw-transfer-warning"><WarningCircle aria-hidden="true" /><span>{selectedAsset.tokenAddress ? `${selectedAsset.symbol}를 받으려면 이 주소에 ${selectedAsset.symbol} 신뢰선이 설정되어 있어야 해요. ` : ''}거래소에서 보낼 때는 목적지 태그 입력 여부를 반드시 확인해 주세요.</span></div>
             ) : null}
             <div className="kw-receive-actions">
               <button type="button" onClick={() => void copyAddress()}><Copy aria-hidden="true" />{copied ? '복사했어요' : '주소 복사'}</button>
