@@ -70,22 +70,39 @@
   MAC;
 - the headless browser completed registration, session-bound wallet authorization, real SAR
   creation, nine-network registration, a second FSL wallet slot, wallet
-  selection, actual QR receive-address display, and fail-closed balance-backed
-  send selection.
+  selection, actual QR receive-address display, asset-first/network-second
+  receive, and a zero-balance-visible send amount screen.
 
 The current asset adapter queries native balances on all nine configured chains
 and tenant-enabled stablecoin balances across EVM, Solana, TRON, and XRP Ledger.
 The curated registry contains 14 symbols and 45 chain-specific deployments.
-The receive flow lists zero-balance supported assets by asset and network. The
-EVM execution slice supports both native coins and allowlisted ERC-20 tokens,
-including live fee estimation, KYT, host confirmation, SAR key-core signing,
-exact signed-payload verification, broadcast, and intent/execution audit. A
+The receive and send flows now group the 54 deployment rows into 21 asset
+symbols before showing the selected asset's networks. The action catalog carries
+chain-specific balances, send capability, and optional KRW unit price; a failed
+balance query is distinguished from a real zero. The send amount form remains
+visible at zero balance and switches between KRW and token units, while its CTA
+stays disabled. Address/phone route selection is implemented after a valid
+amount, but phone execution remains fail-closed until the dedicated took
+phone-escrow adapter is connected. The execution slice supports EVM native and
+allowlisted ERC-20 tokens plus allowlisted Solana SPL, TRON TRC-20, and XRPL
+issued tokens, including chain-native fee preparation, KYT, host confirmation,
+SAR key-core signing, exact signed-payload verification, broadcast, and
+intent/execution audit. XRP destination tags, trust-line checks, Solana ATA
+creation rent, and TRON maximum fee limits are handled explicitly. A
 funded development wallet plus configured TranSight credentials are required
 for a live-send smoke test; without KYT credentials the flow intentionally
 blocks. Token inventory, price coverage, and direct ERC-20 execution are
-implemented; permit/Solana/TRON relay execution, non-EVM token signing, and
-confirmation reconciliation remain open. A direct ERC-20 send still requires
-native gas even when the relay quote reports that the asset is eligible.
+implemented. Permit/Solana/TRON relay execution, phone-escrow execution,
+native non-EVM coin sends, and confirmation reconciliation remain open. Every
+direct token send still requires the chain's native fee asset even when a relay
+quote reports that the asset is eligible.
+
+The non-EVM SDK addition currently leaves four moderate production-dependency
+audit findings in the `@solana/web3.js` 1.x → `jayson` tree (`stream-json` and
+legacy `uuid`). npm offers only an invalid major downgrade as an automatic
+fix. This is recorded rather than force-fixed; migration to the maintained
+Solana client stack or a compatible upstream remediation is required before a
+production dependency sign-off. No high or critical finding was reported.
 
 The current code silently exchanges the already active Reference Host customer
 session for a one-time, purpose-bound wallet-authorization proof after initial

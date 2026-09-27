@@ -178,6 +178,7 @@ function parsePrepareTransferRequest(value: unknown): PrepareTransferRequest {
     || typeof value.recipient !== 'string'
     || typeof value.amountAtomic !== 'string'
     || value.channel !== 'address'
+    || (value.destinationTag !== undefined && typeof value.destinationTag !== 'string')
     || (value.complianceReason !== undefined && typeof value.complianceReason !== 'string')) {
     throw new Error('invalid_transfer_request');
   }
@@ -188,7 +189,8 @@ function parseSubmitTransferRequest(value: unknown): SubmitTransferRequest {
   if (!isRecord(value)
     || typeof value.intentId !== 'string'
     || typeof value.signedTransaction !== 'string'
-    || !value.signedTransaction.startsWith('0x')
+    || value.signedTransaction.length < 8
+    || value.signedTransaction.length > 65_536
     || typeof value.hostAuthorizationProof !== 'string'
     || value.hostAuthorizationProof.length <= 20
     || typeof value.idempotencyKey !== 'string'

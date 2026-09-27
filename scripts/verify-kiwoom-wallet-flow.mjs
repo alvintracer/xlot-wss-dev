@@ -140,10 +140,15 @@ try {
 
   await walletFrame.getByRole('button', { name: '채우기' }).click();
   const receiveDialog = walletFrame.getByRole('dialog', { name: /어떤 자산을.*채울까요/ });
-  if (await receiveDialog.locator('.kw-transfer-choice').count() !== 54) {
-    throw new Error('The selected wallet must expose nine native assets plus 45 configured stablecoin deployments.');
+  if (await receiveDialog.locator('.kw-transfer-choice').count() !== 21) {
+    throw new Error('The receive flow must group supported deployments into 21 asset symbols.');
   }
-  await receiveDialog.getByRole('button', { name: /USD Coin.*Ethereum/ }).click();
+  await receiveDialog.getByRole('button', { name: /USD Coin.*USDC.*7개 네트워크/ }).click();
+  const receiveNetworkDialog = walletFrame.getByRole('dialog', { name: /어떤 네트워크로.*채울까요/ });
+  if (await receiveNetworkDialog.locator('.kw-transfer-choice').count() !== 7) {
+    throw new Error('USDC receive must expose seven configured networks after asset selection.');
+  }
+  await receiveNetworkDialog.getByRole('button', { name: /Ethereum.*0 USDC/ }).click();
   const ethereumReceiveDialog = walletFrame.getByRole('dialog', { name: /이 주소로.*자산을 보내주세요/ });
   await ethereumReceiveDialog.getByRole('img', { name: 'USDC 받기 주소 QR' }).waitFor();
   if (await ethereumReceiveDialog.getByRole('button', { name: '주소 복사' }).isDisabled()) {
@@ -154,9 +159,19 @@ try {
 
   await walletFrame.getByRole('button', { name: '보내기' }).click();
   const sendDialog = walletFrame.getByRole('dialog', { name: /어떤 자산을.*보낼까요/ });
-  await sendDialog.getByText('보낼 수 있는 자산이 없어요').waitFor();
-  if (await sendDialog.locator('.kw-transfer-choice:not(:disabled)').count() !== 0) {
-    throw new Error('Send action is enabled without an actual balance.');
+  if (await sendDialog.locator('.kw-transfer-choice').count() !== 21) {
+    throw new Error('The send flow must show supported assets even when every balance is zero.');
+  }
+  await sendDialog.getByRole('button', { name: /USD Coin.*USDC.*7개 네트워크/ }).click();
+  const sendNetworkDialog = walletFrame.getByRole('dialog', { name: /어떤 네트워크에서.*보낼까요/ });
+  await sendNetworkDialog.getByRole('button', { name: /Ethereum.*0 USDC/ }).click();
+  const amountDialog = walletFrame.getByRole('dialog', { name: /얼마를.*보낼까요/ });
+  await amountDialog.getByText('현재 보낼 수 있는 금액은 0원이에요.').waitFor();
+  await amountDialog.getByLabel('보낼 금액 USDC').waitFor();
+  await amountDialog.getByRole('button', { name: '원화로 입력' }).click();
+  await amountDialog.getByLabel('보낼 금액 원화').waitFor();
+  if (!await amountDialog.getByRole('button', { name: '보낼 잔액이 없어요' }).isDisabled()) {
+    throw new Error('Zero-balance send must keep the form visible while blocking progression.');
   }
   await page.screenshot({ path: screenshotPath, fullPage: true });
 
@@ -180,9 +195,10 @@ try {
     walletAddressGroups: 5,
     selectedWalletNetworks: 9,
     selectedWalletReceiveAssets: 54,
+    groupedWalletAssets: 21,
     sarKeyCore: 'real-derivation-and-2-of-3-verification',
     receive: 'real-address-copy-enabled',
-    send: 'blocked-until-balance-quote-kyt-approval',
+    send: 'asset-then-network-zero-balance-form-visible',
     homeScreenshot: homeScreenshotPath,
     screenshot: screenshotPath,
   }, null, 2));

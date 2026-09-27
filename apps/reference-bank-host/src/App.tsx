@@ -293,10 +293,26 @@ export function App() {
     const activeId = active.id;
     const activeSessionToken = session.sessionToken;
     const authorization = await issueDevelopmentHostAuthorization('transfer-approval', activeSessionToken);
-    const signedTransaction = await referenceHostSarKeyCore.signEvmTransactionForAddress(
-      active.request.fromAddress,
-      active.request.transaction,
-    );
+    const transaction = active.request.transaction;
+    const signedTransaction = transaction.type === 'solana-spl'
+      ? await referenceHostSarKeyCore.signSolanaTransactionForAddress(
+          active.request.fromAddress,
+          transaction.unsignedTransactionBase64,
+        )
+      : transaction.type === 'tron-trc20'
+        ? await referenceHostSarKeyCore.signTronTransactionForAddress(
+            active.request.fromAddress,
+            transaction.unsignedTransactionJson,
+          )
+        : transaction.type === 'xrpl-issued'
+          ? await referenceHostSarKeyCore.signXrplTransactionForAddress(
+              active.request.fromAddress,
+              transaction.payment,
+            )
+          : await referenceHostSarKeyCore.signEvmTransactionForAddress(
+              active.request.fromAddress,
+              transaction,
+            );
     if (sessionTokenRef.current !== activeSessionToken
       || securityCeremonyRef.current?.id !== activeId
       || transactionSigningResolver.current !== resolve) return;

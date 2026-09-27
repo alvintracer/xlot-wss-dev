@@ -1,9 +1,12 @@
 import {
   ArrowLeft,
+  ArrowsLeftRight,
   CaretRight,
   CheckCircle,
   Copy,
+  DeviceMobile,
   GasPump,
+  LinkSimple,
   ShareNetwork,
   ShieldCheck,
   Wallet,
@@ -27,7 +30,15 @@ import type {
 } from '@took-wss/contracts';
 
 export type WalletActionMode = 'receive' | 'send' | 'exchange';
-type SendStep = 'asset' | 'recipient' | 'amount' | 'review' | 'success';
+type SendStep = 'asset' | 'network' | 'amount' | 'recipient-method' | 'recipient' | 'review' | 'success';
+type AmountInputMode = 'token' | 'krw';
+type RecipientMode = 'address' | 'phone';
+
+interface AssetGroup {
+  symbol: string;
+  name: string;
+  deployments: WalletReceiveAssetView[];
+}
 
 interface WalletActionSheetProps {
   mode: WalletActionMode;
@@ -45,13 +56,22 @@ interface WalletActionSheetProps {
 
 const numberFormatter = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 });
 
-function parseDisplayNumber(value: string | undefined): number | null {
-  if (!value) return null;
-  const parsed = Number(value.replace(/[^\d.-]/g, ''));
-  return Number.isFinite(parsed) ? parsed : null;
+function tenTo(power: number): bigint {
+  return 10n ** BigInt(Math.max(0, power));
 }
 
-function parseAmountToAtomic(value: string, decimals: number): string | null {
+function parseDecimalFraction(value: string): { units: bigint; scale: bigint } | null {
+  const normalized = value.replaceAll(',', '').trim();
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(normalized);
+  if (!match) return null;
+  const fraction = match[2] ?? '';
+  return {
+    units: BigInt(`${match[1]}${fraction}`),
+    scale: tenTo(fraction.length),
+  };
+}
+
+export function parseAmountToAtomic(value: string, decimals: number): string | null {
   const normalized = value.replaceAll(',', '').trim();
   if (!/^\d+(\.\d+)?$/.test(normalized)) return null;
   const [whole, fraction = ''] = normalized.split('.');
@@ -65,12 +85,67 @@ function parseAmountToAtomic(value: string, decimals: number): string | null {
   }
 }
 
-function estimatedKrw(asset: WalletAssetView | undefined, amount: string): string | null {
-  const assetKrw = parseDisplayNumber(asset?.fiat?.display);
-  const balance = parseDisplayNumber(asset?.balanceDisplay);
-  const requested = Number(amount.replaceAll(',', ''));
-  if (assetKrw === null || balance === null || balance <= 0 || !Number.isFinite(requested)) return null;
-  return `약 ${numberFormatter.format(assetKrw / balance * requested)}원`;
+export function parseKrwToAtomic(value: string, priceDecimal: string | undefined, decimals: number): string | null {
+  const krw = parseDecimalFraction(value);
+  const price = priceDecimal ? parseDecimalFraction(priceDecimal) : null;
+  if (!krw || !price || krw.units <= 0n || price.units <= 0n) return null;
+  const atomic = krw.units * tenTo(decimals) * price.scale / (krw.scale * price.units);
+  return atomic > 0n ? atomic.toString() : null;
+}
+
+export function formatAtomic(value: bigint, decimals: number, maximumFractionDigits = 8): string {
+  const base = tenTo(decimals);
+  const whole = value / base;
+  const fraction = (value % base).toString().padStart(decimals, '0')
+    .slice(0, maximumFractionDigits).replace(/0+$/, '');
+  return `${whole.toLocaleString('en-US')}${fraction ? `.${fraction}` : ''}`;
+}
+
+function krwFromAtomic(asset: WalletReceiveAssetView | undefined, atomic: string | null): bigint | null {
+  const price = asset?.referencePrice && !asset.referencePrice.stale
+    ? parseDecimalFraction(asset.referencePrice.decimal)
+    : null;
+  if (!asset || !atomic || !price) return null;
+  const denominator = tenTo(asset.decimals) * price.scale;
+  const numerator = BigInt(atomic) * price.units;
+  return (numerator + denominator / 2n) / denominator;
+}
+
+function estimatedKrwFromAtomic(asset: WalletReceiveAssetView | undefined, atomic: string | null): string | null {
+  const roundedWon = krwFromAtomic(asset, atomic);
+  return roundedWon === null ? null : `약 ${numberFormatter.format(roundedWon)}원`;
+}
+
+function groupAssets(assets: WalletReceiveAssetView[]): AssetGroup[] {
+  const groups = new Map<string, AssetGroup>();
+  for (const asset of assets) {
+    const current = groups.get(asset.symbol);
+    if (current) current.deployments.push(asset);
+    else groups.set(asset.symbol, { symbol: asset.symbol, name: asset.name, deployments: [asset] });
+  }
+  return [...groups.values()];
+}
+
+function aggregateBalance(group: AssetGroup): string {
+  const ready = group.deployments.filter(({ balanceStatus }) => balanceStatus !== 'unavailable');
+  if (ready.length === 0) return '조회 불가';
+  const decimals = Math.max(...ready.map((asset) => asset.decimals));
+  const total = ready.reduce((sum, asset) => (
+    sum + safeBigInt(asset.balanceAtomic) * tenTo(decimals - asset.decimals)
+  ), 0n);
+  return `${formatAtomic(total, decimals)} ${group.symbol}`;
+}
+
+function isRecipientValid(mode: RecipientMode, value: string, chainId: string): boolean {
+  const normalized = value.trim();
+  if (mode === 'phone') return /^(?:\+82|0)1[016789]\d{7,8}$/.test(normalized.replace(/[\s-]/g, ''));
+  if (chainId === 'ethereum' || chainId === 'polygon' || chainId === 'arbitrum' || chainId === 'base' || chainId === 'bnb') {
+    return /^0x[0-9a-fA-F]{40}$/.test(normalized);
+  }
+  if (chainId === 'solana') return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(normalized);
+  if (chainId === 'tron') return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(normalized);
+  if (chainId === 'xrp') return /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(normalized);
+  return normalized.length >= 20;
 }
 
 function abbreviatedAddress(value: string): string {
@@ -127,30 +202,52 @@ function NetworkPicker({ networks, onSelect }: { networks: WalletNetworkView[]; 
   );
 }
 
-function AssetPicker({ assets, onSelect }: { assets: WalletAssetView[]; onSelect: (asset: WalletAssetView) => void }) {
-  if (assets.length === 0) {
-    return (
-      <div className="kw-transfer-empty">
-        <Wallet aria-hidden="true" />
-        <strong>보낼 수 있는 자산이 없어요</strong>
-        <p>먼저 채우기에서 이 지갑의 주소를 확인하고 자산을 받아보세요.</p>
-      </div>
-    );
-  }
+function AssetGroupPicker({ groups, onSelect }: { groups: AssetGroup[]; onSelect: (group: AssetGroup) => void }) {
+  return (
+    <div className="kw-transfer-choice-list">
+      {groups.map((group) => (
+        <button className="kw-transfer-choice" type="button" key={group.symbol} onClick={() => onSelect(group)}>
+          <span className="kw-transfer-asset-mark" aria-hidden="true">{group.symbol.slice(0, 1)}</span>
+          <span>
+            <strong>{group.name}</strong>
+            <small>{group.symbol} · {group.deployments.length}개 네트워크</small>
+          </span>
+          <span className="kw-transfer-choice__balance">
+            <strong>{aggregateBalance(group)}</strong>
+            <small>전체 네트워크</small>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AssetNetworkPicker({
+  assets,
+  purpose,
+  onSelect,
+}: {
+  assets: WalletReceiveAssetView[];
+  purpose: 'receive' | 'send';
+  onSelect: (asset: WalletReceiveAssetView) => void;
+}) {
   return (
     <div className="kw-transfer-choice-list">
       {assets.map((asset) => {
-        const supported = Boolean(asset.chainId && asset.decimals !== undefined && asset.availableAtomic && asset.transferStatus === 'enabled');
+        const canSelect = purpose === 'receive' || asset.transferStatus === 'enabled';
+        const balanceLabel = asset.balanceStatus === 'unavailable'
+          ? '잔액 조회 불가'
+          : `${asset.balanceDisplay} ${asset.symbol}`;
         return (
-          <button className="kw-transfer-choice" type="button" key={asset.assetId} disabled={!supported} onClick={() => onSelect(asset)}>
+          <button className="kw-transfer-choice" type="button" key={asset.assetId} disabled={!canSelect} onClick={() => onSelect(asset)}>
             <span className="kw-transfer-asset-mark" aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
             <span>
-              <strong>{asset.name}</strong>
-              <small>{asset.network}{supported ? '' : ` · ${asset.transferUnavailableReason ?? '보내기 연동 준비 중'}`}</small>
+              <strong>{asset.network}</strong>
+              <small>{asset.canonical ? '공식 발행 자산' : '브리지 자산'}{!canSelect ? ` · ${asset.transferUnavailableReason ?? '보내기 연결 준비 중'}` : ''}</small>
             </span>
             <span className="kw-transfer-choice__balance">
-              <strong>{asset.fiat?.display ?? '-'}</strong>
-              <small>{asset.balanceDisplay} {asset.symbol}</small>
+              <strong>{balanceLabel}</strong>
+              <small>{asset.referencePrice?.stale ? '원화 시세 업데이트 필요' : asset.referencePrice?.display ?? '원화 시세 없음'}</small>
             </span>
           </button>
         );
@@ -159,39 +256,15 @@ function AssetPicker({ assets, onSelect }: { assets: WalletAssetView[]; onSelect
   );
 }
 
-function ReceiveAssetPicker({
-  assets,
-  onSelect,
-}: {
-  assets: WalletReceiveAssetView[];
-  onSelect: (asset: WalletReceiveAssetView) => void;
-}) {
-  return (
-    <div className="kw-transfer-choice-list">
-      {assets.map((asset) => (
-        <button className="kw-transfer-choice" type="button" key={asset.assetId} onClick={() => onSelect(asset)}>
-          <span className="kw-transfer-asset-mark" aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
-          <span>
-            <strong>{asset.name}</strong>
-            <small>{asset.network}{asset.canonical ? '' : ' · 브리지 자산'}</small>
-          </span>
-          <CaretRight aria-hidden="true" />
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function ReceiveFlow({
   wallet,
   receiveAssets,
   networks,
-  initialChainId,
   onClose,
-}: Pick<WalletActionSheetProps, 'wallet' | 'receiveAssets' | 'networks' | 'initialChainId' | 'onClose'>) {
-  const [selectedAsset, setSelectedAsset] = useState<WalletReceiveAssetView | undefined>(() => (
-    receiveAssets.find((asset) => asset.chainId === initialChainId)
-  ));
+}: Pick<WalletActionSheetProps, 'wallet' | 'receiveAssets' | 'networks' | 'onClose'>) {
+  const groups = useMemo(() => groupAssets(receiveAssets), [receiveAssets]);
+  const [selectedGroup, setSelectedGroup] = useState<AssetGroup>();
+  const [selectedAsset, setSelectedAsset] = useState<WalletReceiveAssetView>();
   const [copied, setCopied] = useState(false);
   const selectedNetwork = networks.find((network) => network.chainId === selectedAsset?.chainId);
   const address = selectedNetwork?.address;
@@ -222,14 +295,26 @@ function ReceiveFlow({
 
   return (
     <>
-      <FlowHeader title="채우기" canGoBack={Boolean(selectedAsset)} onBack={() => setSelectedAsset(undefined)} onClose={onClose} />
+      <FlowHeader
+        title="채우기"
+        canGoBack={Boolean(selectedGroup)}
+        onBack={() => selectedAsset ? setSelectedAsset(undefined) : setSelectedGroup(undefined)}
+        onClose={onClose}
+      />
       <div className="kw-transfer-scroll">
-        {!selectedAsset ? (
+        {!selectedGroup ? (
           <div className="kw-transfer-page">
             <p className="kw-transfer-kicker">{wallet.label}</p>
             <h2 id="kw-wallet-action-title">어떤 자산을<br />채울까요?</h2>
-            <p className="kw-transfer-lead">자산과 받을 네트워크를 선택해 주세요.</p>
-            <ReceiveAssetPicker assets={receiveAssets} onSelect={setSelectedAsset} />
+            <p className="kw-transfer-lead">먼저 자산을 선택해 주세요.</p>
+            <AssetGroupPicker groups={groups} onSelect={setSelectedGroup} />
+          </div>
+        ) : !selectedAsset ? (
+          <div className="kw-transfer-page">
+            <p className="kw-transfer-kicker">{selectedGroup.name} · {selectedGroup.symbol}</p>
+            <h2 id="kw-wallet-action-title">어떤 네트워크로<br />채울까요?</h2>
+            <p className="kw-transfer-lead">보내는 곳과 같은 네트워크를 선택해 주세요.</p>
+            <AssetNetworkPicker assets={selectedGroup.deployments} purpose="receive" onSelect={setSelectedAsset} />
           </div>
         ) : selectedNetwork && address ? (
           <div className="kw-transfer-page kw-receive-page">
@@ -276,18 +361,21 @@ function GasSupportDialog({ quote, onClose }: { quote: PreparedTransfer['gasSpon
 
 function SendFlow({
   wallet,
-  assets,
+  receiveAssets,
   networks,
-  initialChainId,
   onPrepareTransfer,
   onRequestSecureTransactionSignature,
   onSubmitTransfer,
   onClose,
 }: WalletActionSheetProps) {
-  const initialAsset = assets.find((item) => item.chainId === initialChainId);
-  const [step, setStep] = useState<SendStep>(initialAsset ? 'recipient' : 'asset');
-  const [asset, setAsset] = useState<WalletAssetView | undefined>(initialAsset);
+  const groups = useMemo(() => groupAssets(receiveAssets), [receiveAssets]);
+  const [step, setStep] = useState<SendStep>('asset');
+  const [selectedGroup, setSelectedGroup] = useState<AssetGroup>();
+  const [asset, setAsset] = useState<WalletReceiveAssetView>();
+  const [amountMode, setAmountMode] = useState<AmountInputMode>('token');
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>('address');
   const [recipient, setRecipient] = useState('');
+  const [destinationTag, setDestinationTag] = useState('');
   const [amount, setAmount] = useState('');
   const [prepared, setPrepared] = useState<PreparedTransfer | null>(null);
   const [complianceReason, setComplianceReason] = useState('');
@@ -297,12 +385,22 @@ function SendFlow({
   const [gasDialogOpen, setGasDialogOpen] = useState(false);
   const [clock, setClock] = useState(() => Date.now());
   const network = networks.find((candidate) => candidate.chainId === asset?.chainId);
-  const decimals = asset?.decimals;
-  const amountAtomic = decimals === undefined ? null : parseAmountToAtomic(amount, decimals);
+  const amountAtomic = asset
+    ? amountMode === 'token'
+      ? parseAmountToAtomic(amount, asset.decimals)
+      : parseKrwToAtomic(amount, asset.referencePrice?.stale ? undefined : asset.referencePrice?.decimal, asset.decimals)
+    : null;
   const available = safeBigInt(asset?.availableAtomic);
   const validAmount = amountAtomic !== null && BigInt(amountAtomic) <= available;
-  const krw = useMemo(() => estimatedKrw(asset, amount), [asset, amount]);
+  const secondaryAmount = asset && amountAtomic
+    ? amountMode === 'token'
+      ? estimatedKrwFromAtomic(asset, amountAtomic)
+      : `약 ${formatAtomic(BigInt(amountAtomic), asset.decimals)} ${asset.symbol}`
+    : null;
   const quoteExpired = prepared ? clock >= Date.parse(prepared.expiresAt) : false;
+  const recipientValid = asset ? isRecipientValid(recipientMode, recipient, asset.chainId) : false;
+  const destinationTagValid = destinationTag.length === 0
+    || (/^\d{1,10}$/.test(destinationTag) && Number(destinationTag) <= 0xffff_ffff);
 
   useEffect(() => {
     if (step !== 'review' || !prepared) return undefined;
@@ -313,24 +411,57 @@ function SendFlow({
 
   const back = () => {
     setError(null);
-    if (step === 'recipient') setStep('asset');
-    else if (step === 'amount') setStep('recipient');
+    if (step === 'network') {
+      setSelectedGroup(undefined);
+      setStep('asset');
+    } else if (step === 'amount') {
+      setAsset(undefined);
+      setStep('network');
+    } else if (step === 'recipient-method') setStep('amount');
+    else if (step === 'recipient') setStep('recipient-method');
     else if (step === 'review') {
       setPrepared(null);
-      setStep('amount');
+      setStep('recipient');
     } else onClose();
   };
 
-  const selectAsset = (selected: WalletAssetView) => {
+  const selectGroup = (group: AssetGroup) => {
+    setSelectedGroup(group);
+    setStep('network');
+  };
+
+  const selectAsset = (selected: WalletReceiveAssetView) => {
     setAsset(selected);
     setRecipient('');
+    setDestinationTag('');
     setAmount('');
+    setAmountMode('token');
+    setRecipientMode('address');
+    setPrepared(null);
+    setStep('amount');
+  };
+
+  const selectRecipientMode = (mode: RecipientMode) => {
+    setRecipientMode(mode);
+    setRecipient('');
+    setDestinationTag('');
+    setError(null);
     setPrepared(null);
     setStep('recipient');
   };
 
+  const setMaximumAmount = () => {
+    if (!asset || available <= 0n) return;
+    if (amountMode === 'token') {
+      setAmount(formatAtomic(available, asset.decimals, asset.decimals));
+      return;
+    }
+    const maximumKrw = krwFromAtomic(asset, available.toString());
+    if (maximumKrw !== null) setAmount(maximumKrw.toString());
+  };
+
   const prepare = async () => {
-    if (!asset?.chainId || !amountAtomic || !recipient.trim()) return;
+    if (!asset?.chainId || !amountAtomic || !recipient.trim() || recipientMode !== 'address' || !destinationTagValid) return;
     setBusy(true);
     setError(null);
     try {
@@ -340,7 +471,8 @@ function SendFlow({
         chainId: asset.chainId,
         recipient: recipient.trim(),
         amountAtomic,
-        channel: 'address',
+        channel: recipientMode,
+        ...(asset.chainId === 'xrp' && destinationTag ? { destinationTag } : {}),
         ...(complianceReason.trim() ? { complianceReason: complianceReason.trim() } : {}),
       });
       setPrepared(quote);
@@ -390,39 +522,91 @@ function SendFlow({
           <div className="kw-transfer-page">
             <p className="kw-transfer-kicker">{wallet.label}</p>
             <h2 id="kw-wallet-action-title">어떤 자산을<br />보낼까요?</h2>
-            <p className="kw-transfer-lead">보낼 수 있는 잔액이 있는 자산만 보여드려요.</p>
-            <AssetPicker assets={assets} onSelect={selectAsset} />
+            <p className="kw-transfer-lead">보유 여부와 관계없이 지원 자산을 선택할 수 있어요.</p>
+            <AssetGroupPicker groups={groups} onSelect={selectGroup} />
+          </div>
+        ) : step === 'network' && selectedGroup ? (
+          <div className="kw-transfer-page">
+            <p className="kw-transfer-kicker">{selectedGroup.name} · {selectedGroup.symbol}</p>
+            <h2 id="kw-wallet-action-title">어떤 네트워크에서<br />보낼까요?</h2>
+            <p className="kw-transfer-lead">네트워크별 보유 수량과 보내기 지원 상태를 확인해 주세요.</p>
+            <AssetNetworkPicker assets={selectedGroup.deployments} purpose="send" onSelect={selectAsset} />
+          </div>
+        ) : step === 'amount' && asset ? (
+          <div className="kw-transfer-page kw-transfer-form-page">
+            <p className="kw-transfer-kicker">{asset.network} · {asset.symbol}</p>
+            <h2 id="kw-wallet-action-title">얼마를<br />보낼까요?</h2>
+            <div className="kw-amount-card">
+              <div className="kw-amount-card__head">
+                <span>보낼 수 있는 금액 {asset.balanceDisplay} {asset.symbol}</span>
+                <button type="button" onClick={() => {
+                  setAmount('');
+                  setAmountMode((current) => current === 'token' ? 'krw' : 'token');
+                }}><ArrowsLeftRight aria-hidden="true" />{amountMode === 'token' ? '원화로 입력' : `${asset.symbol}로 입력`}</button>
+              </div>
+              <label className="kw-amount-input">
+                <input autoFocus inputMode="decimal" value={amount} placeholder="0" aria-label={`보낼 금액 ${amountMode === 'token' ? asset.symbol : '원화'}`} onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1'))} />
+                <b>{amountMode === 'token' ? asset.symbol : '원'}</b>
+              </label>
+              <div className="kw-amount-card__foot">
+                <small>{secondaryAmount ?? (amountMode === 'krw' && (!asset.referencePrice || asset.referencePrice.stale) ? '원화 시세를 업데이트한 뒤 입력할 수 있어요.' : '금액을 입력해 주세요.')}</small>
+                <button type="button" disabled={available <= 0n} onClick={setMaximumAmount}>전액</button>
+              </div>
+            </div>
+            {asset.balanceStatus === 'unavailable' ? (
+              <div className="kw-transfer-zero-notice"><WarningCircle aria-hidden="true" /><span><strong>잔액을 확인하지 못했어요.</strong>잠시 후 다시 확인해 주세요. 조회 전에는 보내기를 진행하지 않아요.</span></div>
+            ) : available === 0n ? (
+              <div className="kw-transfer-zero-notice"><Wallet aria-hidden="true" /><span><strong>현재 보낼 수 있는 금액은 0원이에요.</strong>자산과 금액 입력 방식을 미리 확인할 수 있고, 잔액을 받은 뒤 바로 보낼 수 있어요.</span></div>
+            ) : null}
+            {!validAmount && amount ? <p className="kw-transfer-error" role="alert">보낼 수 있는 금액 안에서 입력해 주세요.</p> : null}
+            {error ? <p className="kw-transfer-error" role="alert">{error}</p> : null}
+          </div>
+        ) : step === 'recipient-method' && asset ? (
+          <div className="kw-transfer-page">
+            <p className="kw-transfer-kicker">{asset.network} · {amountMode === 'krw' ? `${amount}원` : `${amount} ${asset.symbol}`}</p>
+            <h2 id="kw-wallet-action-title">어떻게<br />보낼까요?</h2>
+            <p className="kw-transfer-lead">지갑 주소 또는 휴대폰 번호를 선택해 주세요.</p>
+            <div className="kw-recipient-methods">
+              <button type="button" onClick={() => selectRecipientMode('address')}><span><LinkSimple aria-hidden="true" /></span><strong>지갑 주소로 보내기</strong><small>받는 분의 {asset.network} 주소로 보내요.</small><CaretRight aria-hidden="true" /></button>
+              <button type="button" onClick={() => selectRecipientMode('phone')}><span><DeviceMobile aria-hidden="true" /></span><strong>휴대폰 번호로 보내기</strong><small>본인 확인 후 받을 수 있는 수령 링크를 보내요.</small><CaretRight aria-hidden="true" /></button>
+            </div>
           </div>
         ) : step === 'recipient' && asset ? (
           <div className="kw-transfer-page kw-transfer-form-page">
             <p className="kw-transfer-kicker">{asset.network} · {asset.symbol}</p>
-            <h2 id="kw-wallet-action-title">어디로<br />보낼까요?</h2>
+            <h2 id="kw-wallet-action-title">{recipientMode === 'address' ? <>받는 주소를<br />입력해 주세요</> : <>받는 분의 번호를<br />입력해 주세요</>}</h2>
             <label className="kw-transfer-field">
-              <span>받는 지갑 주소</span>
+              <span>{recipientMode === 'address' ? '받는 지갑 주소' : '휴대폰 번호'}</span>
               <input
                 autoFocus
-                autoComplete="off"
+                type={recipientMode === 'phone' ? 'tel' : 'text'}
+                inputMode={recipientMode === 'phone' ? 'tel' : 'text'}
+                autoComplete={recipientMode === 'phone' ? 'tel' : 'off'}
                 autoCapitalize="none"
                 spellCheck={false}
                 value={recipient}
-                placeholder={`${asset.network} 주소 입력`}
+                placeholder={recipientMode === 'address' ? `${asset.network} 주소 입력` : '010-0000-0000'}
                 onChange={(event) => setRecipient(event.target.value)}
               />
             </label>
-            {error ? <p className="kw-transfer-error" role="alert">{error}</p> : null}
-          </div>
-        ) : step === 'amount' && asset ? (
-          <div className="kw-transfer-page kw-transfer-form-page">
-            <p className="kw-transfer-kicker">{asset.network} · {abbreviatedAddress(recipient)}</p>
-            <h2 id="kw-wallet-action-title">얼마를<br />보낼까요?</h2>
-            <div className="kw-amount-card">
-              <label>
-                <span>보낼 수 있는 금액 {asset.balanceDisplay} {asset.symbol}</span>
-                <span className="kw-amount-input"><input autoFocus inputMode="decimal" value={amount} placeholder="0" onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ''))} /><b>{asset.symbol}</b></span>
+            {recipientMode === 'address' && asset.chainId === 'xrp' ? (
+              <label className="kw-transfer-field kw-transfer-field--secondary">
+                <span>목적지 태그 (선택)</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={destinationTag}
+                  placeholder="거래소에서 안내한 숫자"
+                  onChange={(event) => setDestinationTag(event.target.value.replace(/\D/g, '').slice(0, 10))}
+                />
               </label>
-              <small>{krw ?? '원화 환산 정보 없음'}</small>
-            </div>
-            {!validAmount && amount ? <p className="kw-transfer-error" role="alert">보낼 수 있는 금액 안에서 입력해 주세요.</p> : null}
+            ) : null}
+            <p className="kw-transfer-field-hint">{recipientMode === 'address' ? '네트워크가 다르면 자산을 찾기 어려울 수 있어요.' : '상대방은 수령 안내를 받고 본인 확인 후 자산을 받아요.'}</p>
+            {recipientMode === 'address' && asset.chainId === 'xrp' ? <p className="kw-transfer-field-hint">거래소가 목적지 태그를 안내했다면 반드시 함께 입력해 주세요.</p> : null}
+            {recipientMode === 'phone' ? <div className="kw-transfer-bridge-notice"><ShieldCheck aria-hidden="true" /><span><strong>휴대폰 송금 연결을 준비하고 있어요.</strong>에스크로 예치와 수령 링크 발급이 연결된 뒤 실제 보내기를 진행할 수 있어요.</span></div> : null}
+            {recipient.length > 0 && !recipientValid ? <p className="kw-transfer-error" role="alert">{recipientMode === 'address' ? '받는 주소 형식을 다시 확인해 주세요.' : '휴대폰 번호를 다시 확인해 주세요.'}</p> : null}
+            {!destinationTagValid ? <p className="kw-transfer-error" role="alert">목적지 태그는 0부터 4,294,967,295 사이의 숫자로 입력해 주세요.</p> : null}
             {error ? <p className="kw-transfer-error" role="alert">{error}</p> : null}
           </div>
         ) : step === 'review' && asset && prepared ? (
@@ -435,8 +619,9 @@ function SendFlow({
             </div>
             <dl className="kw-transfer-review-list">
               <div><dt>받는 주소</dt><dd>{abbreviatedAddress(prepared.recipient)}</dd></div>
+              {prepared.destinationTag !== undefined ? <div><dt>목적지 태그</dt><dd>{prepared.destinationTag}</dd></div> : null}
               <div><dt>네트워크</dt><dd>{prepared.network}</dd></div>
-              <div><dt>네트워크 수수료</dt><dd>{prepared.networkFee.amountDisplay} {prepared.networkFee.symbol}{prepared.networkFee.fiatDisplay ? <small>{prepared.networkFee.fiatDisplay}</small> : null}</dd></div>
+              <div><dt>{prepared.networkFee.maximum ? '최대 네트워크 수수료' : '네트워크 수수료'}</dt><dd>{prepared.networkFee.amountDisplay} {prepared.networkFee.symbol}{prepared.networkFee.fiatDisplay ? <small>{prepared.networkFee.fiatDisplay}</small> : null}</dd></div>
               <div><dt>수수료 부담</dt><dd><button type="button" onClick={() => setGasDialogOpen(true)}>{prepared.gasSponsorship.status === 'sponsored' ? '서비스 부담 · 적용됨' : '고객 부담 · 상세 보기'}<CaretRight aria-hidden="true" /></button></dd></div>
               <div><dt>견적 유효시간</dt><dd>{quoteExpired ? '만료됨' : `${new Date(prepared.expiresAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}까지`}</dd></div>
             </dl>
@@ -462,10 +647,10 @@ function SendFlow({
           </div>
         ) : null}
       </div>
-      {step === 'recipient' ? (
-        <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={recipient.trim().length < 16} onClick={() => setStep('amount')}>다음</button></footer>
-      ) : step === 'amount' ? (
-        <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={!validAmount || busy} aria-busy={busy} onClick={() => void prepare()}>{busy ? '확인하고 있어요' : '보내기 조건 확인'}</button></footer>
+      {step === 'amount' ? (
+        <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={!validAmount} onClick={() => setStep('recipient-method')}>{asset?.balanceStatus === 'unavailable' ? '잔액 확인이 필요해요' : available <= 0n ? '보낼 잔액이 없어요' : '다음'}</button></footer>
+      ) : step === 'recipient' ? (
+        <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={!recipientValid || !destinationTagValid || recipientMode === 'phone' || busy} aria-busy={busy} onClick={() => void prepare()}>{recipientMode === 'phone' ? '휴대폰 송금 연결 준비 중' : busy ? '확인하고 있어요' : '보내기 조건 확인'}</button></footer>
       ) : step === 'review' ? (
         <footer className="kw-transfer-footer"><button className="kw-button" type="button" disabled={busy || (!quoteExpired && (Boolean(reviewBlocked) || (Boolean(needsReason) && complianceReason.trim().length < 5)))} aria-busy={busy} onClick={() => void (quoteExpired || needsReason ? prepare() : execute())}>{busy ? '처리하고 있어요' : quoteExpired ? '견적 다시 확인' : needsReason ? '위험도 다시 확인' : '인증하고 보내기'}</button></footer>
       ) : step === 'success' ? (

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { verifyAsync } from '@noble/ed25519';
+import { PublicKey, SystemProgram, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
 import { ethers } from 'ethers';
+import { decode } from 'xrpl';
 import { ReferenceHostSarKeyCore } from './index';
 
 describe('reference host SAR key core', () => {
@@ -87,5 +90,52 @@ describe('reference host SAR key core', () => {
     expect(transaction.to).toBe(token);
     expect(transaction.value).toBe(0n);
     expect(transaction.data).toBe(data);
+  });
+
+  it('signs the exact Solana v0 message with the wallet slot key', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    const wallet = await core.createWallet();
+    const from = wallet.addresses.find(({ addressGroupId }) => addressGroupId === 'solana')!.address;
+    const payer = new PublicKey(from);
+    const message = new TransactionMessage({
+      payerKey: payer,
+      recentBlockhash: '11111111111111111111111111111111',
+      instructions: [SystemProgram.transfer({ fromPubkey: payer, toPubkey: new PublicKey('Vote111111111111111111111111111111111111111'), lamports: 1 })],
+    }).compileToV0Message();
+    const unsigned = new VersionedTransaction(message);
+    const signedBase64 = await core.signSolanaTransactionForAddress(from, Buffer.from(unsigned.serialize()).toString('base64'));
+    const signed = VersionedTransaction.deserialize(Buffer.from(signedBase64, 'base64'));
+
+    expect(signed.message.serialize()).toEqual(unsigned.message.serialize());
+    await expect(verifyAsync(signed.signatures[0]!, signed.message.serialize(), payer.toBytes())).resolves.toBe(true);
+  });
+
+  it('signs an exact XRPL issued-currency payment with the wallet slot key', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    const wallet = await core.createWallet();
+    const from = wallet.addresses.find(({ addressGroupId }) => addressGroupId === 'xrp')!.address;
+    const blob = await core.signXrplTransactionForAddress(from, {
+      TransactionType: 'Payment',
+      Account: from,
+      Destination: 'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh',
+      Amount: {
+        currency: '524C555344000000000000000000000000000000',
+        issuer: 'rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De',
+        value: '1',
+      },
+      Flags: 0x8000_0000,
+      Sequence: 1,
+      Fee: '12',
+      LastLedgerSequence: 100,
+    });
+    const payment = decode(blob);
+
+    expect(payment.Account).toBe(from);
+    expect(payment.TransactionType).toBe('Payment');
+    expect(payment.Amount).toEqual({
+      currency: '524C555344000000000000000000000000000000',
+      issuer: 'rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De',
+      value: '1',
+    });
   });
 });

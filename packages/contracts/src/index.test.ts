@@ -177,6 +177,75 @@ describe('host initialization contract', () => {
       requestId: 'request-6',
       request: { ...erc20SigningRequest, transaction: { ...erc20SigningRequest.transaction, data: undefined } },
     })).toBe(false);
+    const nonEvmSigningRequests = [
+      {
+        ...signingRequest,
+        chainId: 'solana',
+        network: 'Solana',
+        assetSymbol: 'USDC',
+        fromAddress: '11111111111111111111111111111111',
+        recipient: '22222222222222222222222222222222',
+        transaction: {
+          type: 'solana-spl',
+          unsignedTransactionBase64: 'A'.repeat(64),
+          recentBlockhash: '11111111111111111111111111111111',
+          lastValidBlockHeight: 123,
+          mintAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          sourceTokenAccount: '33333333333333333333333333333333',
+          destinationTokenAccount: '44444444444444444444444444444444',
+          amountAtomic: '1000000',
+          feeLamports: '5000',
+        },
+      },
+      {
+        ...signingRequest,
+        chainId: 'tron',
+        network: 'TRON',
+        assetSymbol: 'USDT',
+        fromAddress: 'TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj',
+        recipient: 'TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m9',
+        transaction: {
+          type: 'tron-trc20',
+          unsignedTransactionJson: JSON.stringify({ raw_data_hex: 'ab'.repeat(32) }),
+          transactionId: 'ab'.repeat(32),
+          tokenAddress: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+          amountAtomic: '1000000',
+          feeLimitSun: '100000000',
+        },
+      },
+      {
+        ...signingRequest,
+        chainId: 'xrp',
+        network: 'XRP Ledger',
+        assetSymbol: 'RLUSD',
+        fromAddress: 'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh',
+        recipient: 'rLs1MzkFWCxTbuAHgjeTZK4fcCDDnf2KRv',
+        destinationTag: '1234',
+        transaction: {
+          type: 'xrpl-issued',
+          payment: {
+            TransactionType: 'Payment',
+            Account: 'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh',
+            Destination: 'rLs1MzkFWCxTbuAHgjeTZK4fcCDDnf2KRv',
+            Amount: { currency: '524C555344000000000000000000000000000000', issuer: 'rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De', value: '1' },
+            DestinationTag: 1234,
+            Flags: 0x8000_0000,
+            Sequence: 1,
+            Fee: '12',
+            LastLedgerSequence: 100,
+          },
+          snapshotLedgerIndex: 96,
+        },
+      },
+    ] as const;
+    for (const [index, request] of nonEvmSigningRequests.entries()) {
+      expect(isWalletToHostMessage({
+        type: 'took-wss:secure-transaction-sign-request',
+        protocolVersion: 1,
+        requestId: `request-non-evm-${index}`,
+        request,
+      })).toBe(true);
+    }
     expect(isHostToWalletMessage({
       type: 'took-wss:secure-transaction-sign-result',
       protocolVersion: 1,
@@ -184,7 +253,7 @@ describe('host initialization contract', () => {
       result: {
         status: 'completed',
         intentId: 'intent-1',
-        signedTransaction: '0x1234',
+        signedTransaction: 'signed-transaction-payload',
         hostAuthorizationProof: 'signed-host-authorization-proof-123456',
       },
     })).toBe(true);

@@ -353,18 +353,38 @@ export function supportedReceiveAssets(
       symbol: config.symbol,
       name: config.name,
       network: network.network,
+      decimals: config.decimals,
       canonical: true,
+      balanceStatus: 'sandbox',
+      balanceAtomic: '0',
+      balanceDisplay: '0',
+      availableAtomic: '0',
+      transferStatus: config.evmChainId ? 'enabled' : 'unavailable',
+      ...(!config.evmChainId ? { transferUnavailableReason: '이 네트워크의 보내기 서명 연동을 준비하고 있어요.' } : {}),
     };
-    return [native, ...deployments.filter(({ chainId }) => chainId === network.chainId).map((deployment) => ({
-      assetId: deployment.assetId,
-      chainId: deployment.chainId,
-      addressGroupId: network.addressGroupId,
-      symbol: deployment.symbol,
-      name: deployment.name,
-      network: network.network,
-      tokenAddress: deployment.tokenAddress,
-      canonical: deployment.canonical,
-    }))];
+    return [native, ...deployments.filter(({ chainId }) => chainId === network.chainId).map((deployment) => {
+      const canTransfer = deployment.transport === 'evm-erc20'
+        || deployment.transport === 'solana-spl'
+        || deployment.transport === 'tron-trc20'
+        || deployment.transport === 'xrpl-issued';
+      return {
+        assetId: deployment.assetId,
+        chainId: deployment.chainId,
+        addressGroupId: network.addressGroupId,
+        symbol: deployment.symbol,
+        name: deployment.name,
+        network: network.network,
+        decimals: deployment.decimals,
+        tokenAddress: deployment.tokenAddress,
+        canonical: deployment.canonical,
+        balanceStatus: 'sandbox' as const,
+        balanceAtomic: '0',
+        balanceDisplay: '0',
+        availableAtomic: '0',
+        transferStatus: canTransfer ? 'enabled' as const : 'unavailable' as const,
+        ...(!canTransfer ? { transferUnavailableReason: '이 네트워크의 보내기 서명 연동을 준비하고 있어요.' } : {}),
+      };
+    })];
   });
 }
 
@@ -374,13 +394,14 @@ export async function queryWalletPortfolio(
 ): Promise<WalletPortfolioResult> {
   const asOf = new Date().toISOString();
   const deployments = stablecoinsForPolicy(networks.map(({ chainId }) => chainId), enabledStablecoins);
+  const receiveAssets = supportedReceiveAssets(networks, enabledStablecoins);
   const settled = await Promise.allSettled(networks.map((network) => (
     scanNetwork(network, deployments.filter(({ chainId }) => chainId === network.chainId))
   )));
   const scans = settled.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
   const holdings = scans.flatMap(({ balances }) => balances.filter(({ balance }) => balance > 0n));
   const balanceQueriesComplete = settled.every((result) => result.status === 'fulfilled' && result.value.complete);
-  const prices = await priceSnapshots(holdings.map(({ config, deployment }) => deployment?.symbol ?? config.symbol))
+  const prices = await priceSnapshots(receiveAssets.map(({ symbol }) => symbol))
     .catch(() => new Map<string, PriceSnapshot>());
   const assets = holdings.map(({ network, config, deployment, balance }): WalletAssetView => {
     const decimals = deployment?.decimals ?? config.decimals;
@@ -388,7 +409,12 @@ export async function queryWalletPortfolio(
     const displayBalance = formatUnits(balance, decimals);
     const price = prices.get(symbol);
     const numericBalance = Number(displayBalance.replaceAll(',', ''));
-    const canTransfer = Boolean(config.evmChainId && (!deployment || deployment.transport === 'evm-erc20'));
+    const canTransfer = deployment
+      ? deployment.transport === 'evm-erc20'
+        || deployment.transport === 'solana-spl'
+        || deployment.transport === 'tron-trc20'
+        || deployment.transport === 'xrpl-issued'
+      : Boolean(config.evmChainId);
     return {
       assetId: deployment?.assetId ?? `${network.chainId}:native`,
       chainId: network.chainId,
@@ -419,9 +445,35 @@ export async function queryWalletPortfolio(
     return sum + (Number.isFinite(numeric) ? numeric : 0);
   }, 0);
   const providers = [...new Set([...prices.values()].map((price) => price.provider))];
+  const completeChains = new Set(settled.flatMap((result, index) => (
+    result.status === 'fulfilled' && result.value.complete ? [networks[index]!.chainId] : []
+  )));
+  const scannedBalances = new Map(scans.flatMap(({ balances }) => balances.map(({ network, deployment, balance }) => (
+    [deployment?.assetId ?? `${network.chainId}:native`, balance] as const
+  ))));
+  const catalog = receiveAssets.map((asset): WalletReceiveAssetView => {
+    const balance = completeChains.has(asset.chainId) ? scannedBalances.get(asset.assetId) : undefined;
+    const price = prices.get(asset.symbol);
+    return {
+      ...asset,
+      balanceStatus: balance === undefined ? 'unavailable' : 'ready',
+      balanceAtomic: balance?.toString() ?? '0',
+      balanceDisplay: balance === undefined ? '-' : formatUnits(balance, asset.decimals),
+      availableAtomic: balance?.toString() ?? '0',
+      ...(price ? {
+        referencePrice: {
+          currency: 'KRW' as const,
+          decimal: String(price.krw),
+          display: formatKrw(price.krw),
+          asOf: price.asOf,
+          stale: Date.now() - Date.parse(price.asOf) > 5 * 60_000,
+        },
+      } : {}),
+    };
+  });
   return {
     assets,
-    receiveAssets: supportedReceiveAssets(networks, enabledStablecoins),
+    receiveAssets: catalog,
     ...(balanceQueriesComplete && allPriced ? {
       totalFiat: { currency: 'KRW' as const, display: formatKrw(total), asOf, stale: assets.some((asset) => asset.fiat?.stale) },
     } : {}),

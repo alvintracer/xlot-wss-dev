@@ -44,17 +44,32 @@ registry; tenant manifests contain symbols rather than duplicated addresses.
 
 - Balance discovery: native and configured stablecoin balances are queried on
   EVM networks, Solana, TRON, and XRP Ledger. Bitcoin remains native-only.
-- Receive: every policy-enabled deployment appears in the asset/network picker
-  even when its balance is zero, and its registered wallet address is rendered
-  as the QR payload.
-- Send: configured EVM ERC-20 assets support amount validation, token-contract
-  allowlisting, gas estimation, fail-closed KYT, host confirmation, SAR signing,
-  exact signed-payload verification, and broadcast.
-- Non-EVM token send: Solana SPL, TRON TRC-20, and XRP issued-currency signing
-  and broadcast remain unavailable until their host signers are implemented.
+- Receive: the customer selects an asset symbol first and then one of its
+  chain-specific deployments. Every policy-enabled deployment remains
+  available at zero balance, and its registered wallet address is rendered as
+  the QR payload.
+- Send: configured EVM ERC-20, Solana SPL, TRON TRC-20, and XRPL issued assets
+  support amount validation, token-identity allowlisting, chain-native fee
+  preparation, fail-closed KYT, host confirmation, SAR signing, exact
+  signed-payload verification, and broadcast. The same asset-first then
+  network selection uses a zero-balance-inclusive catalog, so the amount field
+  remains visible with an explicit zero available amount instead of becoming an
+  empty state. Token and KRW inputs resolve to an atomic string before prepare.
+- Phone send: the customer-facing route selection and phone-input state are
+  present, but execution remains disabled until the dedicated phone-escrow
+  quote, deposit/relay, claim-link, and SMS adapter is connected. Phone numbers
+  are not sent to the ordinary address-transfer endpoint.
+- Non-EVM token send: Solana SPL builds a v0 transaction and creates the
+  destination associated token account when needed; TRON TRC-20 builds and
+  signs the exact trigger-smart-contract transaction; XRPL verifies source and
+  destination trust lines and supports an optional destination tag. Each signed
+  payload is checked against the prepared payload before audit authorization
+  and broadcast.
 - Fee abstraction: permit-relay eligibility may be quoted, but the direct
-  ERC-20 path still requires the wallet to hold the network's native gas asset.
-  The UI must not say sponsorship was applied until relay execution is used.
+  paths still require the wallet to hold the network's native gas asset. TRON
+  displays the configured fee limit as a maximum; Solana includes ATA rent when
+  applicable. The UI must not say sponsorship was applied until relay execution
+  is used.
 - XRP Ledger: receiving an issued asset such as RLUSD, USDC, or XSGD requires
   an appropriate trust line. The receive screen calls this out; trust-line
   creation is not yet automated.

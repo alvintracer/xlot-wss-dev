@@ -1,4 +1,4 @@
-import { getPublicKeyAsync } from '@noble/ed25519';
+import { getPublicKeyAsync, signAsync } from '@noble/ed25519';
 import { ethers } from 'ethers';
 import { encodeAccountID } from 'ripple-address-codec';
 import { combine, split } from 'shamir-secret-sharing';
@@ -82,6 +82,11 @@ function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary);
+}
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
 async function encryptRecoveryEnvelope(
@@ -318,39 +323,122 @@ export class ReferenceHostSarKeyCore {
     this.#developmentVaultKeys.delete(keyHandle);
   }
 
+  async #withRecoveredMnemonic<T>(
+    keyHandle: string,
+    operation: (mnemonic: string) => Promise<T>,
+  ): Promise<T> {
+    const shares = await Promise.all([this.#stores[0].get(keyHandle), this.#stores[1].get(keyHandle)]);
+    if (shares.some((share) => share === null)) throw new Error('SAR shares are unavailable.');
+    const entropy = await combine(shares as Uint8Array[]);
+    try {
+      return await operation(ethers.Mnemonic.fromEntropy(entropy).phrase);
+    } finally {
+      entropy.fill(0);
+      for (const share of shares) share?.fill(0);
+    }
+  }
+
+  #keyHandleForAddress(addressGroupId: SarAddressGroupId, address: string): string {
+    const matching = [...this.#publicAddresses.entries()].find(([, addresses]) => (
+      addresses.some((candidate) => candidate.addressGroupId === addressGroupId
+        && (addressGroupId === 'evm'
+          ? candidate.address.toLowerCase() === address.toLowerCase()
+          : candidate.address === address))
+    ));
+    if (!matching) throw new Error('No key handle is available for this wallet address.');
+    return matching[0];
+  }
+
   async signEvmTransactionForAddress(
     fromAddress: string,
     transaction: EvmTransactionToSign,
   ): Promise<string> {
-    const matching = [...this.#publicAddresses.entries()].find(([, addresses]) => (
-      addresses.some((address) => address.addressGroupId === 'evm' && address.address.toLowerCase() === fromAddress.toLowerCase())
-    ));
-    if (!matching) throw new Error('No key handle is available for this wallet address.');
-    const [keyHandle] = matching;
-    const shares = await Promise.all([this.#stores[0].get(keyHandle), this.#stores[1].get(keyHandle)]);
-    if (shares.some((share) => share === null)) throw new Error('SAR shares are unavailable.');
-    const entropy = await combine(shares as Uint8Array[]);
-    let seed = new Uint8Array();
-    try {
-      const mnemonic = ethers.Mnemonic.fromEntropy(entropy).phrase;
-      seed = Uint8Array.from(ethers.getBytes(ethers.Mnemonic.fromPhrase(mnemonic).computeSeed()));
-      const signer = ethers.HDNodeWallet.fromSeed(seed).derivePath("m/44'/60'/0'/0/0");
-      if (signer.address.toLowerCase() !== fromAddress.toLowerCase()) throw new Error('Derived signer address mismatch.');
-      return await signer.signTransaction({
-        type: 0,
-        chainId: transaction.chainId,
-        nonce: transaction.nonce,
-        to: transaction.to,
-        value: BigInt(transaction.value),
-        gasLimit: BigInt(transaction.gasLimit),
-        gasPrice: BigInt(transaction.gasPrice),
-        data: transaction.data ?? '0x',
+    const keyHandle = this.#keyHandleForAddress('evm', fromAddress);
+    return this.#withRecoveredMnemonic(keyHandle, async (mnemonic) => {
+      const seed = Uint8Array.from(ethers.getBytes(ethers.Mnemonic.fromPhrase(mnemonic).computeSeed()));
+      try {
+        const signer = ethers.HDNodeWallet.fromSeed(seed).derivePath("m/44'/60'/0'/0/0");
+        if (signer.address.toLowerCase() !== fromAddress.toLowerCase()) throw new Error('Derived signer address mismatch.');
+        return await signer.signTransaction({
+          type: 0,
+          chainId: transaction.chainId,
+          nonce: transaction.nonce,
+          to: transaction.to,
+          value: BigInt(transaction.value),
+          gasLimit: BigInt(transaction.gasLimit),
+          gasPrice: BigInt(transaction.gasPrice),
+          data: transaction.data ?? '0x',
+        });
+      } finally {
+        seed.fill(0);
+      }
+    });
+  }
+
+  async signSolanaTransactionForAddress(fromAddress: string, unsignedTransactionBase64: string): Promise<string> {
+    const keyHandle = this.#keyHandleForAddress('solana', fromAddress);
+    return this.#withRecoveredMnemonic(keyHandle, async (mnemonic) => {
+      const seed = Uint8Array.from(ethers.getBytes(ethers.Mnemonic.fromPhrase(mnemonic).computeSeed()));
+      const privateKey = await deriveSlip10Ed25519(seed, [0x8000002c, 0x800001f5, 0x80000000, 0x80000000]);
+      try {
+        const [{ PublicKey, VersionedTransaction }, publicKeyBytes] = await Promise.all([
+          import('@solana/web3.js'),
+          getPublicKeyAsync(privateKey),
+        ]);
+        const publicKey = new PublicKey(publicKeyBytes);
+        if (publicKey.toBase58() !== fromAddress) throw new Error('Derived signer address mismatch.');
+        const transaction = VersionedTransaction.deserialize(base64ToBytes(unsignedTransactionBase64));
+        const payer = transaction.message.staticAccountKeys[0];
+        if (!payer || payer.toBase58() !== fromAddress) throw new Error('Solana fee payer mismatch.');
+        const signature = await signAsync(transaction.message.serialize(), privateKey);
+        transaction.addSignature(publicKey, signature);
+        return bytesToBase64(transaction.serialize());
+      } finally {
+        seed.fill(0);
+        privateKey.fill(0);
+      }
+    });
+  }
+
+  async signTronTransactionForAddress(fromAddress: string, unsignedTransactionJson: string): Promise<string> {
+    const keyHandle = this.#keyHandleForAddress('tron', fromAddress);
+    return this.#withRecoveredMnemonic(keyHandle, async (mnemonic) => {
+      const seed = Uint8Array.from(ethers.getBytes(ethers.Mnemonic.fromPhrase(mnemonic).computeSeed()));
+      try {
+        const signer = ethers.HDNodeWallet.fromSeed(seed).derivePath("m/44'/195'/0'/0/0");
+        const privateKey = signer.privateKey.slice(2);
+        const module = await import('tronweb');
+        const TronWebConstructor = module.TronWeb;
+        const tronWeb = new TronWebConstructor({ fullHost: 'https://api.trongrid.io', privateKey });
+        const derivedAddress = tronWeb.address.fromPrivateKey(privateKey);
+        if (derivedAddress !== fromAddress) throw new Error('Derived signer address mismatch.');
+        const transaction = JSON.parse(unsignedTransactionJson) as Record<string, unknown>;
+        const signed = await tronWeb.trx.sign(transaction as never, privateKey);
+        return JSON.stringify(signed);
+      } finally {
+        seed.fill(0);
+      }
+    });
+  }
+
+  async signXrplTransactionForAddress(
+    fromAddress: string,
+    payment: unknown,
+  ): Promise<string> {
+    const keyHandle = this.#keyHandleForAddress('xrp', fromAddress);
+    return this.#withRecoveredMnemonic(keyHandle, async (mnemonic) => {
+      const { Wallet } = await import('xrpl');
+      const wallet = Wallet.fromMnemonic(mnemonic, {
+        derivationPath: "m/44'/144'/0'/0/0",
+        mnemonicEncoding: 'bip39',
       });
-    } finally {
-      entropy.fill(0);
-      seed.fill(0);
-      for (const share of shares) share?.fill(0);
-    }
+      if (wallet.address !== fromAddress) throw new Error('Derived signer address mismatch.');
+      const signed = wallet.sign(payment as never);
+      if (!/^[A-F0-9]+$/u.test(signed.tx_blob) || !wallet.verifyTransaction(signed.tx_blob)) {
+        throw new Error('XRPL transaction signature verification failed.');
+      }
+      return signed.tx_blob;
+    });
   }
 
   async signEvmNativeTransactionForAddress(

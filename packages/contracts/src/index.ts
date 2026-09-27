@@ -236,8 +236,22 @@ export interface WalletReceiveAssetView {
   symbol: string;
   name: string;
   network: string;
+  decimals: number;
   tokenAddress?: string;
   canonical: boolean;
+  balanceStatus: 'ready' | 'unavailable' | 'sandbox';
+  balanceAtomic: string;
+  balanceDisplay: string;
+  availableAtomic: string;
+  transferStatus: 'enabled' | 'unavailable';
+  transferUnavailableReason?: string;
+  referencePrice?: {
+    currency: 'KRW';
+    decimal: string;
+    display: string;
+    asOf: string;
+    stale: boolean;
+  };
 }
 
 export type TransferChannel = 'address' | 'phone' | 'message';
@@ -249,6 +263,7 @@ export interface PrepareTransferRequest {
   recipient: string;
   amountAtomic: string;
   channel: TransferChannel;
+  destinationTag?: string;
   complianceReason?: string;
 }
 
@@ -261,6 +276,7 @@ export interface PreparedTransfer {
   assetSymbol: string;
   fromAddress: string;
   recipient: string;
+  destinationTag?: string;
   amountAtomic: string;
   amountDisplay: string;
   fiatDisplay?: string;
@@ -269,6 +285,7 @@ export interface PreparedTransfer {
     amountAtomic: string;
     amountDisplay: string;
     fiatDisplay?: string;
+    maximum?: boolean;
   };
   gasSponsorship: {
     status: 'sponsored' | 'eligible' | 'not-eligible' | 'unavailable';
@@ -295,16 +312,52 @@ export interface SecureTransactionSigningRequest {
   amountDisplay: string;
   fromAddress: string;
   recipient: string;
-  transaction: {
-    type: 'evm-native' | 'evm-erc20';
-    chainId: number;
-    nonce: number;
-    to: string;
-    value: string;
-    gasLimit: string;
-    gasPrice: string;
-    data?: string;
-  };
+  destinationTag?: string;
+  transaction:
+    | {
+        type: 'evm-native' | 'evm-erc20';
+        chainId: number;
+        nonce: number;
+        to: string;
+        value: string;
+        gasLimit: string;
+        gasPrice: string;
+        data?: string;
+      }
+    | {
+        type: 'solana-spl';
+        unsignedTransactionBase64: string;
+        recentBlockhash: string;
+        lastValidBlockHeight: number;
+        mintAddress: string;
+        sourceTokenAccount: string;
+        destinationTokenAccount: string;
+        amountAtomic: string;
+        feeLamports: string;
+      }
+    | {
+        type: 'tron-trc20';
+        unsignedTransactionJson: string;
+        transactionId: string;
+        tokenAddress: string;
+        amountAtomic: string;
+        feeLimitSun: string;
+      }
+    | {
+        type: 'xrpl-issued';
+        payment: {
+          TransactionType: 'Payment';
+          Account: string;
+          Destination: string;
+          Amount: { currency: string; issuer: string; value: string };
+          DestinationTag?: number;
+          Flags: number;
+          Sequence: number;
+          Fee: string;
+          LastLedgerSequence: number;
+        };
+        snapshotLedgerIndex: number;
+      };
 }
 
 export type SecureTransactionSigningResult =
@@ -572,8 +625,26 @@ export function isWalletHomePayload(value: unknown): value is WalletHomePayload 
     && typeof asset.symbol === 'string'
     && typeof asset.name === 'string'
     && typeof asset.network === 'string'
+    && Number.isInteger(asset.decimals)
+    && Number(asset.decimals) >= 0
+    && Number(asset.decimals) <= 255
     && (asset.tokenAddress === undefined || typeof asset.tokenAddress === 'string')
-    && typeof asset.canonical === 'boolean';
+    && typeof asset.canonical === 'boolean'
+    && (asset.balanceStatus === 'ready' || asset.balanceStatus === 'unavailable' || asset.balanceStatus === 'sandbox')
+    && typeof asset.balanceAtomic === 'string'
+    && /^\d+$/.test(asset.balanceAtomic)
+    && typeof asset.balanceDisplay === 'string'
+    && typeof asset.availableAtomic === 'string'
+    && /^\d+$/.test(asset.availableAtomic)
+    && (asset.transferStatus === 'enabled' || asset.transferStatus === 'unavailable')
+    && (asset.transferUnavailableReason === undefined || typeof asset.transferUnavailableReason === 'string')
+    && (asset.referencePrice === undefined || (isRecord(asset.referencePrice)
+      && asset.referencePrice.currency === 'KRW'
+      && typeof asset.referencePrice.decimal === 'string'
+      && /^\d+(?:\.\d+)?$/.test(asset.referencePrice.decimal)
+      && typeof asset.referencePrice.display === 'string'
+      && typeof asset.referencePrice.asOf === 'string'
+      && typeof asset.referencePrice.stale === 'boolean'));
   const isValuation = (valuation: unknown) => isRecord(valuation)
     && valuation.currency === 'KRW'
     && typeof valuation.provider === 'string'
@@ -642,7 +713,8 @@ export function isHostToWalletMessage(value: unknown): value is HostToWalletMess
     return value.result.status === 'completed'
       && typeof value.result.intentId === 'string'
       && typeof value.result.signedTransaction === 'string'
-      && value.result.signedTransaction.startsWith('0x')
+      && value.result.signedTransaction.length >= 8
+      && value.result.signedTransaction.length <= 65_536
       && typeof value.result.hostAuthorizationProof === 'string'
       && value.result.hostAuthorizationProof.length > 20;
   }
@@ -681,19 +753,66 @@ export function isSecureTransactionSigningRequest(value: unknown): value is Secu
     || typeof value.amountDisplay !== 'string'
     || typeof value.fromAddress !== 'string'
     || typeof value.recipient !== 'string'
+    || (value.destinationTag !== undefined && typeof value.destinationTag !== 'string')
     || !isRecord(value.transaction)) return false;
-  return (value.transaction.type === 'evm-native' || value.transaction.type === 'evm-erc20')
-    && Number.isSafeInteger(value.transaction.chainId)
-    && Number.isSafeInteger(value.transaction.nonce)
-    && typeof value.transaction.to === 'string'
-    && typeof value.transaction.value === 'string'
-    && /^\d+$/.test(value.transaction.value)
-    && typeof value.transaction.gasLimit === 'string'
-    && /^\d+$/.test(value.transaction.gasLimit)
-    && typeof value.transaction.gasPrice === 'string'
-    && /^\d+$/.test(value.transaction.gasPrice)
-    && (value.transaction.data === undefined || (typeof value.transaction.data === 'string' && /^0x(?:[0-9a-fA-F]{2})*$/.test(value.transaction.data)))
-    && (value.transaction.type !== 'evm-erc20' || (typeof value.transaction.data === 'string' && value.transaction.data.length >= 10));
+  if (value.transaction.type === 'evm-native' || value.transaction.type === 'evm-erc20') {
+    return Number.isSafeInteger(value.transaction.chainId)
+      && Number.isSafeInteger(value.transaction.nonce)
+      && typeof value.transaction.to === 'string'
+      && typeof value.transaction.value === 'string'
+      && /^\d+$/.test(value.transaction.value)
+      && typeof value.transaction.gasLimit === 'string'
+      && /^\d+$/.test(value.transaction.gasLimit)
+      && typeof value.transaction.gasPrice === 'string'
+      && /^\d+$/.test(value.transaction.gasPrice)
+      && (value.transaction.data === undefined || (typeof value.transaction.data === 'string' && /^0x(?:[0-9a-fA-F]{2})*$/.test(value.transaction.data)))
+      && (value.transaction.type !== 'evm-erc20' || (typeof value.transaction.data === 'string' && value.transaction.data.length >= 10));
+  }
+  if (value.transaction.type === 'solana-spl') {
+    return typeof value.transaction.unsignedTransactionBase64 === 'string'
+      && value.transaction.unsignedTransactionBase64.length >= 32
+      && value.transaction.unsignedTransactionBase64.length <= 16_384
+      && typeof value.transaction.recentBlockhash === 'string'
+      && Number.isSafeInteger(value.transaction.lastValidBlockHeight)
+      && typeof value.transaction.mintAddress === 'string'
+      && typeof value.transaction.sourceTokenAccount === 'string'
+      && typeof value.transaction.destinationTokenAccount === 'string'
+      && typeof value.transaction.amountAtomic === 'string'
+      && /^\d+$/.test(value.transaction.amountAtomic)
+      && typeof value.transaction.feeLamports === 'string'
+      && /^\d+$/.test(value.transaction.feeLamports);
+  }
+  if (value.transaction.type === 'tron-trc20') {
+    return typeof value.transaction.unsignedTransactionJson === 'string'
+      && value.transaction.unsignedTransactionJson.length >= 32
+      && value.transaction.unsignedTransactionJson.length <= 32_768
+      && typeof value.transaction.transactionId === 'string'
+      && /^[0-9a-fA-F]{64}$/.test(value.transaction.transactionId)
+      && typeof value.transaction.tokenAddress === 'string'
+      && typeof value.transaction.amountAtomic === 'string'
+      && /^\d+$/.test(value.transaction.amountAtomic)
+      && typeof value.transaction.feeLimitSun === 'string'
+      && /^\d+$/.test(value.transaction.feeLimitSun);
+  }
+  if (value.transaction.type === 'xrpl-issued') {
+    const payment = value.transaction.payment;
+    return isRecord(payment)
+      && payment.TransactionType === 'Payment'
+      && typeof payment.Account === 'string'
+      && typeof payment.Destination === 'string'
+      && isRecord(payment.Amount)
+      && typeof payment.Amount.currency === 'string'
+      && typeof payment.Amount.issuer === 'string'
+      && typeof payment.Amount.value === 'string'
+      && (payment.DestinationTag === undefined || (Number.isSafeInteger(payment.DestinationTag) && Number(payment.DestinationTag) >= 0))
+      && Number.isSafeInteger(payment.Flags)
+      && Number.isSafeInteger(payment.Sequence)
+      && typeof payment.Fee === 'string'
+      && /^\d+$/.test(payment.Fee)
+      && Number.isSafeInteger(payment.LastLedgerSequence)
+      && Number.isSafeInteger(value.transaction.snapshotLedgerIndex);
+  }
+  return false;
 }
 
 function containsForbiddenWalletSecret(value: unknown): boolean {

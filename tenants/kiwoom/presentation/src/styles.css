@@ -1314,6 +1314,10 @@
   margin-top: 64px;
 }
 
+.kw-root .kw-transfer-field--secondary {
+  margin-top: 24px;
+}
+
 .kw-root .kw-transfer-field > span,
 .kw-root .kw-transfer-reason > span {
   display: block;
@@ -1358,9 +1362,38 @@
   background: var(--kw-color-surface-quiet);
 }
 
-.kw-root .kw-amount-card label > span:first-child {
+.kw-root .kw-amount-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kw-root .kw-amount-card__head > span {
   color: var(--kw-color-text-muted);
   font-size: 12px;
+  line-height: 18px;
+}
+
+.kw-root .kw-amount-card__head > button,
+.kw-root .kw-amount-card__foot > button {
+  display: inline-flex;
+  min-height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--kw-color-surface-lavender);
+  color: var(--kw-color-text-purple);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.kw-root .kw-amount-card__head > button svg {
+  width: 14px;
+  height: 14px;
 }
 
 .kw-root .kw-amount-input {
@@ -1388,11 +1421,111 @@
   font-size: 17px;
 }
 
-.kw-root .kw-amount-card > small {
-  display: block;
+.kw-root .kw-amount-card__foot {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-top: 6px;
+}
+
+.kw-root .kw-amount-card__foot > small {
   color: var(--kw-color-text-muted);
   font-size: 13px;
+  line-height: 19px;
+}
+
+.kw-root .kw-amount-card__foot > button:disabled {
+  background: #ecebed;
+  color: var(--kw-color-text-placeholder);
+}
+
+.kw-root .kw-transfer-zero-notice,
+.kw-root .kw-transfer-bridge-notice {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--kw-color-surface-quiet);
+  color: var(--kw-color-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.kw-root .kw-transfer-zero-notice > svg,
+.kw-root .kw-transfer-bridge-notice > svg {
+  width: 21px;
+  height: 21px;
+  color: var(--kw-color-text-purple);
+}
+
+.kw-root .kw-transfer-zero-notice strong,
+.kw-root .kw-transfer-bridge-notice strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--kw-color-text-primary);
+  font-size: 13px;
+}
+
+.kw-root .kw-recipient-methods {
+  display: grid;
+  gap: 10px;
+  margin-top: 38px;
+}
+
+.kw-root .kw-recipient-methods > button {
+  display: grid;
+  min-height: 82px;
+  grid-template-columns: 42px minmax(0, 1fr) 20px;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--kw-color-border);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--kw-color-text-primary);
+  text-align: left;
+}
+
+.kw-root .kw-recipient-methods > button > span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  grid-row: 1 / span 2;
+  place-items: center;
+  border-radius: 15px;
+  background: var(--kw-color-surface-lavender);
+  color: var(--kw-color-text-purple);
+}
+
+.kw-root .kw-recipient-methods > button > span svg {
+  width: 21px;
+  height: 21px;
+}
+
+.kw-root .kw-recipient-methods > button > strong {
+  align-self: end;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.kw-root .kw-recipient-methods > button > small {
+  align-self: start;
+  color: var(--kw-color-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.kw-root .kw-recipient-methods > button > svg {
+  width: 19px;
+  height: 19px;
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  color: var(--kw-color-text-muted);
 }
 
 .kw-root .kw-transfer-error {

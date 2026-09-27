@@ -4,6 +4,7 @@ import { chromium } from 'playwright-core';
 const hostUrl = process.env.WSS_REFERENCE_HOST_URL || 'http://127.0.0.1:5173';
 const chromePath = process.env.WSS_CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const screenshotPath = process.env.WSS_SCREENSHOT_PATH || '/tmp/took-wss-kiwoom-w00.png';
+const sendScreenshotPath = process.env.WSS_SEND_SCREENSHOT_PATH || '/tmp/took-wss-kiwoom-send-zero.png';
 
 await access(chromePath);
 const browser = await chromium.launch({ executablePath: chromePath, headless: true });
@@ -122,6 +123,7 @@ try {
   }
   await walletFrame.locator('.kw-wallet-selector').click();
   const selectorDialog = walletFrame.getByRole('dialog', { name: '지갑 선택' });
+  await selectorDialog.locator('.kw-wallet-choice').first().waitFor();
   if (await selectorDialog.locator('.kw-wallet-choice').count() < 1) throw new Error('The Super Wallet must contain at least one wallet slot.');
   await selectorDialog.getByRole('button', { name: '닫기' }).click();
   await walletFrame.getByText('자산 조회 기준').waitFor();
@@ -132,10 +134,15 @@ try {
   await page.locator('.phone[data-shell-mode="focus"]').waitFor();
   const receiveDialog = walletFrame.getByRole('dialog', { name: /어떤 자산을.*채울까요/ });
   await receiveDialog.waitFor();
-  if (await receiveDialog.locator('.kw-transfer-choice').count() !== 54) {
-    throw new Error('The selected wallet must expose nine native assets plus 45 configured stablecoin deployments.');
+  if (await receiveDialog.locator('.kw-transfer-choice').count() !== 21) {
+    throw new Error('The receive flow must group supported deployments into 21 asset symbols.');
   }
-  await receiveDialog.getByRole('button', { name: /USD Coin.*Ethereum/ }).click();
+  await receiveDialog.getByRole('button', { name: /USD Coin.*USDC.*7개 네트워크/ }).click();
+  const receiveNetworkDialog = walletFrame.getByRole('dialog', { name: /어떤 네트워크로.*채울까요/ });
+  if (await receiveNetworkDialog.locator('.kw-transfer-choice').count() !== 7) {
+    throw new Error('USDC receive must expose seven configured networks after asset selection.');
+  }
+  await receiveNetworkDialog.getByRole('button', { name: /Ethereum.*0 USDC/ }).click();
   const ethereumReceiveDialog = walletFrame.getByRole('dialog', { name: /이 주소로.*자산을 보내주세요/ });
   const qr = ethereumReceiveDialog.getByRole('img', { name: 'USDC 받기 주소 QR' });
   await qr.waitFor();
@@ -149,11 +156,22 @@ try {
 
   await walletFrame.getByRole('button', { name: '보내기' }).click();
   const sendDialog = walletFrame.getByRole('dialog', { name: /어떤 자산을.*보낼까요/ });
-  await sendDialog.getByText('보낼 수 있는 자산이 없어요').waitFor();
-  if (await sendDialog.locator('.kw-transfer-choice:not(:disabled)').count() !== 0) {
-    throw new Error('Send must expose no selectable asset without a real balance.');
+  if (await sendDialog.locator('.kw-transfer-choice').count() !== 21) {
+    throw new Error('Send must expose supported assets even without a balance.');
   }
-  await sendDialog.getByRole('button', { name: '닫기' }).click();
+  await sendDialog.getByRole('button', { name: /USD Coin.*USDC.*7개 네트워크/ }).click();
+  const sendNetworkDialog = walletFrame.getByRole('dialog', { name: /어떤 네트워크에서.*보낼까요/ });
+  await sendNetworkDialog.getByRole('button', { name: /Ethereum.*0 USDC/ }).click();
+  const amountDialog = walletFrame.getByRole('dialog', { name: /얼마를.*보낼까요/ });
+  await amountDialog.getByLabel('보낼 금액 USDC').waitFor();
+  await amountDialog.getByText('현재 보낼 수 있는 금액은 0원이에요.').waitFor();
+  await amountDialog.getByRole('button', { name: '원화로 입력' }).click();
+  await amountDialog.getByLabel('보낼 금액 원화').waitFor();
+  if (!await amountDialog.getByRole('button', { name: '보낼 잔액이 없어요' }).isDisabled()) {
+    throw new Error('Zero-balance send must keep the form visible while blocking progression.');
+  }
+  await page.screenshot({ path: sendScreenshotPath, fullPage: true });
+  await amountDialog.getByRole('button', { name: '닫기' }).click();
 
   const viewportChecks = [];
   for (const width of [320, 360, 390, 430]) {
@@ -201,12 +219,14 @@ try {
       walletAddressGroups: 5,
       selectedWalletNetworks: 9,
       selectedWalletReceiveAssets: 54,
+      groupedWalletAssets: 21,
       valuation: 'actual portfolio with provider-aware KRW quote',
       sarKeyCore: 'real-derivation-and-2-of-3-verification',
       receiveAddress: 'ready',
-      send: 'asset selection disabled without actual balance',
+      send: 'asset-then-network with visible zero-balance amount form',
     },
     screenshot: screenshotPath,
+    sendScreenshot: sendScreenshotPath,
   }, null, 2));
 } catch (error) {
   console.error(JSON.stringify({

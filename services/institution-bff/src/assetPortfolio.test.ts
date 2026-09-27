@@ -36,11 +36,26 @@ describe('supported receive assets', () => {
     const assets = supportedReceiveAssets(networks, ['USDC', 'RLUSD']);
 
     expect(assets).toEqual(expect.arrayContaining([
-      expect.objectContaining({ assetId: 'ethereum:native', symbol: 'ETH', canonical: true }),
-      expect.objectContaining({ chainId: 'ethereum', symbol: 'USDC', tokenAddress: expect.any(String) }),
+      expect.objectContaining({
+        assetId: 'ethereum:native',
+        symbol: 'ETH',
+        decimals: 18,
+        canonical: true,
+        balanceStatus: 'sandbox',
+        balanceAtomic: '0',
+        availableAtomic: '0',
+        transferStatus: 'enabled',
+      }),
+      expect.objectContaining({
+        chainId: 'ethereum',
+        symbol: 'USDC',
+        decimals: 6,
+        tokenAddress: expect.any(String),
+        transferStatus: 'enabled',
+      }),
       expect.objectContaining({ chainId: 'ethereum', symbol: 'RLUSD', tokenAddress: expect.any(String) }),
-      expect.objectContaining({ chainId: 'xrp', symbol: 'RLUSD', tokenAddress: expect.any(String) }),
-      expect.objectContaining({ assetId: 'xrp:native', symbol: 'XRP' }),
+      expect.objectContaining({ chainId: 'xrp', symbol: 'RLUSD', tokenAddress: expect.any(String), transferStatus: 'enabled' }),
+      expect.objectContaining({ assetId: 'xrp:native', symbol: 'XRP', transferStatus: 'unavailable' }),
     ]));
     expect(assets.some(({ chainId }) => chainId === 'solana')).toBe(false);
     expect(assets.some(({ symbol }) => symbol === 'USDT')).toBe(false);

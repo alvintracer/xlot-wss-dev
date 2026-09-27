@@ -116,21 +116,28 @@
         "packageJson": {
           "dependencies": [
             "npm:@noble/ed25519@3.0.1",
+            "npm:@solana/web3.js@^1.99.0",
             "npm:ethers@6.17.0",
             "npm:ripple-address-codec@5.0.1",
-            "npm:shamir-secret-sharing@0.0.4"
+            "npm:shamir-secret-sharing@0.0.4",
+            "npm:tronweb@^6.5.1",
+            "npm:xrpl@5"
           ]
         }
       },
       "services/institution-bff": {
         "packageJson": {
           "dependencies": [
+            "npm:@noble/ed25519@^3.0.1",
+            "npm:@solana/web3.js@^1.99.0",
             "npm:@took-wss/contracts@0.1.0",
             "npm:@took-wss/provider-adapters@0.1.0",
             "npm:@took-wss/tenant-kiwoom@0.1.0",
             "npm:@took-wss/tenant-reference-bank@0.1.0",
             "npm:ethers@^6.17.0",
-            "npm:postgres@3.4.9"
+            "npm:postgres@3.4.9",
+            "npm:tronweb@^6.5.1",
+            "npm:xrpl@5"
           ]
         }
       },
