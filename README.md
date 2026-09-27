@@ -14,6 +14,7 @@ Every project selects a versioned recovery requirement at creation time: `sar-re
 - `services/institution-bff` — short-lived institution sessions and signed runtime bootstrap
 - `services/institution-bff/db` — WSS identity, account linking, wallet ownership, encrypted development-envelope, consent, and audit migrations
 - `supabase/functions/wss-dev-sar-vault` — read-only, development-only encrypted SAR-envelope retrieval after session and ownership verification
+- `supabase/functions/wss-auth-send-sms` — Supabase Auth Send SMS Hook that delivers Auth-owned OTPs through SOLAPI
 - `packages/contracts` — versioned manifests, session, and WebView bridge contracts
 - `packages/host-sdk` — host-to-wallet WebView/iframe SDK
 - `packages/key-adapters` — SAR/MPC/FSL MPC adapter boundary
@@ -39,6 +40,12 @@ npm run dev
 - Institution BFF: `http://localhost:4100`
 
 The host starts with the Kiwoom tenant and can request took SAR, Thirdweb User Wallet, or FSL MPC. The browser-to-BFF session call is a local reference flow only. In production, a financial institution backend creates the session and gives the short-lived token to its native app.
+
+The Kiwoom manifest prefers Supabase Auth phone verification with the SOLAPI
+Send SMS Hook. Until the three SOLAPI credentials are configured and the hook
+is activated, sandbox mode visibly falls back to the loopback-only development
+code; production always fails closed. See `supabase/README.md` and run
+`npm run auth:activate:solapi` after adding the server-only secrets.
 
 When `.env.local` contains the isolated development Session pooler URL plus
 independent WSS session and subject-HMAC secrets, the BFF persists profiles,

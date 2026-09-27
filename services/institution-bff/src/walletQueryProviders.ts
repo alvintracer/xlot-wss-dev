@@ -184,6 +184,8 @@ const developmentDatabaseProvider = databaseUrl && !process.env.VITEST
       piiEncryptionKeyHex: requiredRegistrationSecret('WSS_PII_ENCRYPTION_KEY'),
       phoneLookupSecret: requiredRegistrationSecret('WSS_PHONE_LOOKUP_SECRET'),
       otpMacSecret: requiredRegistrationSecret('WSS_OTP_MAC_SECRET'),
+      supabaseUrl: requiredRegistrationSecret('SUPABASE_URL'),
+      supabasePublishableKey: requiredRegistrationSecret('SUPABASE_ANON_KEY'),
     })
   : null;
 const kiwoomSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();

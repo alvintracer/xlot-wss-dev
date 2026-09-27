@@ -19,15 +19,19 @@ import type { IdentityRegistrationProvider, WalletProvisioningProvider, WalletQu
 import {
   RegistrationError,
   consentEvidenceHash,
+  decryptPrivateAttribute,
   encryptPrivateAttribute,
   encryptionKeyFromHex,
   generateOtp,
   normalizeRegistrationInput,
   otpMac,
   phoneLookupHash,
+  providerSubjectHash,
+  koreanPhoneE164,
   sessionIdHash,
   verifyOtpMac,
 } from './phoneRegistration.js';
+import { SupabasePhoneAuthClient } from './supabasePhoneAuth.js';
 
 type Session = Omit<WssSessionClaims, 'nonce'>;
 
@@ -82,6 +86,8 @@ export interface RegistrationSecurityConfig {
   piiEncryptionKeyHex: string;
   phoneLookupSecret: string;
   otpMacSecret: string;
+  supabaseUrl: string;
+  supabasePublishableKey: string;
 }
 
 export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, WalletProvisioningProvider, IdentityRegistrationProvider {
@@ -90,6 +96,7 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
   readonly #piiEncryptionKey: Buffer;
   readonly #phoneLookupSecret: string;
   readonly #otpMacSecret: string;
+  readonly #supabasePhoneAuth: SupabasePhoneAuthClient;
   #boundaryChecked = false;
 
   constructor(databaseUrl: string, security: RegistrationSecurityConfig) {
@@ -97,6 +104,10 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
     this.#piiEncryptionKey = encryptionKeyFromHex(security.piiEncryptionKeyHex);
     this.#phoneLookupSecret = security.phoneLookupSecret;
     this.#otpMacSecret = security.otpMacSecret;
+    this.#supabasePhoneAuth = new SupabasePhoneAuthClient(
+      security.supabaseUrl,
+      security.supabasePublishableKey,
+    );
   }
 
   async #assertDevelopmentBoundary(): Promise<void> {
@@ -456,12 +467,14 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
     await this.#assertDevelopmentBoundary();
     if (manifest.identity.onboardingMode !== 'phone-first') throw new RegistrationError('phone_registration_not_enabled');
     const challengeId = randomUUID();
-    const code = generateOtp();
+    const wantsSupabaseAuth = manifest.identity.phoneVerification === 'supabase-auth-solapi';
+    let usesSupabaseAuth = wantsSupabaseAuth;
+    let code = wantsSupabaseAuth ? null : generateOtp();
     const expiresAt = new Date(Date.now() + 3 * 60_000);
     await this.#sql.begin(async (transaction) => {
       await transaction`SELECT pg_advisory_xact_lock(hashtextextended(${`${session.tenantId}:challenge:${registrationIntentId}`}, 0))`;
-      const intents = await transaction<{ status: string; expires_at: Date }[]>`
-        SELECT intent.status, intent.expires_at
+      const intents = await transaction<{ status: string; expires_at: Date; phone_ciphertext: Buffer }[]>`
+        SELECT intent.status, intent.expires_at, intent.phone_ciphertext
         FROM wss_registration_intents intent
         JOIN wss_registration_session_bindings binding
           ON binding.tenant_id = intent.tenant_id AND binding.registration_intent_id = intent.id
@@ -482,6 +495,24 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
           AND created_at > now() - interval '10 minutes'
       `;
       if (Number(recent[0]?.count ?? '0') >= 3) throw new RegistrationError('challenge_rate_limited');
+      if (usesSupabaseAuth) {
+        if (!intent.phone_ciphertext) throw new RegistrationError('registration_intent_expired');
+        const phone = decryptPrivateAttribute(
+          intent.phone_ciphertext,
+          this.#piiEncryptionKey,
+          `${session.tenantId}:${registrationIntentId}:phone`,
+        );
+        try {
+          await this.#supabasePhoneAuth.requestOtp(koreanPhoneE164(phone));
+        } catch (error) {
+          const canUsePreview = manifest.environment !== 'production'
+            && error instanceof RegistrationError
+            && error.code === 'phone_delivery_unavailable';
+          if (!canUsePreview) throw error;
+          usesSupabaseAuth = false;
+          code = generateOtp();
+        }
+      }
       await transaction`
         UPDATE wss_phone_challenges SET status = 'cancelled'
         WHERE tenant_id = ${session.tenantId}
@@ -491,12 +522,15 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
       await transaction`
         INSERT INTO wss_phone_challenges (
           id, tenant_id, registration_intent_id, status, otp_mac, mac_key_version,
-          max_attempts, expires_at, delivery_channel, delivery_provider, sent_at
+          max_attempts, expires_at, delivery_channel, delivery_provider, sent_at,
+          verification_provider
         ) VALUES (
           ${challengeId}, ${session.tenantId}, ${registrationIntentId}, 'issued',
-          ${otpMac(session.tenantId, challengeId, code, this.#otpMacSecret)}, 1, 5,
+          ${code ? otpMac(session.tenantId, challengeId, code, this.#otpMacSecret) : null},
+          ${code ? 1 : null}, 5,
           ${expiresAt}, 'sms',
-          ${manifest.identity.phoneVerification === 'development-sms' ? 'development-preview' : 'host'}, now()
+          ${usesSupabaseAuth ? 'supabase-auth-solapi' : manifest.identity.phoneVerification === 'development-sms' ? 'development-preview' : 'host'}, now(),
+          ${usesSupabaseAuth ? 'supabase-auth' : 'wss-mac'}
         )
       `;
     });
@@ -504,7 +538,11 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
       challengeId,
       expiresAt: expiresAt.toISOString(),
       delivery: 'sms',
-      ...(manifest.identity.phoneVerification === 'development-sms' ? { developmentCode: code } : {}),
+      ...(manifest.environment !== 'production'
+        && manifest.identity.phoneVerification !== 'host'
+        && code
+        ? { developmentCode: code }
+        : {}),
     };
   }
 
@@ -518,11 +556,12 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
     await this.#assertDevelopmentBoundary();
     if (!/^\d{6}$/.test(code)) throw new RegistrationError('invalid_verification_code');
     let rejectionCode: string | null = null;
+    let verifiedAccessToken: string | null = null;
     await this.#sql.begin(async (transaction) => {
       await transaction`SELECT pg_advisory_xact_lock(hashtextextended(${`${session.tenantId}:registration:${session.subject}`}, 0))`;
       const rows = await transaction<{
         challenge_status: string;
-        otp_mac: Buffer;
+        otp_mac: Buffer | null;
         attempt_count: number;
         max_attempts: number;
         challenge_expires_at: Date;
@@ -535,12 +574,14 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
         carrier_code: string;
         encryption_key_version: number;
         consent_version: string;
+        verification_provider: 'wss-mac' | 'supabase-auth';
       }[]>`
         SELECT challenge.status AS challenge_status, challenge.otp_mac, challenge.attempt_count,
           challenge.max_attempts, challenge.expires_at AS challenge_expires_at,
           intent.status AS intent_status, intent.expires_at AS intent_expires_at,
           intent.name_ciphertext, intent.birth_date_ciphertext, intent.phone_ciphertext,
-          intent.phone_lookup_hash, intent.carrier_code, intent.encryption_key_version, intent.consent_version
+          intent.phone_lookup_hash, intent.carrier_code, intent.encryption_key_version, intent.consent_version,
+          challenge.verification_provider
         FROM wss_phone_challenges challenge
         JOIN wss_registration_intents intent
           ON intent.tenant_id = challenge.tenant_id AND intent.id = challenge.registration_intent_id
@@ -562,15 +603,51 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
         rejectionCode = 'phone_challenge_expired';
         return;
       }
-      const candidateMac = otpMac(session.tenantId, challengeId, code, this.#otpMacSecret);
-      if (!verifyOtpMac(row.otp_mac, candidateMac)) {
+      let verifiedProviderSubjectHash: string | null = null;
+      let verificationFailure: string | null = null;
+      if (row.verification_provider === 'supabase-auth') {
+        if (manifest.identity.phoneVerification !== 'supabase-auth-solapi') {
+          throw new RegistrationError('phone_verification_policy_mismatch');
+        }
+        try {
+          const phone = decryptPrivateAttribute(
+            row.phone_ciphertext,
+            this.#piiEncryptionKey,
+            `${session.tenantId}:${registrationIntentId}:phone`,
+          );
+          const verified = await this.#supabasePhoneAuth.verifyOtp(koreanPhoneE164(phone), code);
+          if (!verifyOtpMac(
+            row.phone_lookup_hash,
+            phoneLookupHash(session.tenantId, verified.phone, this.#phoneLookupSecret),
+          )) {
+            verificationFailure = 'verified_phone_mismatch';
+          } else {
+            verifiedAccessToken = verified.accessToken;
+            verifiedProviderSubjectHash = providerSubjectHash(
+              session.tenantId,
+              verified.providerSubject,
+              this.#phoneLookupSecret,
+            );
+          }
+        } catch (error) {
+          if (error instanceof RegistrationError
+            && error.code === 'phone_verification_unavailable') throw error;
+          verificationFailure = error instanceof RegistrationError ? error.code : 'phone_verification_unavailable';
+        }
+      } else if (!row.otp_mac || !verifyOtpMac(
+        row.otp_mac,
+        otpMac(session.tenantId, challengeId, code, this.#otpMacSecret),
+      )) {
+        verificationFailure = 'verification_code_mismatch';
+      }
+      if (verificationFailure) {
         const blocked = row.attempt_count + 1 >= row.max_attempts;
         await transaction`
           UPDATE wss_phone_challenges
           SET attempt_count = attempt_count + 1, status = ${blocked ? 'blocked' : 'issued'}
           WHERE tenant_id = ${session.tenantId} AND id = ${challengeId}
         `;
-        rejectionCode = blocked ? 'phone_challenge_blocked' : 'verification_code_mismatch';
+        rejectionCode = blocked ? 'phone_challenge_blocked' : verificationFailure;
         return;
       }
 
@@ -608,7 +685,8 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
       `;
       await transaction`
         UPDATE wss_phone_challenges
-        SET status = 'verified', verified_at = now()
+        SET status = 'verified', verified_at = now(),
+          provider_subject_hash = ${verifiedProviderSubjectHash}
         WHERE tenant_id = ${session.tenantId} AND id = ${challengeId}
       `;
       await transaction`
@@ -624,9 +702,15 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
         ) VALUES (
           ${randomUUID()}, ${session.tenantId}, 'identity.phone-possession-verified',
           'institution-subject', ${session.subject}, ${profileId}, ${session.sessionId},
-          ${transaction.json({ consentVersion: row.consent_version, carrierCode: row.carrier_code })}
+          ${transaction.json({
+            consentVersion: row.consent_version,
+            carrierCode: row.carrier_code,
+            phoneVerificationProvider: row.verification_provider,
+          })}
         )
       `;
+    }).finally(async () => {
+      if (verifiedAccessToken) await this.#supabasePhoneAuth.revoke(verifiedAccessToken);
     });
     if (rejectionCode) throw new RegistrationError(rejectionCode);
     return { identity: { status: 'established', assuranceLevel: 'phone-possession' } };

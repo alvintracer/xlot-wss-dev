@@ -35,7 +35,7 @@ Recovery requirement presets, policy versioning, and existing-wallet migration a
 1. Create a short-lived `wss_registration_intents` row, not a durable user profile.
 2. Collect consent and the minimum required fields. Normalize the phone number and encrypt direct identifiers with a KMS-managed application key.
 3. Issue a short-lived SMS OTP challenge with resend, attempt, device, and network rate limits.
-4. Store only a server-peppered OTP MAC. Never store the OTP itself.
+4. Let the selected verification provider own the OTP. With Supabase Auth, WSS stores neither the OTP nor its MAC; the loopback-only development provider stores only a server-peppered MAC and never the OTP itself.
 5. After successful OTP verification, create the WSS UUID profile and encrypted private-attribute row in one transaction, record consent, and purge PII from the registration intent.
 6. The customer then chooses the permitted key adapter and provisions a wallet linked to that profile.
 
@@ -89,11 +89,23 @@ The schema must not contain private keys, mnemonics, reconstructed SAR secrets, 
 
 Migration `0003_wss_phone_registration.sql` binds each short-lived registration intent to the versioned institution subject and a keyed session identifier. The development BFF applies AES-256-GCM before writing direct identifiers, uses separate secrets for phone lookup and OTP MAC, limits intent/challenge creation and verification attempts, creates profile/consent/identity/audit state in one transaction, and purges PII from the completed intent. The loopback-only `development-sms` adapter returns the generated code for local testing without logging it; production manifests cannot select that adapter.
 
+Migration `0004_wss_supabase_phone_auth.sql` adds the provider boundary used by
+`supabase-auth-solapi`. Supabase Auth generates and verifies the code, and its
+HTTP Send SMS Hook calls SOLAPI after validating the Standard Webhooks
+signature. The BFF decrypts the pending number only long enough to call Auth,
+compares the Auth-verified number with the tenant-scoped phone lookup HMAC, and
+persists only a domain-separated keyed provider-subject digest. Auth access and
+refresh tokens are never returned to the wallet WebView; the BFF revokes the
+short-lived Auth session after the WSS profile transaction, while the signed
+institution session remains the WSS application session. The sandbox may fall
+back to `development-sms` only when delivery is unavailable; production fails
+closed and never falls back.
+
 ## Open production decisions
 
 - PostgreSQL hosting and tenant-isolation enforcement strategy, including whether Row Level Security is required.
 - KMS/HSM provider, envelope-encryption format, key rotation, and lookup-HMAC rotation procedure.
-- SMS delivery provider, abuse controls, expiry, resend limits, and number-recycling response.
+- Final SOLAPI sender/account configuration, abuse controls beyond Auth's base limits, approved message copy, monitoring, and number-recycling response.
 - Exact privacy controller/processor roles, consent language, purpose, and retention periods for each institution deployment.
 - Institution assertion contract and assurance mapping.
 - Strong proof required for profile linking and the exceptional profile-merge workflow.

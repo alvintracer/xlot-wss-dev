@@ -1,5 +1,6 @@
 import {
   createCipheriv,
+  createDecipheriv,
   createHash,
   createHmac,
   randomBytes,
@@ -67,12 +68,41 @@ export function encryptPrivateAttribute(plaintext: string, key: Buffer, aad: str
   return Buffer.concat([Buffer.from([1]), iv, tag, ciphertext]);
 }
 
+export function decryptPrivateAttribute(envelope: Uint8Array, key: Buffer, aad: string): string {
+  const bytes = Buffer.from(envelope);
+  if (key.length !== 32 || bytes.length < 30 || bytes[0] !== 1) throw new Error('Unsupported PII envelope.');
+  const iv = bytes.subarray(1, 13);
+  const tag = bytes.subarray(13, 29);
+  const ciphertext = bytes.subarray(29);
+  const decipher = createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAAD(Buffer.from(aad, 'utf8'));
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+}
+
+export function koreanPhoneE164(phone: string): string {
+  if (!/^010\d{8}$/.test(phone)) throw new RegistrationError('invalid_phone');
+  return `+82${phone.slice(1)}`;
+}
+
+export function koreanPhoneNational(phone: string): string {
+  const normalized = phone.replace(/[\s()-]/g, '');
+  if (/^\+8210\d{8}$/.test(normalized)) return `0${normalized.slice(3)}`;
+  if (/^8210\d{8}$/.test(normalized)) return `0${normalized.slice(2)}`;
+  if (/^010\d{8}$/.test(normalized)) return normalized;
+  throw new RegistrationError('verified_phone_mismatch');
+}
+
 export function phoneLookupHash(tenantId: string, phone: string, secret: string): Buffer {
   return createHmac('sha256', secret).update(`${tenantId}\u0000${phone}`).digest();
 }
 
 export function sessionIdHash(tenantId: string, sessionId: string, secret: string): string {
   return createHmac('sha256', secret).update(`${tenantId}\u0000${sessionId}`).digest('hex');
+}
+
+export function providerSubjectHash(tenantId: string, providerSubject: string, secret: string): string {
+  return createHmac('sha256', secret).update(`${tenantId}\u0000supabase-auth\u0000${providerSubject}`).digest('hex');
 }
 
 export function generateOtp(): string {

@@ -19,6 +19,7 @@
     "dev:studio": "npm run dev -w @took-wss/studio",
     "db:apply:development": "node --env-file-if-exists=.env.local scripts/apply-linked-development-migrations.mjs",
     "db:apply:direct": "node --env-file-if-exists=.env.local scripts/apply-development-migrations.mjs",
+    "auth:activate:solapi": "node --env-file-if-exists=.env.local scripts/activate-supabase-phone-auth.mjs",
     "verify:host": "node scripts/verify-reference-host.mjs",
     "verify:kiwoom-wallet": "node scripts/verify-kiwoom-wallet-flow.mjs",
     "verify:studio": "node scripts/verify-studio-policy.mjs",
@@ -27,7 +28,7 @@
     "test": "vitest run",
     "build": "npm run build -w @took-wss/institution-bff && npm run build -w @took-wss/wallet-webview && npm run build -w @took-wss/reference-bank-host && npm run build -w @took-wss/studio",
     "check:boundaries": "node scripts/check-boundaries.mjs",
-    "check:edge": "deno fmt --check supabase/functions/wss-dev-sar-vault/index.ts && deno check supabase/functions/wss-dev-sar-vault/index.ts",
+    "check:edge": "deno fmt --check supabase/functions/wss-dev-sar-vault/index.ts supabase/functions/wss-auth-send-sms/index.ts supabase/functions/wss-auth-send-sms/index_test.ts && deno check supabase/functions/wss-dev-sar-vault/index.ts supabase/functions/wss-auth-send-sms/index.ts && deno test supabase/functions/wss-auth-send-sms/index_test.ts",
     "check": "npm run check:boundaries && npm run check:edge && npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {

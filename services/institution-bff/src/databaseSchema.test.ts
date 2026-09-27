@@ -8,6 +8,8 @@ const developmentSarMigrationUrl = new URL('../db/migrations/0002_wss_developmen
 const developmentSarMigration = readFileSync(developmentSarMigrationUrl, 'utf8');
 const phoneRegistrationMigrationUrl = new URL('../db/migrations/0003_wss_phone_registration.sql', import.meta.url);
 const phoneRegistrationMigration = readFileSync(phoneRegistrationMigrationUrl, 'utf8');
+const supabasePhoneAuthMigrationUrl = new URL('../db/migrations/0004_wss_supabase_phone_auth.sql', import.meta.url);
+const supabasePhoneAuthMigration = readFileSync(supabasePhoneAuthMigrationUrl, 'utf8');
 
 describe('WSS identity migration', () => {
   it('parses as PostgreSQL and contains the required identity boundaries', () => {
@@ -75,5 +77,19 @@ describe('WSS phone registration migration', () => {
   it('never adds raw customer, phone, or OTP columns', () => {
     const ddlWithoutComments = phoneRegistrationMigration.replace(/--.*$/gm, '');
     expect(ddlWithoutComments).not.toMatch(/\b(customer_ref|phone_plaintext|otp_code|otp_plaintext)\b/i);
+  });
+});
+
+describe('WSS Supabase phone Auth migration', () => {
+  it('separates Auth-owned OTP verification from the legacy development MAC', () => {
+    expect(parse(supabasePhoneAuthMigration).length).toBeGreaterThan(3);
+    expect(supabasePhoneAuthMigration).toContain("verification_provider IN ('wss-mac', 'supabase-auth')");
+    expect(supabasePhoneAuthMigration).toContain("verification_provider = 'supabase-auth' AND otp_mac IS NULL");
+    expect(supabasePhoneAuthMigration).toContain('provider_subject_hash text');
+  });
+
+  it('does not add an OTP plaintext column', () => {
+    const ddlWithoutComments = supabasePhoneAuthMigration.replace(/--.*$/gm, '');
+    expect(ddlWithoutComments).not.toMatch(/\b(otp_code|otp_plaintext|verified_phone)\b/i);
   });
 });

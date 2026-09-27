@@ -4,3 +4,21 @@ project_id = "took-wss"
 # The function verifies the short-lived WSS institution session itself. Supabase
 # Auth JWT verification must stay disabled for this one custom-token endpoint.
 verify_jwt = false
+
+[functions.wss-auth-send-sms]
+# Supabase Auth signs this HTTP hook with the Standard Webhooks secret. It does
+# not carry a Supabase user JWT, so gateway JWT verification must stay disabled.
+verify_jwt = false
+
+# `scripts/activate-supabase-phone-auth.mjs` pushes these settings only after
+# the hook and SOLAPI secrets are present. The values below contain no secret.
+[auth.sms]
+enable_signup = true
+enable_confirmations = false
+template = "[키움 디지털 월렛] 인증번호는 {{ .Code }}입니다."
+max_frequency = "60s"
+
+[auth.hook.send_sms]
+enabled = true
+uri = "env(WSS_AUTH_SEND_SMS_HOOK_URI)"
+secrets = "env(WSS_AUTH_SEND_SMS_HOOK_SECRET)"

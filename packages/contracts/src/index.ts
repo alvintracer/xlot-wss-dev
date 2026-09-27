@@ -29,7 +29,7 @@ export const MOBILE_CARRIER_CODES = [
 ] as const;
 export type MobileCarrierCode = typeof MOBILE_CARRIER_CODES[number];
 export type IdentityOnboardingMode = 'institution-first' | 'phone-first';
-export type PhoneVerificationMode = 'host' | 'development-sms';
+export type PhoneVerificationMode = 'host' | 'development-sms' | 'supabase-auth-solapi';
 export type IdentityAssuranceLevel =
   | 'self-asserted'
   | 'phone-possession'
@@ -553,7 +553,9 @@ export function assertTenantManifest(value: TenantManifest): TenantManifest {
   if (value.identity.onboardingMode !== 'institution-first' && value.identity.onboardingMode !== 'phone-first') {
     throw new Error('Unsupported identity onboarding mode.');
   }
-  if (value.identity.phoneVerification !== 'host' && value.identity.phoneVerification !== 'development-sms') {
+  if (value.identity.phoneVerification !== 'host'
+    && value.identity.phoneVerification !== 'development-sms'
+    && value.identity.phoneVerification !== 'supabase-auth-solapi') {
     throw new Error('Unsupported phone verification mode.');
   }
   if (!value.identity.consentVersion.trim()) throw new Error('Identity consent version is required.');

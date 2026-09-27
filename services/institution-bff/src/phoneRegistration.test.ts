@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   encryptionKeyFromHex,
+  decryptPrivateAttribute,
   encryptPrivateAttribute,
+  koreanPhoneE164,
+  koreanPhoneNational,
   normalizeRegistrationInput,
   otpMac,
   verifyOtpMac,
@@ -32,11 +35,19 @@ describe('phone registration security helpers', () => {
   });
 
   it('creates authenticated ciphertext and compares only OTP MAC values', () => {
-    const ciphertext = encryptPrivateAttribute('홍길동', encryptionKeyFromHex('ab'.repeat(32)), 'tenant:intent:name');
+    const key = encryptionKeyFromHex('ab'.repeat(32));
+    const ciphertext = encryptPrivateAttribute('홍길동', key, 'tenant:intent:name');
     expect(ciphertext[0]).toBe(1);
     expect(ciphertext.toString('utf8')).not.toContain('홍길동');
+    expect(decryptPrivateAttribute(ciphertext, key, 'tenant:intent:name')).toBe('홍길동');
     const expected = otpMac('tenant', 'challenge', '123456', 'otp-secret');
     expect(verifyOtpMac(expected, otpMac('tenant', 'challenge', '123456', 'otp-secret'))).toBe(true);
     expect(verifyOtpMac(expected, otpMac('tenant', 'challenge', '654321', 'otp-secret'))).toBe(false);
+  });
+
+  it('normalizes the Korean phone boundary used by Supabase Auth', () => {
+    expect(koreanPhoneE164('01012345678')).toBe('+821012345678');
+    expect(koreanPhoneNational('+82 10-1234-5678')).toBe('01012345678');
+    expect(() => koreanPhoneNational('+14155552671')).toThrow('verified_phone_mismatch');
   });
 });

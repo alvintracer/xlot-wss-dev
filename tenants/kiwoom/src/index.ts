@@ -31,7 +31,7 @@ export const kiwoomManifest = assertTenantManifest({
   },
   identity: {
     onboardingMode: 'phone-first',
-    phoneVerification: 'development-sms',
+    phoneVerification: 'supabase-auth-solapi',
     consentVersion: 'kiwoom-wallet-profile-v1',
   },
   enabledModules: [
