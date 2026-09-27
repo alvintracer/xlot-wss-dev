@@ -9,7 +9,7 @@ import {
   Wallet,
   X,
 } from '@phosphor-icons/react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   HostAuthenticationResult,
   CreatePhoneChallengeResponse,
@@ -127,18 +127,20 @@ export function CreateWalletFlow({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const idempotencyKey = useRef(crypto.randomUUID());
+  const automaticAuthorizationStarted = useRef(false);
   const isSar = keyAdapter === 'took-sar';
   const identityOffset = requiresRegistration ? 2 : 0;
   const offset = canChooseAdapter ? 1 : 0;
-  const totalSteps = identityOffset + (isSar ? offset + 5 : offset + 3);
+  const authenticationStepCount = mode === 'initial' ? 0 : 1;
+  const totalSteps = identityOffset + offset + authenticationStepCount + (isSar ? 4 : 2);
   const stepNumber = step === 'profile' ? 1
     : step === 'phone-code' ? 2
       : step === 'key-adapter' ? identityOffset + 1
         : step === 'authentication' ? identityOffset + offset + 1
-          : step === 'wallet-source' ? identityOffset + offset + 2
-            : step === 'seed-wallet' || step === 'secure-import' ? identityOffset + offset + 3
-              : step === 'sar-setup' ? identityOffset + offset + 4
-                : step === 'provider-wallet' ? identityOffset + offset + 2
+          : step === 'wallet-source' ? identityOffset + offset + authenticationStepCount + 1
+            : step === 'seed-wallet' || step === 'secure-import' ? identityOffset + offset + authenticationStepCount + 2
+              : step === 'sar-setup' ? identityOffset + offset + authenticationStepCount + 3
+                : step === 'provider-wallet' ? identityOffset + offset + authenticationStepCount + 1
               : totalSteps;
 
   const normalizedBirthDate = birthDate.replace(/\D/g, '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3');
@@ -148,6 +150,27 @@ export function CreateWalletFlow({
     && /^010\d{8}$/.test(normalizedPhone)
     && carrierCode !== null
     && profileConsent;
+
+  useEffect(() => {
+    if (mode !== 'initial'
+      || requiresRegistration
+      || step !== 'authentication'
+      || automaticAuthorizationStarted.current) return;
+    automaticAuthorizationStarted.current = true;
+    setBusy(true);
+    setError(null);
+    void onAuthenticate()
+      .then((result) => {
+        if (result.status !== 'authenticated') {
+          setError('키움 앱 인증 연결을 확인한 뒤 다시 시도해 주세요.');
+          return;
+        }
+        setHostAuthorizationProof(result.proof);
+        setStep(isSar ? 'wallet-source' : 'provider-wallet');
+      })
+      .catch(() => setError('키움 앱 인증 연결을 확인한 뒤 다시 시도해 주세요.'))
+      .finally(() => setBusy(false));
+  }, [isSar, mode, onAuthenticate, requiresRegistration, step]);
 
   const requestPhoneCode = async () => {
     if (!canSubmitProfile || !carrierCode) return;
@@ -197,9 +220,24 @@ export function CreateWalletFlow({
     try {
       await onVerifyPhoneChallenge(registrationIntentId, challengeId, { code: verificationCode });
       setDevelopmentCode(null);
-      setStep('authentication');
     } catch {
       setError('인증번호가 맞지 않거나 유효시간이 지났어요.');
+      setBusy(false);
+      return;
+    }
+    automaticAuthorizationStarted.current = true;
+    try {
+      const result = await onAuthenticate();
+      if (result.status === 'authenticated') {
+        setHostAuthorizationProof(result.proof);
+        setStep(isSar ? 'wallet-source' : 'provider-wallet');
+        return;
+      }
+      setStep('authentication');
+      setError('키움 앱 인증 연결을 확인한 뒤 다시 시도해 주세요.');
+    } catch {
+      setStep('authentication');
+      setError('키움 앱 인증 연결을 확인한 뒤 다시 시도해 주세요.');
     } finally {
       setBusy(false);
     }
@@ -445,6 +483,26 @@ export function CreateWalletFlow({
 
   const authenticationBack = canChooseAdapter ? () => setStep('key-adapter') : undefined;
   if (step === 'authentication') {
+    if (mode === 'initial') {
+      return (
+        <FlowShell
+          title="지갑 만들기"
+          step={stepNumber}
+          totalSteps={totalSteps}
+          onClose={onClose}
+          footer={error ? (
+            <button className="kw-button" type="button" disabled={busy} aria-busy={busy} onClick={() => void requestAuthentication()}>
+              {busy ? '연결을 확인하고 있어요' : '다시 시도'}
+            </button>
+          ) : undefined}
+        >
+          <div className="kw-flow-symbol" aria-hidden="true"><ShieldCheck weight="regular" /></div>
+          <h1 className="kw-flow-title">지갑 시작 방식을<br />준비하고 있어요</h1>
+          <p className="kw-body kw-mt-12">현재 키움 고객 세션에 지갑 등록 용도의 일회용 증빙을 연결하고 있습니다.</p>
+          {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
+        </FlowShell>
+      );
+    }
     return (
       <FlowShell
         title={mode === 'add' ? '지갑 추가' : '지갑 만들기'}
@@ -472,7 +530,7 @@ export function CreateWalletFlow({
 
   if (step === 'wallet-source') {
     return (
-      <FlowShell title="지갑 시작 방식" step={stepNumber} totalSteps={totalSteps} onBack={() => setStep('authentication')} onClose={onClose}>
+      <FlowShell title="지갑 시작 방식" step={stepNumber} totalSteps={totalSteps} onBack={mode === 'add' ? () => setStep('authentication') : undefined} onClose={onClose}>
         <h1 className="kw-flow-title">새로 만들거나 기존 지갑을<br />가져올 수 있어요</h1>
         <p className="kw-body kw-mt-12">가져온 지갑도 새로운 지갑 슬롯으로 등록하고 SAR 자가복구 체계를 설정합니다.</p>
         <div className="kw-flow-choice-list kw-mt-24">
@@ -586,7 +644,7 @@ export function CreateWalletFlow({
         title="MPC 지갑 준비"
         step={stepNumber}
         totalSteps={totalSteps}
-        onBack={() => setStep('authentication')}
+        onBack={mode === 'add' ? () => setStep('authentication') : undefined}
         onClose={onClose}
         footer={<button className="kw-button" type="button" disabled={busy} onClick={() => void provision()}>{mode === 'add' ? '이 지갑 슬롯 추가하기' : '지갑 만들기'}</button>}
       >

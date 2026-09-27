@@ -57,11 +57,11 @@ try {
   if (!developmentCode) throw new Error('Development phone code was not shown in the loopback preview.');
   await walletFrame.getByLabel('인증번호').fill(developmentCode);
   await walletFrame.getByRole('button', { name: '인증번호 확인' }).click();
-  await walletFrame.getByRole('button', { name: '키움 인증 요청' }).click();
-  const authenticationOverlay = page.locator('.host-security-layer');
-  await authenticationOverlay.getByRole('heading', { name: /고객 확인이 필요해요/ }).waitFor();
-  await authenticationOverlay.getByRole('button', { name: '기기 인증으로 확인' }).click();
   await walletFrame.getByRole('heading', { name: /새로 만들거나 기존 지갑을/ }).waitFor();
+  if (await walletFrame.getByRole('heading', { name: /키움 고객 인증으로/ }).count() !== 0
+    || await page.locator('.host-security-layer').count() !== 0) {
+    throw new Error('Initial phone onboarding repeated the host-authentication UI.');
+  }
   await walletFrame.getByRole('button', { name: /새 지갑 만들기/ }).click();
   await walletFrame.getByRole('heading', { name: /실제 복구 구문을/ }).waitFor();
   await walletFrame.getByRole('button', { name: '키움 보안 화면 열기' }).click();
@@ -125,8 +125,6 @@ try {
   await walletFrame.getByRole('button', { name: /FSL MPC 지갑/ }).click();
   await walletFrame.getByRole('button', { name: '선택한 방식으로 계속' }).click();
   await walletFrame.getByRole('button', { name: '키움 인증 요청' }).click();
-  await authenticationOverlay.getByRole('heading', { name: /고객 확인이 필요해요/ }).waitFor();
-  await authenticationOverlay.getByRole('button', { name: '기기 인증으로 확인' }).click();
   await walletFrame.locator('h1.kw-flow-title', { hasText: 'FSL MPC 지갑' }).waitFor();
   await walletFrame.getByRole('button', { name: '이 지갑 슬롯 추가하기' }).click();
   await walletFrame.getByText('FSL MPC 지갑 2', { exact: true }).waitFor();

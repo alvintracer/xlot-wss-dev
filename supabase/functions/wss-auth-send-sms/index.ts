@@ -36,9 +36,10 @@ function bytesToHex(value: ArrayBuffer): string {
 
 export function domesticPhone(value: string): string {
   const normalized = value.replace(/[\s()-]/g, "");
-  const match = normalized.match(/^\+82(10\d{8})$/);
-  if (!match) throw new Error("unsupported_recipient");
-  return `0${match[1]}`;
+  if (/^010\d{8}$/.test(normalized)) return normalized;
+  const international = normalized.match(/^\+?82(10\d{8})$/);
+  if (international) return `0${international[1]}`;
+  throw new Error("unsupported_recipient");
 }
 
 export function senderNumber(value: string): string {
@@ -108,10 +109,34 @@ export async function sendSolapiOtp(
     message.statusCode === "2000" && typeof message.messageId === "string"
   );
   if (!response.ok || !accepted) {
-    const providerCode = payload.failedMessageList?.[0]?.statusCode ??
+    const rawProviderCode = payload.failedMessageList?.[0]?.statusCode ??
       payload.errorCode ?? "unknown";
-    throw new Error(`solapi_rejected:${providerCode}`);
+    const providerCode = /^[A-Za-z0-9_-]{1,64}$/.test(rawProviderCode)
+      ? rawProviderCode
+      : "unknown";
+    throw new Error(
+      `solapi_rejected_http_${response.status}:${providerCode}`,
+    );
   }
+}
+
+export function safeSmsFailureCode(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  if (
+    message === "sms_hook_not_configured" ||
+    message === "unsupported_recipient" ||
+    message === "invalid_sender" ||
+    message === "invalid_otp_shape"
+  ) {
+    return message;
+  }
+  const providerFailure = message.match(
+    /^solapi_rejected_http_(\d{3}):([A-Za-z0-9_-]{1,64})$/,
+  );
+  if (providerFailure) {
+    return `solapi_http_${providerFailure[1]}_${providerFailure[2]}`;
+  }
+  return "unexpected";
 }
 
 function requiredEnvironment(name: string): string {
@@ -152,9 +177,13 @@ export async function handle(request: Request): Promise<Response> {
       event.sms.otp,
     );
     return json(200, {});
-  } catch {
+  } catch (error) {
     // Phone numbers, OTPs, provider payloads, and credentials are deliberately
     // excluded from logs and responses.
+    console.error(JSON.stringify({
+      event: "wss_auth_sms_delivery_failed",
+      code: safeSmsFailureCode(error),
+    }));
     return json(500, { error: "sms_delivery_failed" });
   }
 }

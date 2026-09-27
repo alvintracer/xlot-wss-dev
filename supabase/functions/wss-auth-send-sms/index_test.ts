@@ -1,5 +1,6 @@
 import {
   domesticPhone,
+  safeSmsFailureCode,
   senderNumber,
   sendSolapiOtp,
   solapiAuthorization,
@@ -7,7 +8,13 @@ import {
 
 Deno.test("normalizes only Korean mobile recipients", () => {
   if (domesticPhone("+82 10-1234-5678") !== "01012345678") {
-    throw new Error("recipient normalization failed");
+    throw new Error("E.164 recipient normalization failed");
+  }
+  if (domesticPhone("821012345678") !== "01012345678") {
+    throw new Error("international digits recipient normalization failed");
+  }
+  if (domesticPhone("010-1234-5678") !== "01012345678") {
+    throw new Error("national recipient normalization failed");
   }
   let rejected = false;
   try {
@@ -64,4 +71,38 @@ Deno.test("sends the Supabase Auth OTP without extra identifiers", async () => {
   if (JSON.stringify(body).includes("registrationIntent")) {
     throw new Error("internal identifier leaked");
   }
+});
+
+Deno.test("keeps SOLAPI rejection diagnostics free of provider payloads", async () => {
+  let failure: unknown;
+  try {
+    await sendSolapiOtp(
+      {
+        apiKey: "test-key",
+        apiSecret: "test-secret",
+        senderNumber: "0212345678",
+      },
+      "+821012345678",
+      "123456",
+      () =>
+        Promise.resolve(Response.json({
+          failedMessageList: [{
+            statusCode: "3040",
+            statusMessage: "provider detail must not be logged",
+          }],
+        })),
+    );
+  } catch (error) {
+    failure = error;
+  }
+  if (safeSmsFailureCode(failure) !== "solapi_http_200_3040") {
+    throw new Error("safe provider rejection code was not preserved");
+  }
+});
+
+Deno.test("redacts unexpected errors from SMS diagnostics", () => {
+  const code = safeSmsFailureCode(
+    new Error("phone=01012345678 otp=123456 secret=do-not-log"),
+  );
+  if (code !== "unexpected") throw new Error("unexpected detail leaked");
 });

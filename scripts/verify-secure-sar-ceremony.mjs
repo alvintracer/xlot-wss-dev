@@ -52,13 +52,10 @@ try {
   await walletFrame.getByRole('button', { name: '선택한 방식으로 계속' }).click();
 
   await walletFrame.getByRole('button', { name: '키움 인증 요청' }).click();
-  const authenticationOverlay = page.locator('.host-security-layer');
-  await authenticationOverlay.getByRole('heading', { name: /고객 확인이 필요해요/ }).waitFor();
-  if (await walletFrame.getByText('REFERENCE HOST · DEVELOPMENT').count() !== 0) {
-    throw new Error('Host authentication UI leaked into the WSS iframe.');
-  }
-  await authenticationOverlay.getByRole('button', { name: '기기 인증으로 확인' }).click();
   await walletFrame.getByRole('heading', { name: /새로 만들거나 기존 지갑을/ }).waitFor();
+  if (await page.locator('.host-security-layer').count() !== 0) {
+    throw new Error('Session-bound wallet authorization unexpectedly opened a host overlay.');
+  }
 
   await walletFrame.getByRole('button', { name: /새 지갑 만들기/ }).click();
   await walletFrame.getByRole('heading', { name: /실제 복구 구문을/ }).waitFor();
@@ -110,7 +107,7 @@ try {
   await page.screenshot({ path: screenshotPath, fullPage: true });
   console.log(JSON.stringify({
     status: 'ok',
-    hostAuthentication: 'explicit-development-confirmation',
+    hostAuthentication: 'session-bound-development-authorization',
     recoveryPhrase: '12-word-host-only-and-three-word-confirmed',
     bffSecretBoundary: 'no-recovery-phrase-fields-or-words',
     publicAddressGroups: 5,

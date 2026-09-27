@@ -554,7 +554,7 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
           ${code ? otpMac(session.tenantId, challengeId, code, this.#otpMacSecret) : null},
           ${code ? 1 : null}, 5,
           ${expiresAt}, 'sms',
-          ${usesSupabaseAuth ? 'supabase-auth-solapi' : manifest.identity.phoneVerification === 'development-sms' ? 'development-preview' : 'host'}, now(),
+          ${usesSupabaseAuth ? 'supabase-auth-solapi' : code ? 'development-preview' : 'host'}, now(),
           ${usesSupabaseAuth ? 'supabase-auth' : 'wss-mac'}
         )
       `;

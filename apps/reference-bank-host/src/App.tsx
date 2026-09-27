@@ -122,27 +122,10 @@ export function App() {
     showSecurityCeremony(null);
   }, [showSecurityCeremony]);
 
-  const requestHostAuthentication = useCallback((purpose: HostAuthenticationPurpose): Promise<HostAuthenticationResult> => {
-    if (!import.meta.env.DEV
-      || !session
-      || sessionTokenRef.current !== session.sessionToken
-      || securityCeremonyRef.current) {
-      return Promise.resolve({ status: 'cancelled' });
-    }
-    return new Promise((resolve) => {
-      authenticationResolver.current = resolve;
-      showSecurityCeremony({ id: crypto.randomUUID(), type: 'authentication', purpose });
-    });
-  }, [session, showSecurityCeremony]);
-
-  const approveHostAuthentication = useCallback(async () => {
-    const active = securityCeremonyRef.current;
-    if (!session || active?.type !== 'authentication' || !authenticationResolver.current) {
-      throw new Error('No active host authentication ceremony.');
-    }
-    const activeId = active.id;
-    const activeSessionToken = session.sessionToken;
-    const resolve = authenticationResolver.current;
+  const issueDevelopmentHostAuthorization = useCallback(async (
+    purpose: HostAuthenticationPurpose,
+    activeSessionToken: string,
+  ): Promise<Extract<HostAuthenticationResult, { status: 'authenticated' }>> => {
     const response = await fetch(`${bffUrl}/v1/development/host-authorizations`, {
       method: 'POST',
       headers: {
@@ -150,7 +133,7 @@ export function App() {
         'Content-Type': 'application/json',
         'x-wss-institution-key': localDevelopmentInstitutionKey,
       },
-      body: JSON.stringify({ purpose: active.purpose }),
+      body: JSON.stringify({ purpose }),
       cache: 'no-store',
     });
     if (!response.ok) throw new Error('Host authorization was rejected.');
@@ -162,14 +145,51 @@ export function App() {
       || result.method !== 'development-reference-host') {
       throw new Error('Unsupported host authorization response.');
     }
+    if (sessionTokenRef.current !== activeSessionToken) {
+      throw new Error('Host session changed during authorization.');
+    }
+    return result as Extract<HostAuthenticationResult, { status: 'authenticated' }>;
+  }, []);
+
+  const requestHostAuthentication = useCallback(async (purpose: HostAuthenticationPurpose): Promise<HostAuthenticationResult> => {
+    if (!import.meta.env.DEV
+      || !session
+      || sessionTokenRef.current !== session.sessionToken
+      || securityCeremonyRef.current) {
+      return { status: 'cancelled' };
+    }
+    if (purpose === 'wallet-provisioning') {
+      try {
+        const result = await issueDevelopmentHostAuthorization(purpose, session.sessionToken);
+        setHostFeedback('현재 키움 세션에 지갑 등록용 일회용 증빙을 연결했습니다.');
+        return result;
+      } catch {
+        return { status: 'cancelled' };
+      }
+    }
+    return new Promise((resolve) => {
+      authenticationResolver.current = resolve;
+      showSecurityCeremony({ id: crypto.randomUUID(), type: 'authentication', purpose });
+    });
+  }, [issueDevelopmentHostAuthorization, session, showSecurityCeremony]);
+
+  const approveHostAuthentication = useCallback(async () => {
+    const active = securityCeremonyRef.current;
+    if (!session || active?.type !== 'authentication' || !authenticationResolver.current) {
+      throw new Error('No active host authentication ceremony.');
+    }
+    const activeId = active.id;
+    const activeSessionToken = session.sessionToken;
+    const resolve = authenticationResolver.current;
+    const result = await issueDevelopmentHostAuthorization(active.purpose, activeSessionToken);
     if (sessionTokenRef.current !== activeSessionToken
       || securityCeremonyRef.current?.id !== activeId
       || authenticationResolver.current !== resolve) return;
     authenticationResolver.current = null;
     showSecurityCeremony(null);
     setHostFeedback('현재 세션에 묶인 일회용 고객 인증 증빙을 발급했습니다.');
-    resolve(result as HostAuthenticationResult);
-  }, [session, showSecurityCeremony]);
+    resolve(result);
+  }, [issueDevelopmentHostAuthorization, session, showSecurityCeremony]);
 
   const requestSecureSarWalletCreation = useCallback(async (): Promise<SecureSarWalletCreationResult> => {
     if (!import.meta.env.DEV

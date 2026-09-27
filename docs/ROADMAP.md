@@ -43,7 +43,7 @@
 5. Add Android/iOS native WebView wrappers using the same bridge contract.
 6. ◐ Add browser and native end-to-end tests for origin, nonce, expiry, and replay rejection.
    - Unit/contract coverage now verifies signature tampering, expiry, session mismatch, payload binding, secret-field rejection, and provider-level one-time proof consumption.
-   - Browser coverage now verifies the explicit host confirmation and real mnemonic backup ceremony; native device attestation and recovery replay cases remain open.
+   - Browser coverage now verifies session-bound background wallet authorization, direct post-SMS entry to wallet start-method selection, and the real mnemonic backup ceremony; native device attestation and recovery replay cases remain open.
 
 Current browser coverage includes Reference Host session issuance, signed bootstrap, encrypted phone-first registration and possession verification, profile-based Kiwoom presentation loading, root/focus shell delivery, host authentication, actual host-key-core SAR creation, multi-wallet-slot provisioning and selection, real receive-address display, send gates, and 320/360/390/430 overflow checks. Unit coverage verifies registration normalization/cryptographic boundaries, distinct wallet generation, and every 2-of-3 share pair. Security lifecycle cases in item 6 remain open.
 

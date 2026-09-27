@@ -59,26 +59,28 @@
   intent had all transient PII purged, the durable private attributes remained
   encrypted, and the sandbox-fallback challenge retained only a 32-byte OTP
   MAC;
-- the headless browser completed registration, host confirmation, real SAR
+- the headless browser completed registration, session-bound wallet authorization, real SAR
   creation, nine-network registration, a second FSL wallet slot, wallet
   selection, receive-address display, and fail-closed send checks.
 
-The current code additionally requires an explicit host-owned customer
-confirmation, shows the real 12-word BIP-39 phrase only in the host security
-surface, verifies three randomly selected words, and binds provisioning to
-short-lived host and key-core proofs. A fresh browser verification of this
-updated ceremony is recorded separately by the repository checks rather than
-by sending an automated SMS to a synthetic phone number.
+The current code silently exchanges the already active Reference Host customer
+session for a one-time, purpose-bound wallet-authorization proof after initial
+phone verification. It then shows the real 12-word BIP-39 phrase only in the
+host security surface, verifies three randomly selected words, and binds
+provisioning to short-lived host and key-core proofs. A fresh browser
+verification of this updated ceremony is recorded separately by the repository
+checks rather than by sending an automated SMS to a synthetic phone number.
 
 ## Deliberate development limitation
 
-The Reference Host still uses the explicit loopback-only development
+The Reference Host still uses the loopback-only development
 institution key compiled into its local browser demo. That key is not an
 institution integration credential and must never be deployed. A real tenant
 host backend supplies its private institution credential and creates the WSS
-session server-to-server. The development confirmation button is not real
-Kiwoom PIN or biometric authentication; a production host must issue the same
-contract only after its approved authentication SDK succeeds.
+session server-to-server. The development host's silent session assertion is
+not real Kiwoom PIN or biometric authentication; a production host must issue
+the same contract from its approved customer session and invoke its
+authentication SDK whenever policy requires step-up.
 
 The Kiwoom manifest now selects `supabase-auth-solapi`. Supabase Auth owns OTP
 generation and verification, while the deployed Send SMS Hook delivers the
