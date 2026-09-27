@@ -1,0 +1,148 @@
+.phone[data-host-chrome='kiwoom-simple-mode-v1'] {
+  --host-root-header-height: 60px;
+  --host-root-nav-height: 54px;
+  --kw-host-primary: #7d3bdd;
+  --kw-host-text: #1b1c20;
+  --kw-host-canvas: #f5f5f5;
+  font-family: 'Noto Sans KR', 'Noto Sans CJK KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+}
+
+.kw-host-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 6px 0 12px;
+  border: 0;
+  background: var(--kw-host-canvas);
+  color: var(--kw-host-text);
+}
+
+.kw-host-header__brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex: 1 1 auto;
+  gap: 8px;
+}
+
+.kw-host-header__brand img {
+  width: 29px;
+  height: 33px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.kw-host-asset-pages {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.kw-host-asset-pages button,
+.kw-host-asset-pages strong {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #a1a2a7;
+  font: inherit;
+  font-size: clamp(19px, 5.8vw, 22px);
+  font-weight: 700;
+  letter-spacing: -.025em;
+  line-height: 30px;
+  white-space: nowrap;
+}
+
+.kw-host-asset-pages button {
+  cursor: pointer;
+}
+
+.kw-host-asset-pages strong[aria-current='page'] {
+  color: var(--kw-host-text);
+}
+
+.kw-host-header__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.kw-host-header__actions button {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 9px;
+  border: 0;
+  background: transparent;
+  color: #303136;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.kw-host-header__actions button svg {
+  width: 26px;
+  height: 26px;
+}
+
+.kw-host-header__actions button:focus-visible,
+.kw-host-asset-pages button:focus-visible,
+.kw-host-nav__item:focus-visible {
+  outline: 2px solid var(--kw-host-primary);
+  outline-offset: -2px;
+}
+
+.kw-host-nav {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-top: 1px solid #ededf0;
+  background: #fff;
+}
+
+.kw-host-nav__item {
+  display: flex;
+  min-width: 0;
+  min-height: 54px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 0 3px;
+  border: 0;
+  background: transparent;
+  color: var(--kw-host-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: -.02em;
+  line-height: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.kw-host-nav__item svg {
+  flex: 0 0 auto;
+}
+
+.kw-host-nav__item span {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kw-host-nav__item[aria-current='page'] {
+  color: var(--kw-host-primary);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kw-host-header__actions button,
+  .kw-host-nav__item {
+    scroll-behavior: auto;
+  }
+}

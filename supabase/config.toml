@@ -1,0 +1,6 @@
+project_id = "took-wss"
+
+[functions.wss-dev-sar-vault]
+# The function verifies the short-lived WSS institution session itself. Supabase
+# Auth JWT verification must stay disabled for this one custom-token endpoint.
+verify_jwt = false

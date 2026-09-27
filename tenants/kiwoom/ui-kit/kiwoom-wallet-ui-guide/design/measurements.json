@@ -1,0 +1,223 @@
+{
+  "note": "좌표는 원본 래스터의 시각 경계. JPEG 가장자리에 ±2px 정도 오차 가능. 시스템 바 높이는 이 캡처에서만 유효.",
+  "color_samples": [
+    {
+      "token": "brandPrimary",
+      "reference": "R09",
+      "region_px": [
+        60,
+        1200,
+        590,
+        1220
+      ],
+      "modal_rgb": [
+        125,
+        59,
+        221
+      ],
+      "modal_hex": "#7D3BDD",
+      "modal_pixel_count": 10130,
+      "total_pixels": 10600,
+      "method": "mode of flat interior pixels; JPEG tolerance required"
+    },
+    {
+      "token": "canvas",
+      "reference": "R07",
+      "region_px": [
+        8,
+        280,
+        28,
+        395
+      ],
+      "modal_rgb": [
+        245,
+        245,
+        245
+      ],
+      "modal_hex": "#F5F5F5",
+      "modal_pixel_count": 2300,
+      "total_pixels": 2300,
+      "method": "mode of flat interior pixels; JPEG tolerance required"
+    },
+    {
+      "token": "surface",
+      "reference": "R07",
+      "region_px": [
+        85,
+        460,
+        460,
+        478
+      ],
+      "modal_rgb": [
+        255,
+        255,
+        255
+      ],
+      "modal_hex": "#FFFFFF",
+      "modal_pixel_count": 6750,
+      "total_pixels": 6750,
+      "method": "mode of flat interior pixels; JPEG tolerance required"
+    },
+    {
+      "token": "tradeBuy",
+      "reference": "R04",
+      "region_px": [
+        400,
+        1220,
+        580,
+        1240
+      ],
+      "modal_rgb": [
+        255,
+        87,
+        110
+      ],
+      "modal_hex": "#FF576E",
+      "modal_pixel_count": 2840,
+      "total_pixels": 3600,
+      "method": "mode of flat interior pixels; JPEG tolerance required"
+    },
+    {
+      "token": "tradeSell",
+      "reference": "R04",
+      "region_px": [
+        140,
+        1220,
+        280,
+        1240
+      ],
+      "modal_rgb": [
+        116,
+        118,
+        253
+      ],
+      "modal_hex": "#7476FD",
+      "modal_pixel_count": 1995,
+      "total_pixels": 2800,
+      "method": "mode of flat interior pixels; JPEG tolerance required"
+    },
+    {
+      "token": "disabled",
+      "reference": "R16",
+      "region_px": [
+        65,
+        1205,
+        580,
+        1230
+      ],
+      "modal_rgb": [
+        222,
+        223,
+        227
+      ],
+      "modal_hex": "#DEDFE3",
+      "modal_pixel_count": 11726,
+      "total_pixels": 12875,
+      "method": "mode of flat interior pixels; JPEG tolerance required"
+    },
+    {
+      "token": "sheetScrimComposite",
+      "reference": "R15",
+      "region_px": [
+        60,
+        460,
+        580,
+        480
+      ],
+      "modal_rgb": [
+        127,
+        127,
+        127
+      ],
+      "modal_hex": "#7F7F7F",
+      "modal_pixel_count": 10400,
+      "total_pixels": 10400,
+      "method": "mode of flat interior pixels; JPEG tolerance required"
+    }
+  ],
+  "geometry_samples": [
+    {
+      "reference": "R09",
+      "element": "form CTA",
+      "rect_px": [
+        35,
+        1189,
+        613,
+        1283
+      ],
+      "normalized_rect": [
+        19.44,
+        660.56,
+        340.56,
+        712.78
+      ],
+      "adopted": "gutter 20; height 52; radius 18"
+    },
+    {
+      "reference": "R10",
+      "element": "ranking card",
+      "rect_px": [
+        21,
+        384,
+        627,
+        1221
+      ],
+      "adopted": "outer gutter 12; inner padding 20; radius 24; height content-driven"
+    },
+    {
+      "reference": "R10",
+      "element": "root bottom navigation",
+      "rect_px": [
+        0,
+        1221,
+        648,
+        1318
+      ],
+      "adopted": "height 54, excluding system bottom inset"
+    },
+    {
+      "reference": "R04",
+      "element": "dual CTA",
+      "rect_px": [
+        81,
+        1200,
+        620,
+        1301
+      ],
+      "adopted": "height 56, gap 8, radius 20; leading overflow control"
+    },
+    {
+      "reference": "R15",
+      "element": "sheet",
+      "rect_px": [
+        0,
+        491,
+        648,
+        1318
+      ],
+      "adopted": "radius 16; content-driven height; no drag handle"
+    },
+    {
+      "reference": "R15",
+      "element": "first choice",
+      "rect_px": [
+        35,
+        643,
+        613,
+        736
+      ],
+      "adopted": "height 52; gutter 20; radius 16; gap 10"
+    },
+    {
+      "reference": "R16",
+      "element": "input underline",
+      "rect_px": [
+        35,
+        426,
+        613,
+        429
+      ],
+      "adopted": "input border 1; gutter 20"
+    }
+  ]
+}

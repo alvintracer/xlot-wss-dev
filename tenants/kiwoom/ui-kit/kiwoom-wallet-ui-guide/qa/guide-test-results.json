@@ -1,0 +1,27 @@
+[
+  {
+    "test": "guide heading count",
+    "pass": true
+  },
+  {
+    "test": "guide desktop no page overflow",
+    "pass": true
+  },
+  {
+    "test": "guide iframe screen switch",
+    "pass": true
+  },
+  {
+    "test": "reference lightbox",
+    "pass": true
+  },
+  {
+    "test": "guide mobile no page overflow",
+    "pass": true
+  },
+  {
+    "test": "guide runtime errors",
+    "pass": true,
+    "errors": []
+  }
+]

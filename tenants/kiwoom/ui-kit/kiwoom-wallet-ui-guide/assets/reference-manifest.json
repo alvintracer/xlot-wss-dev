@@ -1,0 +1,309 @@
+{
+  "title": "Kiwoom simple-mode screenshot reference manifest",
+  "date": "2026-09-27",
+  "source": "사용자가 제공한 이미지 19장. 외부 자료 없음.",
+  "privacy": "전화번호·이름 및 인증번호 알림 영역을 가린 사본만 포함. 원본은 수정하지 않음.",
+  "references": [
+    {
+      "id": "R01",
+      "title": "종목 상세 · 옵션/잠금",
+      "purpose": "종목 상세, 상승·하락 선택, 로그인 게이트",
+      "file": "assets/references/R01-stock-detail-options-login-gate.jpg",
+      "original_filename": "stock-detail-options-login-gate.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R02",
+      "title": "종목 상세 · 정보/카드",
+      "purpose": "본문 줄간격, 연관자산 가로 카드",
+      "file": "assets/references/R02-stock-detail-info-related-cards.jpg",
+      "original_filename": "stock-detail-info-related-cards.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R03",
+      "title": "종목 상세 · 알림/내종목",
+      "purpose": "필터 칩, 밑줄 탭, 로그인 게이트",
+      "file": "assets/references/R03-stock-detail-alert-watchlist-tabs.jpg",
+      "original_filename": "stock-detail-alert-watchlist-tabs.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R04",
+      "title": "종목 상세 · 시세/차트",
+      "purpose": "금액 계층, 차트 영역, 이중 하단 CTA",
+      "file": "assets/references/R04-stock-detail-price-chart-trade-cta.jpg",
+      "original_filename": "stock-detail-price-chart-trade-cta.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R05",
+      "title": "기능 안내 오버레이",
+      "purpose": "어두운 안내막, 강조 보라, 콜아웃",
+      "file": "assets/references/R05-feature-guide-overlay-callout.jpg",
+      "original_filename": "feature-guide-overlay-callout.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R06",
+      "title": "혜택 · 하단 카드",
+      "purpose": "연보라 배너, 큰 카드, 하단 내비게이션",
+      "file": "assets/references/R06-benefits-home-lower-cards-navigation.jpg",
+      "original_filename": "benefits-home-lower-cards-navigation.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R07",
+      "title": "혜택 · 상단/오늘 미션",
+      "purpose": "회색 바탕, 둥근 카드, 채움 탭, 큰 숫자",
+      "file": "assets/references/R07-benefits-home-total-missions.jpg",
+      "original_filename": "benefits-home-total-missions.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R08",
+      "title": "혜택 · 미션 리스트",
+      "purpose": "밑줄 탭, 행/배지/보조문구",
+      "file": "assets/references/R08-benefits-mission-list-tabs.jpg",
+      "original_filename": "benefits-mission-list-tabs.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R09",
+      "title": "간편인증 · 약관",
+      "purpose": "프로세스 헤더, 진행선, 동의 항목, 단일 CTA",
+      "file": "assets/references/R09-simple-auth-terms-progress.jpg",
+      "original_filename": "simple-auth-terms-progress.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R10",
+      "title": "탐색 · 미국/랭킹",
+      "purpose": "앱 셸, 채움 탭, 랭킹 행, 시세 정렬",
+      "file": "assets/references/R10-explore-us-ranking-list.jpg",
+      "original_filename": "explore-us-ranking-list.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R11",
+      "title": "메뉴 · 상단",
+      "purpose": "앱 셸, 로그인, 퀵메뉴, 섹션 목록",
+      "file": "assets/references/R11-menu-home-quick-actions.jpg",
+      "original_filename": "menu-home-quick-actions.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R12",
+      "title": "메뉴 · 하단",
+      "purpose": "세로 목록, 연보라 강조, 하단 내비게이션",
+      "file": "assets/references/R12-menu-home-service-list.jpg",
+      "original_filename": "menu-home-service-list.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R13",
+      "title": "간편인증 · 도입",
+      "purpose": "인증 안내 일러스트, 배경 그라데이션, 단일 CTA",
+      "file": "assets/references/R13-simple-auth-intro-carousel.jpg",
+      "original_filename": "simple-auth-intro-carousel.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": true,
+      "redaction_rects": [
+        [
+          20,
+          55,
+          632,
+          148
+        ]
+      ],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R14",
+      "title": "휴대폰 본인인증 · 입력 완료",
+      "purpose": "라벨/입력값/밑줄/간격. 이름·전화번호는 마스킹",
+      "file": "assets/references/R14-phone-verification-filled-form.jpg",
+      "original_filename": "phone-verification-filled-form.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": true,
+      "redaction_rects": [
+        [
+          31,
+          405,
+          342,
+          453
+        ],
+        [
+          31,
+          916,
+          254,
+          954
+        ]
+      ],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R15",
+      "title": "휴대폰 본인인증 · 선택 시트",
+      "purpose": "50% 딤, 손잡이 없는 시트, 테두리형 선택행",
+      "file": "assets/references/R15-phone-verification-carrier-sheet.jpg",
+      "original_filename": "phone-verification-carrier-sheet.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R16",
+      "title": "휴대폰 본인인증 · 입력 오류",
+      "purpose": "진행형 폼, 오류문구, 비활성 CTA",
+      "file": "assets/references/R16-phone-verification-error-disabled-cta.jpg",
+      "original_filename": "phone-verification-error-disabled-cta.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R17",
+      "title": "시작 화면",
+      "purpose": "도입 화면, 큰 빈 공간, 하단 그라데이션",
+      "file": "assets/references/R17-app-onboarding-start.jpg",
+      "original_filename": "app-onboarding-start.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R18",
+      "title": "접근 권한 안내",
+      "purpose": "아이콘/제목/설명/필수·선택 배지",
+      "file": "assets/references/R18-app-permissions-list.jpg",
+      "original_filename": "app-permissions-list.jpeg",
+      "pixel_size": [
+        648,
+        1404
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": true
+    },
+    {
+      "id": "R19",
+      "title": "보안 키패드 · 촬영 참고",
+      "purpose": "광학 촬영. 정밀 치수/색상 측정에서 제외",
+      "file": "assets/references/R19-secure-keypad-optical-reference.jpg",
+      "original_filename": "secure-keypad-optical-reference.png",
+      "pixel_size": [
+        714,
+        806
+      ],
+      "redacted": false,
+      "redaction_rects": [],
+      "measurement_eligible": false
+    }
+  ],
+  "derived_assets": [
+    {
+      "file": "assets/derived/kiwoom-logo-preview.png",
+      "source": "R10",
+      "crop_px": [
+        34,
+        77,
+        87,
+        136
+      ],
+      "usage": "reference-preview-only",
+      "production_replacement_required": true
+    }
+  ],
+  "fonts_included": false
+}

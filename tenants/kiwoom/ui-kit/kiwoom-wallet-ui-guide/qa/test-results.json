@@ -1,0 +1,309 @@
+[
+  {
+    "test": "screen render",
+    "view": "home",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "detail",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "receive",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "recipient",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "amount",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "review",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "status",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "history",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "manage",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "empty",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "ref-form",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "ref-sheet",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 712
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "ref-rank",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "screen render",
+    "view": "components",
+    "pass": true,
+    "dimensions": {
+      "w": 360,
+      "scrollW": 360,
+      "h": 705,
+      "scrollH": 705
+    }
+  },
+  {
+    "test": "recipient → amount → policy gate → expiry → modal → pending",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 320,
+    "view": "home",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 320,
+    "view": "receive",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 320,
+    "view": "recipient",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 320,
+    "view": "review",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 320,
+    "view": "history",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 320,
+    "view": "manage",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 360,
+    "view": "home",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 360,
+    "view": "receive",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 360,
+    "view": "recipient",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 360,
+    "view": "review",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 360,
+    "view": "history",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 360,
+    "view": "manage",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 390,
+    "view": "home",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 390,
+    "view": "receive",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 390,
+    "view": "recipient",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 390,
+    "view": "review",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 390,
+    "view": "history",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 390,
+    "view": "manage",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 430,
+    "view": "home",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 430,
+    "view": "receive",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 430,
+    "view": "recipient",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 430,
+    "view": "review",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 430,
+    "view": "history",
+    "pass": true
+  },
+  {
+    "test": "embedded width",
+    "width": 430,
+    "view": "manage",
+    "pass": true
+  },
+  {
+    "test": "JS errors",
+    "pass": true,
+    "errors": []
+  }
+]

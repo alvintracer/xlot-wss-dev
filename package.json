@@ -1,0 +1,46 @@
+{
+  "name": "took-wss",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*",
+    "tenants/*",
+    "tenants/*/host-chrome",
+    "tenants/*/presentation"
+  ],
+  "scripts": {
+    "dev": "concurrently -n bff,wallet,host,studio -c magenta,cyan,blue,yellow \"npm run dev -w @took-wss/institution-bff\" \"npm run dev -w @took-wss/wallet-webview\" \"npm run dev -w @took-wss/reference-bank-host\" \"npm run dev -w @took-wss/studio\"",
+    "dev:bff": "npm run dev -w @took-wss/institution-bff",
+    "dev:wallet": "npm run dev -w @took-wss/wallet-webview",
+    "dev:host": "npm run dev -w @took-wss/reference-bank-host",
+    "dev:studio": "npm run dev -w @took-wss/studio",
+    "db:apply:development": "node --env-file-if-exists=.env.local scripts/apply-development-migrations.mjs",
+    "verify:host": "node scripts/verify-reference-host.mjs",
+    "verify:kiwoom-wallet": "node scripts/verify-kiwoom-wallet-flow.mjs",
+    "verify:studio": "node scripts/verify-studio-policy.mjs",
+    "verify": "npm run verify:host && npm run verify:studio",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "build": "npm run build -w @took-wss/institution-bff && npm run build -w @took-wss/wallet-webview && npm run build -w @took-wss/reference-bank-host && npm run build -w @took-wss/studio",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "check:edge": "deno fmt --check supabase/functions/wss-dev-sar-vault/index.ts && deno check supabase/functions/wss-dev-sar-vault/index.ts",
+    "check": "npm run check:boundaries && npm run check:edge && npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^9.2.1",
+    "esbuild": "^0.28.2",
+    "pgsql-ast-parser": "^12.0.2",
+    "playwright-core": "^1.63.0",
+    "tsx": "^4.20.6",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4",
+    "vitest": "^4.1.0"
+  }
+}

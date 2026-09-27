@@ -1,0 +1,391 @@
+import {
+  Check,
+  CirclesThreePlus,
+  DeviceMobile,
+  Key,
+  LockKey,
+  ShieldCheck,
+  Wallet,
+} from '@phosphor-icons/react';
+import { useRef, useState } from 'react';
+import type {
+  HostAuthenticationResult,
+  KeyAdapterId,
+  ProvisionWalletRequest,
+  ProvisionWalletResponse,
+  SecureSarWalletCreationResult,
+  SecureWalletImportResult,
+  TenantManifest,
+  WalletImportMethod,
+} from '@took-wss/contracts';
+import { FlowShell } from './FlowShell';
+
+type CreateFlowStep =
+  | 'key-adapter'
+  | 'authentication'
+  | 'wallet-source'
+  | 'seed-wallet'
+  | 'secure-import'
+  | 'sar-setup'
+  | 'provider-wallet'
+  | 'provisioning';
+type SarWalletSource = 'new' | 'import-mnemonic' | 'import-private-key';
+
+interface CreateWalletFlowProps {
+  initialKeyAdapter: KeyAdapterId;
+  manifest: TenantManifest;
+  mode: 'initial' | 'add';
+  canSecureWalletImport: boolean;
+  canCreateSecureSarWallet: boolean;
+  onClose: () => void;
+  onAuthenticate: () => Promise<HostAuthenticationResult>;
+  onRequestSecureSarWalletCreation: () => Promise<SecureSarWalletCreationResult>;
+  onRequestSecureImport: (method: WalletImportMethod) => Promise<SecureWalletImportResult>;
+  onProvision: (request: ProvisionWalletRequest) => Promise<ProvisionWalletResponse>;
+  onComplete: (response: ProvisionWalletResponse) => void;
+}
+
+const maskedSeedSlots = Array.from({ length: 12 }, (_, index) => index + 1);
+
+const adapterCopy: Record<KeyAdapterId, { title: string; description: string; badge: string }> = {
+  'took-sar': {
+    title: '자가복구 지갑',
+    description: '새 지갑을 만들거나 기존 비수탁 지갑을 가져와 SAR로 보호해요.',
+    badge: 'SAR',
+  },
+  'thirdweb-user-wallet': {
+    title: 'Thirdweb MPC 지갑',
+    description: '승인된 Thirdweb 고객 통제형 키 관리 방식을 사용해요.',
+    badge: 'MPC',
+  },
+  'fsl-mpc': {
+    title: 'FSL MPC 지갑',
+    description: '승인된 FSL 고객 통제형 키 관리 방식을 사용해요.',
+    badge: 'MPC',
+  },
+};
+
+export function CreateWalletFlow({
+  initialKeyAdapter,
+  manifest,
+  mode,
+  canSecureWalletImport,
+  canCreateSecureSarWallet,
+  onClose,
+  onAuthenticate,
+  onRequestSecureSarWalletCreation,
+  onRequestSecureImport,
+  onProvision,
+  onComplete,
+}: CreateWalletFlowProps) {
+  const canChooseAdapter = mode === 'add' && manifest.keyManagement.allowedAdapters.length > 1;
+  const [keyAdapter, setKeyAdapter] = useState(initialKeyAdapter);
+  const [step, setStep] = useState<CreateFlowStep>(canChooseAdapter ? 'key-adapter' : 'authentication');
+  const [walletSource, setWalletSource] = useState<SarWalletSource | null>(null);
+  const [secureImportRef, setSecureImportRef] = useState<string | null>(null);
+  const [recoveryAcknowledged, setRecoveryAcknowledged] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const idempotencyKey = useRef(crypto.randomUUID());
+  const isSar = keyAdapter === 'took-sar';
+  const offset = canChooseAdapter ? 1 : 0;
+  const totalSteps = isSar ? offset + 5 : offset + 3;
+  const stepNumber = step === 'key-adapter' ? 1
+    : step === 'authentication' ? offset + 1
+      : step === 'wallet-source' ? offset + 2
+        : step === 'seed-wallet' || step === 'secure-import' ? offset + 3
+          : step === 'sar-setup' ? offset + 4
+            : step === 'provider-wallet' ? offset + 2
+              : totalSteps;
+
+  const selectAdapter = (nextAdapter: KeyAdapterId) => {
+    setKeyAdapter(nextAdapter);
+    setWalletSource(null);
+    setSecureImportRef(null);
+    setRecoveryAcknowledged(false);
+    setError(null);
+  };
+
+  const requestAuthentication = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await onAuthenticate();
+      if (result === 'authenticated') {
+        setStep(isSar ? 'wallet-source' : 'provider-wallet');
+        return;
+      }
+      setError('키움 앱 인증을 완료한 뒤 다시 시도해 주세요.');
+    } catch {
+      setError('키움 앱 인증 연결을 확인한 뒤 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const chooseSource = (source: SarWalletSource) => {
+    setWalletSource(source);
+    setSecureImportRef(null);
+    setError(null);
+    setStep(source === 'new' ? 'seed-wallet' : 'secure-import');
+  };
+
+  const requestSecureImport = async () => {
+    if (walletSource !== 'import-mnemonic' && walletSource !== 'import-private-key') return;
+    setBusy(true);
+    setError(null);
+    const method = walletSource === 'import-mnemonic' ? 'mnemonic' : 'private-key';
+    try {
+      const result = await onRequestSecureImport(method);
+      if (result.status === 'completed') {
+        setSecureImportRef(result.secureImportRef);
+        setStep('sar-setup');
+        return;
+      }
+      setError('보안 입력을 완료하지 못했어요. 키움 앱 연결을 확인해 주세요.');
+    } catch {
+      setError('보안 입력을 열지 못했어요. 키움 앱 연결을 확인해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const provision = async () => {
+    if (walletSource && walletSource !== 'new' && !secureImportRef) {
+      setError('호스트 보안 입력을 먼저 완료해 주세요.');
+      return;
+    }
+    if (isSar && walletSource === 'new' && !canCreateSecureSarWallet) {
+      setError('승인된 고객 기기 키 코어 연결이 필요해요.');
+      return;
+    }
+    setStep('provisioning');
+    setBusy(true);
+    setError(null);
+    try {
+      let source: ProvisionWalletRequest['source'];
+      if (isSar && walletSource === 'new') {
+        const result = await onRequestSecureSarWalletCreation();
+        if (result.status !== 'completed') throw new Error('Secure SAR wallet creation was cancelled.');
+        source = {
+          type: 'secure-new',
+          secureProvisionRef: result.secureProvisionRef,
+          addresses: result.addresses,
+          recoveryEnvelopes: result.recoveryEnvelopes,
+          recovery: result.recovery,
+        };
+      } else if (walletSource && walletSource !== 'new' && secureImportRef) {
+        source = {
+          type: 'secure-import',
+          method: walletSource === 'import-mnemonic' ? 'mnemonic' : 'private-key',
+          secureImportRef,
+        };
+      } else {
+        source = { type: 'new' };
+      }
+      const response = await onProvision({
+        idempotencyKey: idempotencyKey.current,
+        keyAdapter,
+        recoverySetupAcknowledged: isSar ? recoveryAcknowledged : true,
+        source,
+      });
+      setBusy(false);
+      onComplete(response);
+    } catch {
+      setError('지갑을 준비하지 못했어요. 잠시 후 다시 시도해 주세요.');
+      setStep(isSar ? 'sar-setup' : 'provider-wallet');
+      setBusy(false);
+    }
+  };
+
+  if (step === 'key-adapter') {
+    return (
+      <FlowShell
+        title="지갑 추가"
+        step={stepNumber}
+        totalSteps={totalSteps}
+        onClose={onClose}
+        footer={<button className="kw-button" type="button" onClick={() => setStep('authentication')}>선택한 방식으로 계속</button>}
+      >
+        <h1 className="kw-flow-title">추가할 지갑의<br />키 관리 방식을 선택해 주세요</h1>
+        <p className="kw-body kw-mt-12">지갑 슬롯마다 SAR 또는 승인된 MPC 방식을 독립적으로 선택할 수 있어요.</p>
+        <div className="kw-flow-choice-list kw-mt-24">
+          {manifest.keyManagement.allowedAdapters.map((adapter) => {
+            const copy = adapterCopy[adapter];
+            return (
+              <button className="kw-flow-choice" type="button" aria-pressed={keyAdapter === adapter} key={adapter} onClick={() => selectAdapter(adapter)}>
+                <span className="kw-flow-choice__badge">{copy.badge}</span>
+                <span><strong>{copy.title}</strong><small>{copy.description}</small></span>
+                <Check aria-hidden="true" />
+              </button>
+            );
+          })}
+        </div>
+      </FlowShell>
+    );
+  }
+
+  const authenticationBack = canChooseAdapter ? () => setStep('key-adapter') : undefined;
+  if (step === 'authentication') {
+    return (
+      <FlowShell
+        title={mode === 'add' ? '지갑 추가' : '지갑 만들기'}
+        step={stepNumber}
+        totalSteps={totalSteps}
+        onBack={authenticationBack}
+        onClose={onClose}
+        footer={(
+          <button className="kw-button" type="button" disabled={busy} aria-busy={busy} onClick={() => void requestAuthentication()}>
+            {busy ? '키움 앱에서 확인 중이에요' : '키움 인증 요청'}
+          </button>
+        )}
+      >
+        <div className="kw-flow-symbol" aria-hidden="true"><ShieldCheck weight="regular" /></div>
+        <h1 className="kw-flow-title">키움 고객 인증으로<br />지갑 등록을 시작해요</h1>
+        <p className="kw-body kw-mt-12">이 WebView가 이름·전화번호를 다시 받지 않고, 키움 앱이 보유한 고객 세션으로 본인 여부를 확인합니다.</p>
+        <div className="kw-inline-notice kw-mt-24">
+          <LockKey className="kw-icon kw-icon--small" aria-hidden="true" />
+          <span>인증 결과만 전달받으며 PIN, 생체정보, 주민등록번호는 WSS로 전달되지 않습니다.</span>
+        </div>
+        {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
+      </FlowShell>
+    );
+  }
+
+  if (step === 'wallet-source') {
+    return (
+      <FlowShell title="지갑 시작 방식" step={stepNumber} totalSteps={totalSteps} onBack={() => setStep('authentication')} onClose={onClose}>
+        <h1 className="kw-flow-title">새로 만들거나 기존 지갑을<br />가져올 수 있어요</h1>
+        <p className="kw-body kw-mt-12">가져온 지갑도 새로운 지갑 슬롯으로 등록하고 SAR 자가복구 체계를 설정합니다.</p>
+        <div className="kw-flow-choice-list kw-mt-24">
+          <button className="kw-flow-choice" type="button" onClick={() => chooseSource('new')}>
+            <span className="kw-flow-choice__icon"><Wallet aria-hidden="true" /></span>
+            <span><strong>새 지갑 만들기</strong><small>고객 기기에서 새로운 복구 구문을 만들어요.</small></span>
+          </button>
+          <button className="kw-flow-choice" type="button" onClick={() => chooseSource('import-mnemonic')}>
+            <span className="kw-flow-choice__icon"><Key aria-hidden="true" /></span>
+            <span><strong>니모닉으로 가져오기</strong><small>기존 비수탁 지갑의 복구 구문을 보안 입력으로 불러와요.</small></span>
+          </button>
+          <button className="kw-flow-choice" type="button" onClick={() => chooseSource('import-private-key')}>
+            <span className="kw-flow-choice__icon"><LockKey aria-hidden="true" /></span>
+            <span><strong>개인키로 가져오기</strong><small>해당 키가 지원하는 네트워크 범위로 지갑을 등록해요.</small></span>
+          </button>
+        </div>
+      </FlowShell>
+    );
+  }
+
+  if (step === 'seed-wallet') {
+    return (
+      <FlowShell
+        title="새 자가복구 지갑"
+        step={stepNumber}
+        totalSteps={totalSteps}
+        onBack={() => setStep('wallet-source')}
+        onClose={onClose}
+        footer={<button className="kw-button" type="button" onClick={() => setStep('sar-setup')}>새 지갑으로 계속</button>}
+      >
+        <div className="kw-flow-symbol" aria-hidden="true"><Key weight="regular" /></div>
+        <h1 className="kw-flow-title">복구 구문은 고객 기기<br />안에서만 만들어져요</h1>
+        <p className="kw-body kw-mt-12">지갑 등록을 확정하면 호스트 키 코어가 실제 복구 구문과 체인별 키를 생성합니다. 키움·took 서버에는 완성된 구문이나 개인키를 보내지 않습니다.</p>
+        <div className="kw-seed-preview kw-mt-24" aria-label="보안 코어 연결 전 복구 구문 비공개 미리보기">
+          {maskedSeedSlots.map((index) => <span key={index}><b>{index}</b>••••</span>)}
+        </div>
+        <div className="kw-inline-notice kw-inline-notice--neutral kw-mt-16">
+          <DeviceMobile className="kw-icon kw-icon--small" aria-hidden="true" />
+          <span>{canCreateSecureSarWallet ? 'Reference Host 개발 키 코어가 실제 키를 생성하되 복구 구문은 화면과 WSS에 노출하지 않습니다.' : '승인된 네이티브 키 코어가 연결된 환경에서만 실제 지갑을 만들 수 있습니다.'}</span>
+        </div>
+      </FlowShell>
+    );
+  }
+
+  if (step === 'secure-import') {
+    const isMnemonic = walletSource === 'import-mnemonic';
+    return (
+      <FlowShell
+        title="기존 지갑 가져오기"
+        step={stepNumber}
+        totalSteps={totalSteps}
+        onBack={() => setStep('wallet-source')}
+        onClose={onClose}
+        footer={(
+          <button className="kw-button" type="button" disabled={!canSecureWalletImport || busy} aria-busy={busy} onClick={() => void requestSecureImport()}>
+            {busy ? '보안 입력 확인 중이에요' : canSecureWalletImport ? '키움 보안 입력 열기' : '보안 입력 연결 필요'}
+          </button>
+        )}
+      >
+        <div className="kw-flow-symbol" aria-hidden="true"><LockKey weight="regular" /></div>
+        <h1 className="kw-flow-title">{isMnemonic ? '니모닉' : '개인키'}는<br />보안 입력에서만 받아요</h1>
+        <p className="kw-body kw-mt-12">입력값은 고객 기기의 승인된 키 코어가 직접 처리합니다. WSS WebView와 키움·took 서버에는 원문이 전달되지 않습니다.</p>
+        <div className="kw-inline-notice kw-mt-24">
+          <ShieldCheck className="kw-icon kw-icon--small" aria-hidden="true" />
+          <span>보안 입력이 끝나면 비밀값 대신 일회성 등록 참조만 전달받아 SAR 설정을 이어갑니다.</span>
+        </div>
+        {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
+      </FlowShell>
+    );
+  }
+
+  if (step === 'sar-setup') {
+    return (
+      <FlowShell
+        title="자가복구 설정"
+        step={stepNumber}
+        totalSteps={totalSteps}
+        onBack={() => setStep(walletSource === 'new' ? 'seed-wallet' : 'secure-import')}
+        onClose={onClose}
+        footer={(
+          <button className="kw-button" type="button" disabled={!recoveryAcknowledged || busy || (walletSource === 'new' && !canCreateSecureSarWallet)} onClick={() => void provision()}>
+            {mode === 'add' ? '이 지갑 슬롯 추가하기' : '지갑 만들기'}
+          </button>
+        )}
+      >
+        <h1 className="kw-flow-title">2개 조건으로 내가 직접<br />지갑을 복구할 수 있어요</h1>
+        <p className="kw-body kw-mt-12">3개의 복구 조건을 서로 다른 신뢰 경계에 두고, 고객이 선택한 2개를 확인해야 복구가 진행됩니다.</p>
+        <div className="kw-factor-list kw-mt-24">
+          <article><span>A</span><div><strong>비밀번호 · 기기</strong><small>고객 기기에서 보호되는 복구 조건</small></div><Check aria-label="설정 대상" /></article>
+          <article><span>B</span><div><strong>휴대폰 메시지 인증</strong><small>분리된 인증·저장 경계</small></div><Check aria-label="설정 대상" /></article>
+          <article><span>C</span><div><strong>소셜 · 이메일 인증</strong><small>별도 인증·서명 조건</small></div><Check aria-label="설정 대상" /></article>
+        </div>
+        <div className="kw-recovery-paths kw-mt-20" aria-label="사용 가능한 복구 조합">
+          <span>A + B</span><span>A + C</span><span>B + C</span>
+        </div>
+        <label className="kw-consent kw-mt-24">
+          <input type="checkbox" checked={recoveryAcknowledged} onChange={(event) => setRecoveryAcknowledged(event.target.checked)} />
+          <span>어떤 단일 서버나 운영자도 혼자 지갑을 복구할 수 없다는 안내를 확인했어요.</span>
+        </label>
+        {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
+      </FlowShell>
+    );
+  }
+
+  if (step === 'provider-wallet') {
+    const copy = adapterCopy[keyAdapter];
+    return (
+      <FlowShell
+        title="MPC 지갑 준비"
+        step={stepNumber}
+        totalSteps={totalSteps}
+        onBack={() => setStep('authentication')}
+        onClose={onClose}
+        footer={<button className="kw-button" type="button" disabled={busy} onClick={() => void provision()}>{mode === 'add' ? '이 지갑 슬롯 추가하기' : '지갑 만들기'}</button>}
+      >
+        <div className="kw-flow-symbol" aria-hidden="true"><CirclesThreePlus weight="regular" /></div>
+        <h1 className="kw-flow-title">{copy.title}을<br />새 슬롯으로 준비해요</h1>
+        <p className="kw-body kw-mt-12">선택한 공급자의 고객 통제형 지갑을 등록하고, 이 지갑에서 사용할 수 있는 네트워크 정책을 연결합니다.</p>
+        <div className="kw-inline-notice kw-mt-24"><strong>선택한 방식</strong>&nbsp; {copy.title}</div>
+        {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
+      </FlowShell>
+    );
+  }
+
+  return (
+    <FlowShell title="지갑 준비" step={totalSteps} totalSteps={totalSteps} onClose={onClose}>
+      <div className="kw-status-mark" aria-hidden="true"><CirclesThreePlus className="kw-icon" /></div>
+      <div className="kw-status-copy">
+        <h1 className="kw-flow-title">새 지갑 슬롯을<br />등록하고 있어요</h1>
+        <p className="kw-body kw-mt-12">선택한 지갑의 지원 네트워크와 원화 평가 연결 상태를 확인합니다.</p>
+      </div>
+    </FlowShell>
+  );
+}

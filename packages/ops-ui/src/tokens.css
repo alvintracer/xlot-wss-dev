@@ -1,0 +1,25 @@
+:root {
+  --ops-black: #000000;
+  --ops-ink: #0a0a0a;
+  --ops-white: #ffffff;
+  --ops-paper: #f3f3ee;
+  --ops-muted: #969690;
+  --ops-signal: #ff2b00;
+  --ops-line-dark: rgb(255 255 255 / 18%);
+  --ops-line-light: rgb(0 0 0 / 14%);
+  --ops-muted-dark: rgb(255 255 255 / 58%);
+  --ops-muted-light: rgb(0 0 0 / 54%);
+  --ops-radius-control: 2px;
+  --ops-radius-panel: 10px;
+  --ops-grid-size: 72px;
+  --ops-sans: "Noto Sans KR Variable", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  --ops-mono: "SFMono-Regular", "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
+  --ops-display: "Paperlogy", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+}
+
+.ops-editorial-grid {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 7%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 7%) 1px, transparent 1px);
+  background-size: var(--ops-grid-size) var(--ops-grid-size);
+}

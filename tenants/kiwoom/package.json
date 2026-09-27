@@ -1,0 +1,9 @@
+{
+  "name": "@took-wss/tenant-kiwoom",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "dependencies": { "@took-wss/contracts": "0.1.0", "@took-wss/module-registry": "0.1.0" }
+}
