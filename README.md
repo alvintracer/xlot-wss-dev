@@ -12,6 +12,7 @@ Every project selects a versioned recovery requirement at creation time: `sar-re
 - `apps/reference-bank-host` — reference financial app hosting the WebView
 - `apps/studio` — tenant/module configuration viewer and future control plane
 - `services/institution-bff` — short-lived institution sessions and signed runtime bootstrap
+- `services/kyt-gateway` — iwlnv fixed-egress TranSight OAuth/KYT adapter with a minimal normalized response
 - `services/institution-bff/src/stablecoinRegistry.ts` — curated chain-specific stablecoin contracts, mints, issuers, and canonical/bridged classification
 - `services/institution-bff/db` — WSS identity, account linking, wallet ownership, encrypted development-envelope, consent, and audit migrations
 - `supabase/functions/wss-dev-sar-vault` — read-only, development-only encrypted SAR-envelope retrieval after session and ownership verification

@@ -40,6 +40,17 @@
   tenant-scoped unique indexes; signed proof strings are not persisted
 - `wallet-price-quote` and fail-closed `kyt-screen` Edge Functions deployed;
   their gateway JWT checks remain enabled and the BFF calls them server-side
+- iwlnv fixed-egress TranSight gateway deployed as the independent PM2 process
+  `took-wss-kyt-gateway`, bound to `127.0.0.1:3200` and exposed only through
+  Caddy at `https://quote-api.tookpay.xyz/took-wss/kyt`; actual server egress is
+  `49.247.139.241/32`
+- TranSight OAuth live verification succeeds with HTTP 200 and `A0000`; the
+  `walletTracked` service call currently returns HTTP 403 pending provider IP
+  allowlisting and/or service entitlement, and the full WSS path was verified
+  to fail closed while that condition remains
+- the WSS Edge Function stores only an independent gateway URL/key; actual
+  TranSight OAuth and AES material remain solely in the iwlnv root-owned
+  mode-0600 environment file
 - the updated `wallet-price-quote` deployment returned fresh labeled
   market-reference quotes for DAI, USDC, and JPYC with no unavailable asset on
   2026-09-28; its fallback order is Bonanza K-VWAP, CoinGecko, then the official
@@ -96,12 +107,12 @@ issued tokens, including chain-native fee preparation, KYT, host confirmation,
 SAR key-core signing, exact signed-payload verification, broadcast, and
 intent/execution audit. XRP destination tags, trust-line checks, Solana ATA
 creation rent, and TRON maximum fee limits are handled explicitly. A
-funded development wallet plus configured TranSight credentials are required
-for a live-send smoke test; without KYT credentials the flow intentionally
-blocks. Token inventory, price coverage, and direct ERC-20 execution are
-implemented. Permit/Solana/TRON relay execution, the phone recipient claim and
-refund service, native non-EVM coin sends, and general confirmation
-reconciliation remain open. Every
+funded development wallet plus active TranSight `walletTracked` entitlement is
+required for a live-send smoke test; until the provider clears the current
+HTTP 403 the flow intentionally blocks. Token inventory, price coverage, and
+direct ERC-20 execution are implemented. Permit/Solana/TRON relay execution,
+the phone recipient claim and refund service, native non-EVM coin sends, and
+general confirmation reconciliation remain open. Every
 direct token send still requires the chain's native fee asset even when a relay
 quote reports that the asset is eligible.
 

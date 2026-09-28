@@ -1,0 +1,7 @@
+quote-api.tookpay.xyz {
+  encode zstd gzip
+
+  handle_path /took-wss/kyt/* {
+    reverse_proxy 127.0.0.1:3200
+  }
+}

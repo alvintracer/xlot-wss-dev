@@ -30,7 +30,8 @@
     "build": "npm run build -w @took-wss/institution-bff && npm run build -w @took-wss/wallet-webview && npm run build -w @took-wss/reference-bank-host && npm run build -w @took-wss/studio",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:edge": "deno fmt --check supabase/functions/wss-dev-sar-vault/index.ts supabase/functions/wss-auth-send-sms/index.ts supabase/functions/wss-auth-send-sms/index_test.ts supabase/functions/wallet-price-quote/index.ts supabase/functions/wallet-price-quote/index_test.ts supabase/functions/kyt-screen/index.ts && deno check supabase/functions/wss-dev-sar-vault/index.ts supabase/functions/wss-auth-send-sms/index.ts supabase/functions/wallet-price-quote/index.ts supabase/functions/kyt-screen/index.ts && deno test supabase/functions/wss-auth-send-sms/index_test.ts supabase/functions/wallet-price-quote/index_test.ts",
-    "check": "npm run check:boundaries && npm run check:edge && npm run typecheck && npm test && npm run build"
+    "check:kyt-gateway": "npm run check -w @took-wss/kyt-gateway && npm test -w @took-wss/kyt-gateway",
+    "check": "npm run check:boundaries && npm run check:edge && npm run check:kyt-gateway && npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
