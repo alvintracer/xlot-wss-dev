@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createAes256CbcCodec } from "../lib/aes-cbc.js";
 import {
   normalizeTransightResult,
   TransightClient,
@@ -12,6 +13,19 @@ const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), 
   headers: { "content-type": "application/json" },
 });
 
+const encryptionCodec = createAes256CbcCodec({
+  key: "0123456789abcdef0123456789abcdef",
+  iv: "abcdef0123456789",
+});
+
+const encryptedResponse = (body, status = 200) => new Response(
+  encryptionCodec.encryptUtf8(JSON.stringify(body)),
+  {
+    status,
+    headers: { "content-type": "text/plain; charset=UTF-8" },
+  },
+);
+
 test("formats KST transaction time and 20-character unique transaction number", () => {
   const date = new Date("2026-09-28T00:01:02.000Z");
   assert.equal(transightTransactionTime(date), "20260928090102");
@@ -19,7 +33,7 @@ test("formats KST transaction time and 20-character unique transaction number", 
   assert.equal(transightTransactionNumber(date).length, 20);
 });
 
-test("issues one OAuth token, calls walletTracked, and normalizes minimal risk", async () => {
+test("issues one OAuth token, calls wallet, and normalizes provider risk", async () => {
   const calls = [];
   const client = new TransightClient({
     baseUrl: "https://t-api.transight.io",
@@ -28,6 +42,8 @@ test("issues one OAuth token, calls walletTracked, and normalizes minimal risk",
     clientSecret: "client-secret",
     now: () => Date.parse("2026-09-28T00:01:02.000Z"),
     rateGate: { schedule: (task) => task() },
+    payloadEncryptionMode: "aes-256-cbc-base64-raw",
+    encryptionCodec,
     fetchImpl: async (url, init) => {
       calls.push({ url: String(url), init });
       if (String(url).endsWith("/oauth/token")) {
@@ -38,7 +54,7 @@ test("issues one OAuth token, calls walletTracked, and normalizes minimal risk",
           expires_in: 3600,
         });
       }
-      return jsonResponse({
+      return encryptedResponse({
         rspCode: "A0000",
         isDenylist: "N",
         riskLevel: null,
@@ -61,7 +77,7 @@ test("issues one OAuth token, calls walletTracked, and normalizes minimal risk",
   );
 
   assert.equal(calls.filter((call) => call.url.endsWith("/oauth/token")).length, 1);
-  assert.equal(calls.filter((call) => call.url.endsWith("/walletTracked")).length, 2);
+  assert.equal(calls.filter((call) => call.url.endsWith("/wallet")).length, 2);
   assert.equal(
     calls[0].init.headers.Authorization,
     `Basic ${Buffer.from("client-id:client-secret").toString("base64")}`,
@@ -70,10 +86,21 @@ test("issues one OAuth token, calls walletTracked, and normalizes minimal risk",
     scope: "ORG_CLIENT",
     grant_type: "client_credentials",
   });
-  const providerBody = JSON.parse(calls[1].init.body);
-  assert.equal(providerBody.maxHopCount, 1);
+  assert.equal(
+    calls[1].init.headers["Content-Type"],
+    "text/plain; charset=UTF-8",
+  );
+  assert.equal(calls[1].init.body.startsWith("{"), false);
+  assert.equal(/\s/.test(calls[1].init.body), false);
+  assert.equal(
+    Buffer.from(calls[1].init.body, "base64").toString("base64"),
+    calls[1].init.body,
+  );
+  const providerBody = JSON.parse(encryptionCodec.decryptUtf8(calls[1].init.body));
+  assert.equal("maxHopCount" in providerBody, false);
   assert.equal(providerBody.tranDtm, "20260928090102");
   assert.equal(providerBody.tranNo.length, 20);
+  assert.equal(providerBody.walletAddress, "0x0000000000000000000000000000000000000000");
   assert.deepEqual(first, {
     risk_score: 66.14,
     is_sanctioned: false,

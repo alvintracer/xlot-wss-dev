@@ -45,11 +45,12 @@
   Caddy at `https://quote-api.tookpay.xyz/took-wss/kyt`; actual server egress is
   `49.247.139.241/32`
 - TranSight OAuth and token inspection succeed with HTTP 200, `A0000`, and
-  `ORG_CLIENT`. After the operator reported allowlisting complete, all three
-  `t-api.transight.io` denylist endpoints still returned HTTP 403 with `You do
-  not have access to the service.` The provider must confirm that the IP was
-  applied to the test API environment and grant the issued client its service
-  entitlement; the full WSS path remains verified fail closed
+  `ORG_CLIENT`. The provider-confirmed AES-256-CBC → single standard-Base64 raw
+  body contract is deployed without JSON/form wrapping, URL encoding, or line
+  breaks. Direct `/denylist/wallet` screening returns encrypted `A0000`; iwlnv
+  gateway and deployed `kyt-screen` both return an available, normalized result
+  end to end. Optional 1-hop `/walletTracked` still returns encrypted `A1002`
+  and remains disabled pending endpoint-specific provider clarification
 - the WSS Edge Function stores only an independent gateway URL/key; actual
   TranSight OAuth and AES material remain solely in the iwlnv root-owned
   mode-0600 environment file
@@ -109,9 +110,9 @@ issued tokens, including chain-native fee preparation, KYT, host confirmation,
 SAR key-core signing, exact signed-payload verification, broadcast, and
 intent/execution audit. XRP destination tags, trust-line checks, Solana ATA
 creation rent, and TRON maximum fee limits are handled explicitly. A
-funded development wallet plus active TranSight `walletTracked` entitlement is
-required for a live-send smoke test; until the provider clears the current
-HTTP 403 the flow intentionally blocks. Token inventory, price coverage, and
+funded development wallet is required for a live-send smoke test. Direct
+TranSight denylist KYT is active and remains fail closed when unavailable;
+1-hop tracked-risk enrichment is not yet active. Token inventory, price coverage, and
 direct ERC-20 execution are implemented. Permit/Solana/TRON relay execution,
 the phone recipient claim and refund service, native non-EVM coin sends, and
 general confirmation reconciliation remain open. Every

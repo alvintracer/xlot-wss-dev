@@ -24,19 +24,18 @@ TranSight
 - Timeout, malformed responses, provider errors, and unavailable credentials
   fail closed in the existing WSS Edge Function.
 
-The v2.0 guide specifies AES-256-CBC, PKCS5 padding, and Base64 encoding, but
-its OAuth and KYT wire examples send JSON directly over HTTPS and do not define
-an encrypted envelope field. The gateway validates the issued 32-byte key and
-16-byte IV and carries a tested codec, but intentionally uses
-`TRANSIGHT_PAYLOAD_ENCRYPTION_MODE=documented-json`. Do not invent an envelope;
-enable payload encryption only after Bonanza Factory supplies its exact request
-and response framing.
+TranSight service requests use compact JSON encrypted with AES-256-CBC and
+PKCS padding. The ciphertext is standard-Base64 encoded exactly once and sent
+as the complete raw body with no JSON/form wrapper, URL encoding, whitespace,
+or line breaks. This preserves `+` as a Base64 character. Service responses use
+the same raw encrypted format and are decrypted before response validation.
+OAuth remains plaintext JSON over TLS.
 
 ## Provider contract
 
 - OAuth: `POST /oauth/token`, HTTP Basic client credentials,
   `grant_type=client_credentials`, `scope=ORG_CLIENT`
-- Screening: `POST /ts/api/denylist/walletTracked`, `maxHopCount=1`
+- Screening: `POST /ts/api/denylist/wallet`
 - Success: HTTP 200 and `rspCode=A0000`
 - Auth retry: one token refresh for HTTP 401, `A1017`, or `A1018`
 - Allowlist failure: HTTP 403 or `A1015`
@@ -59,10 +58,14 @@ The current shared HTTPS ingress exposes this loopback service below
 `https://quote-api.tookpay.xyz/took-wss/kyt/`. A dedicated hostname can replace
 that base URL later without changing the provider adapter contract.
 
-After Bonanza Factory activates the allowlist and endpoint entitlement, run the
-non-customer zero-address smoke without printing a credential or token:
+Run the non-customer zero-address smoke without printing a credential or token:
 
 ```bash
 cd /opt/took-wss-kyt-gateway
 npm run smoke:live
 ```
+
+The direct denylist endpoint is active. The optional 1-hop
+`/ts/api/denylist/walletTracked` endpoint returned encrypted `A1002` in the same
+environment on 2026-09-28 and remains disabled until its provider-side request
+or entitlement requirement is clarified.

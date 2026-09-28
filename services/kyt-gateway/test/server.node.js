@@ -6,7 +6,7 @@ const testEnv = {
   INTERNAL_GATEWAY_TOKEN: "a".repeat(64),
   TRANSIGHT_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef",
   TRANSIGHT_ENCRYPTION_IV: "abcdef0123456789",
-  TRANSIGHT_PAYLOAD_ENCRYPTION_MODE: "documented-json",
+  TRANSIGHT_PAYLOAD_ENCRYPTION_MODE: "aes-256-cbc-base64-raw",
 };
 
 async function listen(app) {

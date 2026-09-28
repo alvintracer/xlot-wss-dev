@@ -29,6 +29,10 @@ function secureEqual(left, right) {
 }
 
 export function createTransightClientFromEnv(env = process.env) {
+  const encryptionCodec = createAes256CbcCodec({
+    key: env.TRANSIGHT_ENCRYPTION_KEY,
+    iv: env.TRANSIGHT_ENCRYPTION_IV,
+  });
   return new TransightClient({
     baseUrl: env.TRANSIGHT_API_BASE_URL,
     tokenUrl: env.TRANSIGHT_OAUTH_TOKEN_URL,
@@ -41,6 +45,8 @@ export function createTransightClientFromEnv(env = process.env) {
       300_000,
     ),
     tpsLimit: Math.min(positiveInteger(env.TRANSIGHT_TPS_LIMIT, 8), 20),
+    payloadEncryptionMode: env.TRANSIGHT_PAYLOAD_ENCRYPTION_MODE,
+    encryptionCodec,
   });
 }
 
@@ -71,11 +77,10 @@ export function createApp({ env = process.env, transightClient } = {}) {
   if (!env.INTERNAL_GATEWAY_TOKEN || env.INTERNAL_GATEWAY_TOKEN.length < 32) {
     throw new Error("INTERNAL_GATEWAY_TOKEN must be at least 32 characters.");
   }
-  const encryptionMode = env.TRANSIGHT_PAYLOAD_ENCRYPTION_MODE || "documented-json";
-  if (encryptionMode !== "documented-json") {
-    throw new Error(
-      "Unsupported TranSight encryption envelope. The provider contract must be explicit.",
-    );
+  const encryptionMode = env.TRANSIGHT_PAYLOAD_ENCRYPTION_MODE ||
+    "aes-256-cbc-base64-raw";
+  if (encryptionMode !== "aes-256-cbc-base64-raw") {
+    throw new Error("Unsupported TranSight payload encryption mode.");
   }
   const codec = createAes256CbcCodec({
     key: env.TRANSIGHT_ENCRYPTION_KEY,

@@ -63,14 +63,14 @@ function approvedUrl(value, expectedPath, label) {
   return url;
 }
 
-async function readJson(response, maxBytes = MAX_RESPONSE_BYTES) {
+async function readText(response, maxBytes = MAX_RESPONSE_BYTES) {
   const declaredLength = Number(response.headers.get("content-length"));
   if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
     throw new TransightError("TranSight response is too large.", {
       code: "RESPONSE_TOO_LARGE",
     });
   }
-  if (!response.body?.getReader) return response.json();
+  if (!response.body?.getReader) return response.text();
 
   const reader = response.body.getReader();
   const chunks = [];
@@ -87,7 +87,11 @@ async function readJson(response, maxBytes = MAX_RESPONSE_BYTES) {
     }
     chunks.push(Buffer.from(value));
   }
-  const text = Buffer.concat(chunks).toString("utf8");
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+async function readJson(response, maxBytes = MAX_RESPONSE_BYTES) {
+  const text = await readText(response, maxBytes);
   try {
     return JSON.parse(text);
   } catch {
@@ -95,6 +99,15 @@ async function readJson(response, maxBytes = MAX_RESPONSE_BYTES) {
       code: "INVALID_RESPONSE",
     });
   }
+}
+
+function isCanonicalBase64(value) {
+  if (
+    !value ||
+    value.length % 4 !== 0 ||
+    !/^[A-Za-z0-9+/]+={0,2}$/.test(value)
+  ) return false;
+  return Buffer.from(value, "base64").toString("base64") === value;
 }
 
 function numberOrNull(value) {
@@ -213,9 +226,9 @@ export class TransightClient {
       "TRANSIGHT_OAUTH_TOKEN_URL",
     );
     this.screenUrl = approvedUrl(
-      new URL("/ts/api/denylist/walletTracked", baseUrl).href,
-      "/ts/api/denylist/walletTracked",
-      "TranSight walletTracked URL",
+      new URL("/ts/api/denylist/wallet", baseUrl).href,
+      "/ts/api/denylist/wallet",
+      "TranSight wallet URL",
     );
     this.clientId = String(options.clientId ?? "").trim();
     this.clientSecret = String(options.clientSecret ?? "").trim();
@@ -225,6 +238,19 @@ export class TransightClient {
     }
     if (this.scope !== "ORG_CLIENT") {
       throw new Error("TranSight OAuth scope must be ORG_CLIENT.");
+    }
+    this.payloadEncryptionMode = String(
+      options.payloadEncryptionMode ?? "aes-256-cbc-base64-raw",
+    ).trim();
+    if (this.payloadEncryptionMode !== "aes-256-cbc-base64-raw") {
+      throw new Error("Unsupported TranSight payload encryption mode.");
+    }
+    this.encryptionCodec = options.encryptionCodec;
+    if (
+      typeof this.encryptionCodec?.encryptUtf8 !== "function" ||
+      typeof this.encryptionCodec?.decryptUtf8 !== "function"
+    ) {
+      throw new Error("TranSight AES-256-CBC codec is missing.");
     }
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.now = options.now ?? (() => Date.now());
@@ -255,7 +281,6 @@ export class TransightClient {
         tranDtm: transightTransactionTime(requestedAt),
         tranNo: transightTransactionNumber(requestedAt),
         walletAddress,
-        maxHopCount: 1,
       });
       return normalizeTransightResult(payload);
     });
@@ -263,14 +288,15 @@ export class TransightClient {
 
   async #authorizedRequest(body, retried = false) {
     const token = await this.#getToken();
+    const encryptedBody = this.#encodeServiceRequest(body);
     const response = await this.#fetch(this.screenUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json; charset=UTF-8",
-        Accept: "application/json",
+        "Content-Type": "text/plain; charset=UTF-8",
+        Accept: "text/plain, application/json",
       },
-      body: JSON.stringify(body),
+      body: encryptedBody,
     });
     if (response.status === 401 && !retried) {
       this.token = null;
@@ -283,7 +309,7 @@ export class TransightClient {
         retryable: response.status === 429 || response.status >= 500,
       });
     }
-    const payload = await readJson(response);
+    const payload = await this.#decodeServiceResponse(response);
     const code = String(payload?.rspCode ?? "");
     if (AUTH_ERROR_CODES.has(code) && !retried) {
       this.token = null;
@@ -296,6 +322,55 @@ export class TransightClient {
       });
     }
     return payload;
+  }
+
+  #encodeServiceRequest(body) {
+    const plaintext = JSON.stringify(body);
+    const ciphertext = this.encryptionCodec.encryptUtf8(plaintext);
+    if (!isCanonicalBase64(ciphertext) || /\s/.test(ciphertext)) {
+      throw new TransightError("TranSight request encryption failed.", {
+        code: "ENCRYPTION_ERROR",
+      });
+    }
+    return ciphertext;
+  }
+
+  async #decodeServiceResponse(response) {
+    const rawText = await readText(response);
+    const encoded = rawText.trim();
+    if (!encoded) {
+      throw new TransightError("TranSight returned an empty response.", {
+        code: "INVALID_RESPONSE",
+      });
+    }
+
+    let jsonText = encoded;
+    if (!encoded.startsWith("{") && !encoded.startsWith("[")) {
+      if (/\s/.test(encoded) || !isCanonicalBase64(encoded)) {
+        throw new TransightError("TranSight returned an invalid encrypted response.", {
+          code: "INVALID_RESPONSE",
+        });
+      }
+      try {
+        jsonText = this.encryptionCodec.decryptUtf8(encoded);
+      } catch {
+        throw new TransightError("TranSight response decryption failed.", {
+          code: "DECRYPTION_ERROR",
+        });
+      }
+    }
+
+    try {
+      const payload = JSON.parse(jsonText);
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+        throw new Error("Response is not an object.");
+      }
+      return payload;
+    } catch {
+      throw new TransightError("TranSight returned invalid JSON.", {
+        code: "INVALID_RESPONSE",
+      });
+    }
   }
 
   async #getToken() {

@@ -19,7 +19,7 @@ Institution BFF
   -> HTTPS + independent gateway key
 iwlnv KYT gateway
   -> OAuth2 client credentials + fixed egress IPv4
-TranSight walletTracked API
+TranSight wallet API
 ```
 
 The iwlnv host reports `49.247.139.241` from an external IPv4 echo service.
@@ -35,8 +35,8 @@ v2.0 guide:
 - fixed `scope=ORG_CLIENT`;
 - token caching based on `expires_in` and a single forced refresh for HTTP 401,
   `A1017`, or `A1018`;
-- `POST /ts/api/denylist/walletTracked` with KST `tranDtm`, a daily-unique
-  20-character `tranNo`, and `maxHopCount=1`;
+- `POST /ts/api/denylist/wallet` with KST `tranDtm` and a daily-unique
+  20-character `tranNo`;
 - HTTP and provider-code validation, bounded timeouts, response-size limits,
   local request throttling, and fail-closed errors;
 - direct and tracked risk normalization into WSS score, sanctions status, and
@@ -48,16 +48,21 @@ not log screened wallet addresses.
 
 ## Encryption boundary
 
-The guide specifies AES-256-CBC, PKCS5 padding, and Base64 encoding. The issued
-32-byte key and 16-byte IV are present only in the root-owned mode-0600 server
-environment file and pass the deployed codec's startup validation.
+The issued 32-byte key and 16-byte IV are present only in the root-owned
+mode-0600 server environment file and pass startup validation. The provider
+confirmed the service API wire contract on 2026-09-28:
 
-The same guide's OAuth and KYT wire examples send JSON directly over HTTPS and
-do not define an encrypted request/response envelope or field name. The runtime
-therefore uses `documented-json` mode and never guesses a proprietary envelope.
-The AES codec is implemented and contract-tested; activating it for provider
-payloads requires Bonanza Factory to provide the exact framing and a test
-vector. TLS remains mandatory in every mode.
+1. Serialize the request as compact JSON without a trailing newline.
+2. Encrypt it with AES-256-CBC and PKCS padding.
+3. Standard-Base64 encode the ciphertext exactly once.
+4. Send that Base64 string as the complete raw HTTP body, without a JSON/form
+   wrapper, URL encoding, whitespace, or line breaks.
+
+The gateway uses `TRANSIGHT_PAYLOAD_ENCRYPTION_MODE=aes-256-cbc-base64-raw`
+and `text/plain; charset=UTF-8`; standard Base64 `+` characters therefore reach
+TranSight unchanged. The encrypted response body is Base64-validated,
+decrypted, JSON-parsed, and then minimized. OAuth remains plaintext JSON over
+TLS as specified by the guide.
 
 ## Secret boundary
 
@@ -78,35 +83,22 @@ Verified on 2026-09-28:
    valid `expires_in` value.
 4. Public gateway health returned HTTP 200.
 5. A screening request without the internal gateway key returned HTTP 401.
-6. An authenticated screening request reached TranSight, where
-   `/ts/api/denylist/walletTracked` returned HTTP 403.
-7. The gateway converted that upstream denial to a sanitized HTTP 502.
-8. The deployed WSS Edge Function converted the unavailable provider result to
-   `riskScore=-1`, `riskLevel=CRITICAL`, `isBlocked=true`, and
-   `kytAvailable=false`.
+6. The vendor-confirmed raw encrypted request removed the prior Base64-space
+   failure: `/ts/api/denylist/wallet` returned HTTP 200 and encrypted
+   `rspCode=A0000`.
+7. The decrypted response normalized to direct denylist, score, sanction, and
+   minimal flags without relaying the full upstream payload.
+8. The authenticated iwlnv gateway returned HTTP 200 and `provider_code=A0000`.
+9. The deployed WSS Edge Function returned `riskScore=0`, `riskLevel=LOW`,
+   `isBlocked=false`, and `kytAvailable=true` for the non-customer zero-address
+   smoke.
 
-The operator reported the IP allowlist complete on 2026-09-28. A fresh token
-and service matrix test immediately afterward produced:
-
-- `/oauth/token`: HTTP 200, `A0000`, bearer token issued;
-- `/oauth/check_token`: HTTP 200, `ORG_CLIENT` and client identity present;
-- `/ts/api/denylist/wallet`: HTTP 403;
-- `/ts/api/denylist/walletList`: HTTP 403;
-- `/ts/api/denylist/walletTracked`: HTTP 403;
-- common service response: `You do not have access to the service.`
-
-Because every service endpoint rejects the request before parsing its body,
-Bonanza Factory must confirm both of the following for the issued client:
-
-- the allowlist for `49.247.139.241/32` was applied specifically to the
-  `https://t-api.transight.io` environment used by the issued credentials;
-- the client has service entitlement for the denylist APIs, especially
-  `/ts/api/denylist/walletTracked`.
-
-This is not an AES payload or WSS normalization failure. OAuth success alone
-does not prove service entitlement. After Bonanza Factory corrects the
-environment/entitlement assignment, rerun `npm run smoke:live` and verify HTTP
-200 plus `rspCode=A0000`; no redeployment should be required.
+The optional `/ts/api/denylist/walletTracked` 1-hop endpoint accepted the same
+encrypted transport but returned encrypted `A1002 BAD REQUEST` with
+`INTERNAL_SERVER_ERROR` for both allowed content types. Direct high-risk wallet
+screening is therefore the active fail-closed production path. Enabling 1-hop
+screening requires Bonanza Factory to clarify the remaining endpoint-specific
+request or entitlement requirement; it is not silently substituted today.
 
 ## Relevant implementation
 
