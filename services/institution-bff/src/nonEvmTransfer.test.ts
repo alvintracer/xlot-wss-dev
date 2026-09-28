@@ -10,14 +10,20 @@ import {
 import { TronWeb, utils as tronUtils } from 'tronweb';
 import { Wallet } from 'xrpl';
 import {
+  verifySolanaNativeTransfer,
   verifySolanaSplTransfer,
+  verifyTronNativeTransfer,
   verifyTronTrc20Transfer,
+  verifyXrplNativeTransfer,
   verifyXrplIssuedTransfer,
 } from './nonEvmTransfer';
 
 type SolanaTransaction = Extract<SecureTransactionSigningRequest['transaction'], { type: 'solana-spl' }>;
+type SolanaNativeTransaction = Extract<SecureTransactionSigningRequest['transaction'], { type: 'solana-native' }>;
 type TronTransaction = Extract<SecureTransactionSigningRequest['transaction'], { type: 'tron-trc20' }>;
+type TronNativeTransaction = Extract<SecureTransactionSigningRequest['transaction'], { type: 'tron-native' }>;
 type XrplTransaction = Extract<SecureTransactionSigningRequest['transaction'], { type: 'xrpl-issued' }>;
+type XrplNativeTransaction = Extract<SecureTransactionSigningRequest['transaction'], { type: 'xrpl-native' }>;
 
 describe('non-EVM signed transfer verification', () => {
   it('accepts only a valid signature over the exact prepared Solana message', async () => {
@@ -61,6 +67,36 @@ describe('non-EVM signed transfer verification', () => {
     })).rejects.toThrow('signed_transaction_mismatch');
   });
 
+  it('verifies an exact native SOL transfer signature', async () => {
+    const signer = Keypair.generate();
+    const message = new TransactionMessage({
+      payerKey: signer.publicKey,
+      recentBlockhash: '11111111111111111111111111111111',
+      instructions: [SystemProgram.transfer({
+        fromPubkey: signer.publicKey,
+        toPubkey: new PublicKey('Vote111111111111111111111111111111111111111'),
+        lamports: 1,
+      })],
+    }).compileToV0Message();
+    const unsigned = new VersionedTransaction(message);
+    const expected: SolanaNativeTransaction = {
+      type: 'solana-native',
+      unsignedTransactionBase64: Buffer.from(unsigned.serialize()).toString('base64'),
+      recentBlockhash: message.recentBlockhash,
+      lastValidBlockHeight: 100,
+      amountLamports: '1',
+      feeLamports: '5000',
+    };
+    const signed = new VersionedTransaction(message);
+    signed.sign([signer]);
+
+    await expect(verifySolanaNativeTransfer({
+      fromAddress: signer.publicKey.toBase58(),
+      signedTransactionBase64: Buffer.from(signed.serialize()).toString('base64'),
+      expected,
+    })).resolves.toEqual(expect.objectContaining({ transactionHash: expect.any(String) }));
+  });
+
   it('recovers the TRON signer from the prepared transaction ID', () => {
     const privateKey = '1'.padStart(64, '0');
     const fromAddress = TronWeb.address.fromPrivateKey(privateKey);
@@ -86,6 +122,27 @@ describe('non-EVM signed transfer verification', () => {
       signedTransactionJson: JSON.stringify(signed),
       expected,
     })).toThrow('invalid_tron_signature');
+  });
+
+  it('recovers the native TRX signer from the exact prepared transaction ID', () => {
+    const privateKey = '2'.padStart(64, '0');
+    const fromAddress = TronWeb.address.fromPrivateKey(privateKey);
+    if (!fromAddress) throw new Error('TRON test key did not derive an address.');
+    const unsigned = { txID: 'cd'.repeat(32), raw_data_hex: '01' };
+    const signed = tronUtils.crypto.signTransaction(privateKey, { ...unsigned });
+    const expected: TronNativeTransaction = {
+      type: 'tron-native',
+      unsignedTransactionJson: JSON.stringify(unsigned),
+      transactionId: unsigned.txID,
+      amountSun: '1000000',
+      feeLimitSun: '1100000',
+    };
+
+    expect(verifyTronNativeTransfer({
+      fromAddress,
+      signedTransactionJson: JSON.stringify(signed),
+      expected,
+    }).transactionHash).toBe(unsigned.txID);
   });
 
   it('rejects any XRPL field that was not in the prepared payment', () => {
@@ -114,5 +171,24 @@ describe('non-EVM signed transfer verification', () => {
     });
     expect(() => verifyXrplIssuedTransfer({ signedTransactionBlob: withMemo.tx_blob, expected }))
       .toThrow('signed_transaction_mismatch');
+  });
+
+  it('verifies an exact native XRP payment', () => {
+    const signer = Wallet.generate();
+    const recipient = Wallet.generate();
+    const payment: XrplNativeTransaction['payment'] = {
+      TransactionType: 'Payment',
+      Account: signer.address,
+      Destination: recipient.address,
+      Amount: '1000000',
+      Flags: 0x8000_0000,
+      Sequence: 1,
+      Fee: '12',
+      LastLedgerSequence: 100,
+    };
+    const expected: XrplNativeTransaction = { type: 'xrpl-native', payment, snapshotLedgerIndex: 96 };
+    const signed = signer.sign(payment);
+
+    expect(verifyXrplNativeTransfer({ signedTransactionBlob: signed.tx_blob, expected })).toBe(signed.hash);
   });
 });

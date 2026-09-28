@@ -28,6 +28,8 @@ const nativeAssets: Readonly<Record<string, NativeAssetConfig>> = {
   xrp: { name: '엑스알피', symbol: 'XRP', decimals: 6, rpcUrl: 'https://s1.ripple.com:51234', rpcEnvironment: 'WSS_XRP_RPC_URL' },
 };
 
+const nativeTransferChainIds = new Set(Object.keys(nativeAssets));
+
 const SOLANA_TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 const SOLANA_TOKEN_2022_PROGRAM = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
 
@@ -365,10 +367,10 @@ export function supportedReceiveAssets(
       balanceAtomic: '0',
       balanceDisplay: '0',
       availableAtomic: '0',
-      transferStatus: config.evmChainId ? 'enabled' : 'unavailable',
+      transferStatus: nativeTransferChainIds.has(network.chainId) ? 'enabled' : 'unavailable',
       phoneTransferStatus: supportsPhoneEscrow(network.chainId) ? 'enabled' : 'unavailable',
       ...(phoneEscrowUnavailableReason(network.chainId) ? { phoneTransferUnavailableReason: phoneEscrowUnavailableReason(network.chainId) } : {}),
-      ...(!config.evmChainId ? { transferUnavailableReason: '이 네트워크의 보내기 서명 연동을 준비하고 있어요.' } : {}),
+      ...(!nativeTransferChainIds.has(network.chainId) ? { transferUnavailableReason: '이 네트워크의 보내기 서명 연동을 준비하고 있어요.' } : {}),
     };
     return [native, ...deployments.filter(({ chainId }) => chainId === network.chainId).map((deployment) => {
       const canTransfer = deployment.transport === 'evm-erc20'
@@ -429,7 +431,7 @@ export async function queryWalletPortfolio(
         || deployment.transport === 'solana-spl'
         || deployment.transport === 'tron-trc20'
         || deployment.transport === 'xrpl-issued'
-      : Boolean(config.evmChainId);
+      : nativeTransferChainIds.has(network.chainId);
     return {
       assetId: deployment?.assetId ?? `${network.chainId}:native`,
       iconAssetId: iconAssetId(symbol),

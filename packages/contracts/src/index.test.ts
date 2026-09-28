@@ -303,6 +303,68 @@ describe('host initialization contract', () => {
           snapshotLedgerIndex: 96,
         },
       },
+      {
+        ...signingRequest,
+        chainId: 'solana',
+        network: 'Solana',
+        assetSymbol: 'SOL',
+        transaction: {
+          type: 'solana-native',
+          unsignedTransactionBase64: 'A'.repeat(64),
+          recentBlockhash: '11111111111111111111111111111111',
+          lastValidBlockHeight: 123,
+          amountLamports: '1000000000',
+          feeLamports: '5000',
+        },
+      },
+      {
+        ...signingRequest,
+        chainId: 'bitcoin',
+        network: 'Bitcoin',
+        assetSymbol: 'BTC',
+        transaction: {
+          type: 'bitcoin-native',
+          unsignedPsbtBase64: 'A'.repeat(64),
+          amountSatoshis: '100000',
+          feeSatoshis: '1000',
+          changeSatoshis: '50000',
+          feeRateSatsPerVbyte: '3',
+          inputCount: 1,
+        },
+      },
+      {
+        ...signingRequest,
+        chainId: 'tron',
+        network: 'TRON',
+        assetSymbol: 'TRX',
+        transaction: {
+          type: 'tron-native',
+          unsignedTransactionJson: JSON.stringify({ raw_data_hex: 'cd'.repeat(32) }),
+          transactionId: 'cd'.repeat(32),
+          amountSun: '1000000',
+          feeLimitSun: '1100000',
+        },
+      },
+      {
+        ...signingRequest,
+        chainId: 'xrp',
+        network: 'XRP Ledger',
+        assetSymbol: 'XRP',
+        transaction: {
+          type: 'xrpl-native',
+          payment: {
+            TransactionType: 'Payment',
+            Account: 'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh',
+            Destination: 'rLs1MzkFWCxTbuAHgjeTZK4fcCDDnf2KRv',
+            Amount: '1000000',
+            Flags: 0x8000_0000,
+            Sequence: 1,
+            Fee: '12',
+            LastLedgerSequence: 100,
+          },
+          snapshotLedgerIndex: 96,
+        },
+      },
     ] as const;
     for (const [index, request] of nonEvmSigningRequests.entries()) {
       expect(isWalletToHostMessage({

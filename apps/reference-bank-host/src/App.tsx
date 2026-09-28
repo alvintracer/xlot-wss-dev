@@ -380,17 +380,22 @@ export function App() {
       ? JSON.stringify(await Promise.all(transaction.transactions.map((item) => (
           referenceHostSarKeyCore.signEvmTransactionForAddress(active.request.fromAddress, item)
         ))))
-      : transaction.type === 'solana-spl'
+      : transaction.type === 'solana-spl' || transaction.type === 'solana-native'
       ? await referenceHostSarKeyCore.signSolanaTransactionForAddress(
           active.request.fromAddress,
           transaction.unsignedTransactionBase64,
         )
-      : transaction.type === 'tron-trc20'
+      : transaction.type === 'bitcoin-native'
+        ? await referenceHostSarKeyCore.signBitcoinTransactionForAddress(
+            active.request.fromAddress,
+            transaction.unsignedPsbtBase64,
+          )
+      : transaction.type === 'tron-trc20' || transaction.type === 'tron-native'
         ? await referenceHostSarKeyCore.signTronTransactionForAddress(
             active.request.fromAddress,
             transaction.unsignedTransactionJson,
           )
-        : transaction.type === 'xrpl-issued'
+        : transaction.type === 'xrpl-issued' || transaction.type === 'xrpl-native'
           ? await referenceHostSarKeyCore.signXrplTransactionForAddress(
               active.request.fromAddress,
               transaction.payment,

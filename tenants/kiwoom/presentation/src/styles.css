@@ -672,13 +672,8 @@
   height: 38px;
   place-items: center;
   border-radius: 13px;
-  background: var(--kw-color-surface-quiet);
+  background: #f2f2f4;
   color: var(--kw-color-text-muted);
-}
-
-.kw-root .kw-wallet-address-row__icon svg {
-  width: 19px;
-  height: 19px;
 }
 
 .kw-root .kw-wallet-address-row__copy {

@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@noble/curves": "1.2.0",
     "@noble/ed25519": "^3.0.1",
+    "@scure/btc-signer": "2.4.1",
     "@solana/web3.js": "^1.99.0",
     "@took-wss/contracts": "0.1.0",
     "@took-wss/provider-adapters": "0.1.0",

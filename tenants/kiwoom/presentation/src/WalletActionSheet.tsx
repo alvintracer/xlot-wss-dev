@@ -57,6 +57,7 @@ interface WalletActionSheetProps {
 }
 
 const numberFormatter = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 });
+const BITCOIN_ADDRESS_PATTERN = /^(?:1[1-9A-HJ-NP-Za-km-z]{25,34}|3[1-9A-HJ-NP-Za-km-z]{25,34}|bc1[ac-hj-np-z02-9]{11,71})$/i;
 
 function tenTo(power: number): bigint {
   return 10n ** BigInt(Math.max(0, power));
@@ -145,6 +146,7 @@ function isRecipientValid(mode: RecipientMode, value: string, chainId: string): 
     return /^0x[0-9a-fA-F]{40}$/.test(normalized);
   }
   if (chainId === 'solana') return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(normalized);
+  if (chainId === 'bitcoin') return BITCOIN_ADDRESS_PATTERN.test(normalized);
   if (chainId === 'tron') return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(normalized);
   if (chainId === 'xrp') return /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(normalized);
   return normalized.length >= 20;

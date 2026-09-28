@@ -55,7 +55,7 @@ describe('supported receive assets', () => {
       }),
       expect.objectContaining({ chainId: 'ethereum', symbol: 'RLUSD', tokenAddress: expect.any(String) }),
       expect.objectContaining({ chainId: 'xrp', symbol: 'RLUSD', tokenAddress: expect.any(String), transferStatus: 'enabled' }),
-      expect.objectContaining({ assetId: 'xrp:native', symbol: 'XRP', transferStatus: 'unavailable' }),
+      expect.objectContaining({ assetId: 'xrp:native', symbol: 'XRP', transferStatus: 'enabled' }),
     ]));
     expect(assets.some(({ chainId }) => chainId === 'solana')).toBe(false);
     expect(assets.some(({ symbol }) => symbol === 'USDT')).toBe(false);

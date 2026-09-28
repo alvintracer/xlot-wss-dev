@@ -15,13 +15,20 @@ import { recordAuthorizedTransfer, recordPreparedTransfer, recordSubmittedTransf
 import { quoteGasSponsorship } from './gasSponsorship.js';
 import { stablecoinByAssetId } from './stablecoinRegistry.js';
 import {
+  prepareSolanaNativeTransfer,
   prepareSolanaSplTransfer,
+  prepareTronNativeTransfer,
   prepareTronTrc20Transfer,
+  prepareXrplNativeTransfer,
   prepareXrplIssuedTransfer,
+  submitSolanaNativeTransfer,
   submitSolanaSplTransfer,
+  submitTronNativeTransfer,
   submitTronTrc20Transfer,
+  submitXrplNativeTransfer,
   submitXrplIssuedTransfer,
 } from './nonEvmTransfer.js';
+import { prepareBitcoinNativeTransfer, submitBitcoinNativeTransfer } from './bitcoinTransfer.js';
 import {
   isMatchingPhoneEscrowReceipt,
   notifyFundedPhoneEscrow,
@@ -156,7 +163,6 @@ export async function prepareTransfer(input: {
     || stablecoin.chainId !== request.chainId
     || stablecoin.tokenAddress.toLowerCase() !== asset.tokenAddress.toLowerCase()
   )) throw new Error('unsupported_token_contract');
-  if (!stablecoin && !config.evmChainId) throw new Error('secure_signer_not_available_for_asset');
   if (request.destinationTag !== undefined && (request.chainId !== 'xrp' || request.channel !== 'address')) throw new Error('destination_tag_not_supported');
   const amount = parseAtomic(request.amountAtomic);
   const available = BigInt(asset.availableAtomic ?? asset.balanceAtomic);
@@ -222,6 +228,44 @@ export async function prepareTransfer(input: {
       gasPrice: gasPrice.toString(),
       ...(transactionData ? { data: transactionData } : {}),
     };
+  } else if (!stablecoin && request.chainId === 'solana') {
+    const prepared = await prepareSolanaNativeTransfer({
+      rpcUrl,
+      fromAddress: network.address,
+      recipient: request.recipient,
+      amountAtomic: amount,
+    });
+    signingTransaction = prepared.transaction;
+    feeAtomic = prepared.feeAtomic;
+  } else if (!stablecoin && request.chainId === 'bitcoin') {
+    const prepared = await prepareBitcoinNativeTransfer({
+      rpcUrl,
+      fromAddress: network.address,
+      recipient: request.recipient,
+      amountAtomic: amount,
+    });
+    signingTransaction = prepared.transaction;
+    feeAtomic = prepared.feeAtomic;
+  } else if (!stablecoin && request.chainId === 'tron') {
+    const prepared = await prepareTronNativeTransfer({
+      rpcUrl,
+      fromAddress: network.address,
+      recipient: request.recipient,
+      amountAtomic: amount,
+    });
+    signingTransaction = prepared.transaction;
+    feeAtomic = prepared.feeAtomic;
+    maximumFee = true;
+  } else if (!stablecoin && request.chainId === 'xrp') {
+    const prepared = await prepareXrplNativeTransfer({
+      rpcUrl,
+      fromAddress: network.address,
+      recipient: request.recipient,
+      ...(request.destinationTag ? { destinationTag: request.destinationTag } : {}),
+      amountAtomic: amount,
+    });
+    signingTransaction = prepared.transaction;
+    feeAtomic = prepared.feeAtomic;
   } else if (stablecoin?.transport === 'solana-spl') {
     const prepared = await prepareSolanaSplTransfer({
       rpcUrl,
@@ -500,6 +544,14 @@ export async function submitTransfer(input: {
       assetSymbol: stored.prepared.assetSymbol,
       recipientAmountDisplay: stored.prepared.phoneEscrow.recipientAmountDisplay,
     });
+  } else if (signing.transaction.type === 'solana-native') {
+    transactionHash = await submitSolanaNativeTransfer({
+      rpcUrl,
+      fromAddress: signing.fromAddress,
+      signedTransactionBase64: input.request.signedTransaction,
+      expected: signing.transaction,
+      authorize,
+    });
   } else if (signing.transaction.type === 'solana-spl') {
     transactionHash = await submitSolanaSplTransfer({
       rpcUrl,
@@ -508,11 +560,35 @@ export async function submitTransfer(input: {
       expected: signing.transaction,
       authorize,
     });
+  } else if (signing.transaction.type === 'bitcoin-native') {
+    transactionHash = await submitBitcoinNativeTransfer({
+      rpcUrl,
+      fromAddress: signing.fromAddress,
+      recipient: signing.recipient,
+      signedTransactionHex: input.request.signedTransaction,
+      expected: signing.transaction,
+      authorize,
+    });
+  } else if (signing.transaction.type === 'tron-native') {
+    transactionHash = await submitTronNativeTransfer({
+      rpcUrl,
+      fromAddress: signing.fromAddress,
+      signedTransactionJson: input.request.signedTransaction,
+      expected: signing.transaction,
+      authorize,
+    });
   } else if (signing.transaction.type === 'tron-trc20') {
     transactionHash = await submitTronTrc20Transfer({
       rpcUrl,
       fromAddress: signing.fromAddress,
       signedTransactionJson: input.request.signedTransaction,
+      expected: signing.transaction,
+      authorize,
+    });
+  } else if (signing.transaction.type === 'xrpl-native') {
+    transactionHash = await submitXrplNativeTransfer({
+      rpcUrl,
+      signedTransactionBlob: input.request.signedTransaction,
       expected: signing.transaction,
       authorize,
     });

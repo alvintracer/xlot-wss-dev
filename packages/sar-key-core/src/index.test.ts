@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { verifyAsync } from '@noble/ed25519';
+import { Transaction as BitcoinTransaction } from '@scure/btc-signer';
 import { PublicKey, SystemProgram, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
 import { ethers } from 'ethers';
 import { decode } from 'xrpl';
@@ -158,6 +159,38 @@ describe('reference host SAR key core', () => {
 
     expect(signed.message.serialize()).toEqual(unsigned.message.serialize());
     await expect(verifyAsync(signed.signatures[0]!, signed.message.serialize(), payer.toBytes())).resolves.toBe(true);
+  });
+
+  it('signs and finalizes the exact Bitcoin P2PKH PSBT with the wallet slot key', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    const wallet = await core.createWallet();
+    const from = wallet.addresses.find(({ addressGroupId }) => addressGroupId === 'bitcoin')!.address;
+    const funding = new BitcoinTransaction();
+    funding.addOutputAddress(from, 100_000n);
+    funding.addInput({
+      txid: new Uint8Array(32),
+      index: 0xffff_ffff,
+      finalScriptSig: new Uint8Array([1, 1]),
+      sequence: 0xffff_ffff,
+    });
+    const fundingBytes = funding.toBytes();
+    const fundingId = BitcoinTransaction.fromRaw(fundingBytes).id;
+    const unsigned = new BitcoinTransaction({ strictPrevoutValidation: true });
+    unsigned.addOutputAddress(from, 90_000n);
+    unsigned.addInput({
+      txid: Buffer.from(fundingId, 'hex'),
+      index: 0,
+      nonWitnessUtxo: fundingBytes,
+    });
+    const signedHex = await core.signBitcoinTransactionForAddress(
+      from,
+      Buffer.from(unsigned.toPSBT()).toString('base64'),
+    );
+    const signed = BitcoinTransaction.fromRaw(Buffer.from(signedHex, 'hex'));
+
+    expect(signed.isFinal).toBe(true);
+    expect(signed.outputsLength).toBe(1);
+    expect(signed.getOutputAddress(0)).toBe(from);
   });
 
   it('signs an exact XRPL issued-currency payment with the wallet slot key', async () => {

@@ -110,18 +110,20 @@ confirmed deposit-event matching, encrypted recipient persistence, and SOLAPI
 claim-link delivery on Ethereum, Polygon, Arbitrum, and Base. It remains
 fail-closed in `xlot-wss-dev` until a WSS-owned claim gateway and the matching
 contract signer are configured, so a development customer cannot accidentally
-lock funds in an unreleasable escrow. The execution slice supports EVM native and
-allowlisted ERC-20 tokens plus allowlisted Solana SPL, TRON TRC-20, and XRPL
-issued tokens, including chain-native fee preparation, KYT, host confirmation,
+lock funds in an unreleasable escrow. The execution slice supports EVM, SOL,
+BTC, TRX, and XRP native assets plus allowlisted ERC-20, Solana SPL, TRON
+TRC-20, and XRPL issued tokens, including chain-native fee preparation, KYT, host confirmation,
 SAR key-core signing, exact signed-payload verification, broadcast, and
-intent/execution audit. XRP destination tags, trust-line checks, Solana ATA
-creation rent, and TRON maximum fee limits are handled explicitly. A
+intent/execution audit. BTC uses strict-prevout PSBT preparation and exact
+P2PKH signature/input/output verification; XRP applies the live account reserve
+and destination-activation minimum. XRP destination tags, trust-line checks,
+Solana ATA creation rent, and TRON maximum fee limits are handled explicitly. A
 funded development wallet is required for a live-send smoke test. Direct
 TranSight denylist KYT is active and remains fail closed when unavailable;
 1-hop tracked-risk enrichment is not yet active. Token inventory, price coverage, and
 direct ERC-20 execution are implemented. Permit/Solana/TRON relay execution,
-the phone recipient claim and refund service, native non-EVM coin sends, and
-general confirmation reconciliation remain open. Every
+the phone recipient claim and refund service, and general confirmation
+reconciliation remain open. Every
 direct token send still requires the chain's native fee asset even when a relay
 quote reports that the asset is eligible.
 

@@ -352,11 +352,26 @@ export interface SecureTransactionSigningRequest {
         feeLamports: string;
       }
     | {
+        type: 'solana-native';
+        unsignedTransactionBase64: string;
+        recentBlockhash: string;
+        lastValidBlockHeight: number;
+        amountLamports: string;
+        feeLamports: string;
+      }
+    | {
         type: 'tron-trc20';
         unsignedTransactionJson: string;
         transactionId: string;
         tokenAddress: string;
         amountAtomic: string;
+        feeLimitSun: string;
+      }
+    | {
+        type: 'tron-native';
+        unsignedTransactionJson: string;
+        transactionId: string;
+        amountSun: string;
         feeLimitSun: string;
       }
     | {
@@ -373,6 +388,30 @@ export interface SecureTransactionSigningRequest {
           LastLedgerSequence: number;
         };
         snapshotLedgerIndex: number;
+      }
+    | {
+        type: 'xrpl-native';
+        payment: {
+          TransactionType: 'Payment';
+          Account: string;
+          Destination: string;
+          Amount: string;
+          DestinationTag?: number;
+          Flags: number;
+          Sequence: number;
+          Fee: string;
+          LastLedgerSequence: number;
+        };
+        snapshotLedgerIndex: number;
+      }
+    | {
+        type: 'bitcoin-native';
+        unsignedPsbtBase64: string;
+        amountSatoshis: string;
+        feeSatoshis: string;
+        changeSatoshis: string;
+        feeRateSatsPerVbyte: string;
+        inputCount: number;
       };
 }
 
@@ -820,6 +859,17 @@ export function isSecureTransactionSigningRequest(value: unknown): value is Secu
       && typeof value.transaction.feeLamports === 'string'
       && /^\d+$/.test(value.transaction.feeLamports);
   }
+  if (value.transaction.type === 'solana-native') {
+    return typeof value.transaction.unsignedTransactionBase64 === 'string'
+      && value.transaction.unsignedTransactionBase64.length >= 32
+      && value.transaction.unsignedTransactionBase64.length <= 16_384
+      && typeof value.transaction.recentBlockhash === 'string'
+      && Number.isSafeInteger(value.transaction.lastValidBlockHeight)
+      && typeof value.transaction.amountLamports === 'string'
+      && /^\d+$/.test(value.transaction.amountLamports)
+      && typeof value.transaction.feeLamports === 'string'
+      && /^\d+$/.test(value.transaction.feeLamports);
+  }
   if (value.transaction.type === 'tron-trc20') {
     return typeof value.transaction.unsignedTransactionJson === 'string'
       && value.transaction.unsignedTransactionJson.length >= 32
@@ -829,6 +879,17 @@ export function isSecureTransactionSigningRequest(value: unknown): value is Secu
       && typeof value.transaction.tokenAddress === 'string'
       && typeof value.transaction.amountAtomic === 'string'
       && /^\d+$/.test(value.transaction.amountAtomic)
+      && typeof value.transaction.feeLimitSun === 'string'
+      && /^\d+$/.test(value.transaction.feeLimitSun);
+  }
+  if (value.transaction.type === 'tron-native') {
+    return typeof value.transaction.unsignedTransactionJson === 'string'
+      && value.transaction.unsignedTransactionJson.length >= 32
+      && value.transaction.unsignedTransactionJson.length <= 32_768
+      && typeof value.transaction.transactionId === 'string'
+      && /^[0-9a-fA-F]{64}$/.test(value.transaction.transactionId)
+      && typeof value.transaction.amountSun === 'string'
+      && /^\d+$/.test(value.transaction.amountSun)
       && typeof value.transaction.feeLimitSun === 'string'
       && /^\d+$/.test(value.transaction.feeLimitSun);
   }
@@ -849,6 +910,39 @@ export function isSecureTransactionSigningRequest(value: unknown): value is Secu
       && /^\d+$/.test(payment.Fee)
       && Number.isSafeInteger(payment.LastLedgerSequence)
       && Number.isSafeInteger(value.transaction.snapshotLedgerIndex);
+  }
+  if (value.transaction.type === 'xrpl-native') {
+    const payment = value.transaction.payment;
+    return isRecord(payment)
+      && payment.TransactionType === 'Payment'
+      && typeof payment.Account === 'string'
+      && typeof payment.Destination === 'string'
+      && typeof payment.Amount === 'string'
+      && /^\d+$/.test(payment.Amount)
+      && (payment.DestinationTag === undefined || (Number.isSafeInteger(payment.DestinationTag) && Number(payment.DestinationTag) >= 0))
+      && Number.isSafeInteger(payment.Flags)
+      && Number.isSafeInteger(payment.Sequence)
+      && typeof payment.Fee === 'string'
+      && /^\d+$/.test(payment.Fee)
+      && Number.isSafeInteger(payment.LastLedgerSequence)
+      && Number.isSafeInteger(value.transaction.snapshotLedgerIndex);
+  }
+  if (value.transaction.type === 'bitcoin-native') {
+    return typeof value.transaction.unsignedPsbtBase64 === 'string'
+      && value.transaction.unsignedPsbtBase64.length >= 32
+      && value.transaction.unsignedPsbtBase64.length <= 262_144
+      && typeof value.transaction.amountSatoshis === 'string'
+      && /^\d+$/.test(value.transaction.amountSatoshis)
+      && typeof value.transaction.feeSatoshis === 'string'
+      && /^\d+$/.test(value.transaction.feeSatoshis)
+      && typeof value.transaction.changeSatoshis === 'string'
+      && /^\d+$/.test(value.transaction.changeSatoshis)
+      && typeof value.transaction.feeRateSatsPerVbyte === 'string'
+      && /^\d+$/.test(value.transaction.feeRateSatsPerVbyte)
+      && typeof value.transaction.inputCount === 'number'
+      && Number.isSafeInteger(value.transaction.inputCount)
+      && value.transaction.inputCount >= 1
+      && value.transaction.inputCount <= 24;
   }
   return false;
 }

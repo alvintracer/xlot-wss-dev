@@ -462,6 +462,39 @@ export class ReferenceHostSarKeyCore {
     });
   }
 
+  async signBitcoinTransactionForAddress(fromAddress: string, unsignedPsbtBase64: string): Promise<string> {
+    const keyHandle = this.#keyHandleForAddress('bitcoin', fromAddress);
+    return this.#withRecoveredMnemonic(keyHandle, async (mnemonic) => {
+      const seed = Uint8Array.from(ethers.getBytes(ethers.Mnemonic.fromPhrase(mnemonic).computeSeed()));
+      let privateKey = new Uint8Array();
+      try {
+        const child = ethers.HDNodeWallet.fromSeed(seed).derivePath("m/44'/0'/0'/0/0");
+        privateKey = Uint8Array.from(ethers.getBytes(child.privateKey));
+        const [{ Transaction, p2pkh }, { pubECDSA }] = await Promise.all([
+          import('@scure/btc-signer'),
+          import('@scure/btc-signer/utils.js'),
+        ]);
+        const payment = p2pkh(pubECDSA(privateKey));
+        if (payment.address !== fromAddress) throw new Error('Derived signer address mismatch.');
+        const transaction = Transaction.fromPSBT(base64ToBytes(unsignedPsbtBase64), {
+          strictPrevoutValidation: true,
+        });
+        if (transaction.inputsLength < 1 || transaction.inputsLength > 24) {
+          throw new Error('Bitcoin input count is outside the approved signing policy.');
+        }
+        if (transaction.sign(privateKey) !== transaction.inputsLength) {
+          throw new Error('Bitcoin transaction contains an input this wallet cannot sign.');
+        }
+        transaction.finalize();
+        if (!transaction.isFinal) throw new Error('Bitcoin transaction finalization failed.');
+        return transaction.hex;
+      } finally {
+        seed.fill(0);
+        privateKey.fill(0);
+      }
+    });
+  }
+
   async signTronTransactionForAddress(fromAddress: string, unsignedTransactionJson: string): Promise<string> {
     const keyHandle = this.#keyHandleForAddress('tron', fromAddress);
     return this.#withRecoveredMnemonic(keyHandle, async (mnemonic) => {

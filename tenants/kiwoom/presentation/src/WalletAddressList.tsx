@@ -1,6 +1,7 @@
-import { Check, Copy, Wallet } from '@phosphor-icons/react';
+import { Check, Copy } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
 import type { WalletNetworkView } from '@took-wss/contracts';
+import { ChainIcon } from './ChainIcon';
 
 interface WalletAddressListProps {
   networks: WalletNetworkView[];
@@ -20,6 +21,14 @@ const addressGroupLabels: Readonly<Record<string, string>> = {
   bitcoin: 'Bitcoin',
   tron: 'TRON',
   xrp: 'XRP',
+};
+
+const addressGroupChainIds: Readonly<Record<string, string>> = {
+  evm: 'ethereum',
+  solana: 'solana',
+  bitcoin: 'bitcoin',
+  tron: 'tron',
+  xrp: 'xrp',
 };
 
 function groupWalletAddresses(networks: WalletNetworkView[]): WalletAddressGroup[] {
@@ -97,7 +106,7 @@ export function WalletAddressList({ networks }: WalletAddressListProps) {
               : '지원하지 않음';
           return (
             <article className="kw-wallet-address-row" data-testid="wallet-address-group" key={group.id}>
-              <span className="kw-wallet-address-row__icon" aria-hidden="true"><Wallet /></span>
+              <ChainIcon className="kw-wallet-address-row__icon" chainId={addressGroupChainIds[group.id] ?? group.id} />
               <div className="kw-wallet-address-row__copy">
                 <strong>{group.label}</strong>
                 <small>{group.networkNames.join(' · ')}</small>
