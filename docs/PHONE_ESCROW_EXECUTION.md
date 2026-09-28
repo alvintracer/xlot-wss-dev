@@ -41,44 +41,44 @@ disabled until a compatible escrow deployment and claim policy exist.
 - Phone delivery occurs only after a successful receipt and commitment match;
   an SMS failure never changes a failed chain transaction into a success.
 
-## Shared took claim service decision
+## Shared signer and separate claim surface decision
 
-The existing took V3 escrow contracts, public claim-signer address, claim page,
-phone verification, and `sign-claim` relay may be reused. WSS must not copy the
-claim signer's private key into `xlot-wss-dev`.
+The existing took V3 escrow contracts and public claim-signer address are
+reused, while WSS owns a separate claimant surface at
+`https://tookwallet.com/waas/c/{claimCode}`. Claim records remain solely in
+`xlot-wss-dev.wss_phone_escrows`; they are not copied into the took B2C
+`phone_escrows` table.
 
-The two products currently use separate Supabase projects. A WSS claim created
-only in `xlot-wss-dev.wss_phone_escrows` cannot be found by the existing took
-claim page, which reads the took project's `phone_escrows` table. Before the
-execution flag is enabled, deploy a server-to-server took-side registration
-adapter that accepts the minimum verified escrow record from WSS, creates the
-corresponding took claim record and returns the claim code. Authenticate that
-adapter with a dedicated integration secret, make registration idempotent by
-the chain and commitment, and do not expose a service-role key to the WSS
-WebView or Reference Host.
+The WSS claimant service must resolve the code server-side, verify phone
+possession with the WSS Supabase Auth/SOLAPI path, select and screen the
+recipient address, and then call a dedicated server-authenticated signer relay
+in the took infrastructure. The relay may reuse the current signer and V3
+claim logic, but the claim signer's private key must remain only in the took
+backend and must never be copied into `xlot-wss-dev` or exposed to either web
+client.
 
-The shared claim URL is currently `https://tookwallet.com/c`. This is suitable
-for development reuse, but its customer-visible branding must be changed or
-tenant-themed before a Kiwoom customer demo because customer WSS surfaces must
-not expose the internal took brand.
+The `tookwallet.com/waas/c` path is a development and proposal-stage hosting
+location. Its UI is tenant-neutral and does not render the took consumer brand.
+A financial institution can later map the same claimant surface to its own
+domain without changing the escrow contracts, commitments, or signer address.
 
 ## Activation gate
 
 Sending real funds is deliberately disabled unless
 `WSS_PHONE_ESCROW_EXECUTION_ENABLED=true`, `WSS_PHONE_CLAIM_BASE_URL`, and
-`WSS_PHONE_ESCROW_CLAIM_SIGNER_ADDRESS` are present. When the shared took claim
-service is selected, the URL must point to its recipient flow and the took-side
-registration adapter must have acknowledged the exact escrow record before a
-deposit can be prepared.
+`WSS_PHONE_ESCROW_CLAIM_SIGNER_ADDRESS` are present. The URL must point to the
+WSS recipient flow, and its claim resolver, phone verification, recipient KYT,
+and authenticated took signer relay must all be operational before a deposit
+can be prepared.
 Before preparing a deposit, the BFF reads `serverSigner()` from the selected
 contract and requires an exact match with the configured signer address.
 
 This gate is not cosmetic. Reusing an existing contract without its matching
 claim signer could lock customer funds until expiry. The current
 `xlot-wss-dev` environment therefore keeps the customer action unavailable
-until the shared registration adapter, recipient phone possession check,
-recipient-wallet KYT, claim relay/refund path, and matching signer are smoke
-tested together.
+until the separate claim surface, recipient phone possession check,
+recipient-wallet KYT, authenticated signer relay/refund path, and matching
+signer are smoke tested together.
 
 ## Operational follow-up
 
