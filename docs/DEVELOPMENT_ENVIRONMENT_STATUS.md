@@ -91,7 +91,9 @@
 - the headless secure-import check completed an ephemeral BIP-39 import with
   five address groups and an ephemeral private-key import with EVM-only
   capability, while confirming that neither secret value nor a secret-bearing
-  field crossed the host-to-BFF request boundary.
+  field crossed the host-to-BFF request boundary. The check deletes only the
+  exact imported wallet UUIDs it created after confirming that no transfer,
+  escrow, or migration references exist.
 
 The current asset adapter queries native balances on all nine configured chains
 and tenant-enabled stablecoin balances across EVM, Solana, TRON, and XRP Ledger.

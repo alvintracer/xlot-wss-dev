@@ -1,6 +1,7 @@
 import { access } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
 import { ethers } from 'ethers';
+import postgres from 'postgres';
 
 const hostUrl = process.env.WSS_REFERENCE_HOST_URL || 'http://127.0.0.1:5173';
 const chromePath = process.env.WSS_CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -19,6 +20,8 @@ page.setDefaultTimeout(25_000);
 
 const browserErrors = [];
 const apiResponses = [];
+const responseTasks = [];
+const createdWalletIds = new Set();
 let secretLeakDetected = false;
 
 page.on('pageerror', (error) => browserErrors.push(error.message));
@@ -40,7 +43,67 @@ page.on('response', (response) => {
   if (pathname === '/v1/development/sar-key-core-attestations' || pathname === '/v1/wallets/provision') {
     apiResponses.push({ pathname, status: response.status() });
   }
+  if (pathname === '/v1/wallets/provision' && response.ok()) {
+    responseTasks.push(response.json().then((payload) => {
+      const walletId = payload?.walletHome?.wallet?.walletId;
+      if (typeof walletId === 'string') createdWalletIds.add(walletId);
+    }));
+  }
 });
+
+async function cleanupCreatedWallets() {
+  await Promise.all(responseTasks);
+  const walletIds = [...createdWalletIds];
+  if (walletIds.length === 0) return 0;
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required to clean secure-import browser fixtures.');
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
+  try {
+    const deployment = await sql`
+      SELECT project_name, environment, purpose
+      FROM wss_deployment_metadata
+      WHERE singleton = true
+    `;
+    if (deployment[0]?.project_name !== 'xlot-wss-dev'
+      || deployment[0]?.environment !== 'development'
+      || deployment[0]?.purpose !== 'proposal-and-early-function-sandbox') {
+      throw new Error('Refusing fixture cleanup outside xlot-wss-dev.');
+    }
+    return await sql.begin(async (transaction) => {
+      const targets = await transaction`
+        SELECT id
+        FROM wss_wallets
+        WHERE id = any(${walletIds}::uuid[])
+          AND tenant_id = 'kiwoom'
+          AND provisioning_origin = 'imported'
+      `;
+      if (targets.length !== walletIds.length) throw new Error('Secure-import fixture cleanup target mismatch.');
+      const operationalReferences = await transaction`
+        SELECT
+          (SELECT count(*)::int FROM wss_transfer_intents WHERE wallet_id = any(${walletIds}::uuid[])) AS transfers,
+          (SELECT count(*)::int FROM wss_phone_escrows WHERE wallet_id = any(${walletIds}::uuid[])) AS escrows,
+          (SELECT count(*)::int FROM wss_wallet_migrations
+            WHERE source_wallet_id = any(${walletIds}::uuid[]) OR target_wallet_id = any(${walletIds}::uuid[])) AS migrations
+      `;
+      const references = operationalReferences[0];
+      if (references.transfers || references.escrows || references.migrations) {
+        throw new Error('Refusing fixture cleanup because an operational reference exists.');
+      }
+      await transaction`DELETE FROM wss_audit_events WHERE wallet_id = any(${walletIds}::uuid[])`;
+      await transaction`DELETE FROM wss_wallet_accounts WHERE wallet_id = any(${walletIds}::uuid[])`;
+      await transaction`DELETE FROM wss_sar_recovery_profiles WHERE wallet_id = any(${walletIds}::uuid[])`;
+      const removed = await transaction`
+        DELETE FROM wss_wallets
+        WHERE id = any(${walletIds}::uuid[])
+          AND tenant_id = 'kiwoom'
+          AND provisioning_origin = 'imported'
+        RETURNING id
+      `;
+      return removed.length;
+    });
+  } finally {
+    await sql.end();
+  }
+}
 
 async function openAddSarFlow(walletFrame) {
   await walletFrame.getByRole('button', { name: '지갑 추가하기' }).click();
@@ -123,6 +186,7 @@ try {
     privateKeyImport: 'evm-only',
     receive: 'imported-ethereum-address-qr-and-copy-ready',
     bffSecretBoundary: 'no-imported-secret-fields-or-values',
+    fixtureCleanup: 'exact-created-wallet-ids',
     api: apiResponses,
     screenshot: screenshotPath,
   }, null, 2));
@@ -136,4 +200,8 @@ try {
   throw error;
 } finally {
   await browser.close();
+  const removedFixtures = await cleanupCreatedWallets();
+  if (removedFixtures !== createdWalletIds.size) {
+    throw new Error('Secure-import browser fixture cleanup did not remove every created wallet.');
+  }
 }
