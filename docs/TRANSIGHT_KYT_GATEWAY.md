@@ -85,14 +85,28 @@ Verified on 2026-09-28:
    `riskScore=-1`, `riskLevel=CRITICAL`, `isBlocked=true`, and
    `kytAvailable=false`.
 
-Bonanza Factory must now confirm both of the following for the issued client:
+The operator reported the IP allowlist complete on 2026-09-28. A fresh token
+and service matrix test immediately afterward produced:
 
-- allowlist `49.247.139.241/32` for service calls;
-- enable entitlement for `/ts/api/denylist/walletTracked`.
+- `/oauth/token`: HTTP 200, `A0000`, bearer token issued;
+- `/oauth/check_token`: HTTP 200, `ORG_CLIENT` and client identity present;
+- `/ts/api/denylist/wallet`: HTTP 403;
+- `/ts/api/denylist/walletList`: HTTP 403;
+- `/ts/api/denylist/walletTracked`: HTTP 403;
+- common service response: `You do not have access to the service.`
 
-OAuth success alone does not prove service entitlement. After Bonanza Factory
-applies the change, rerun a non-customer test-address screening and verify
-HTTP 200 plus `rspCode=A0000`; no redeployment should be required.
+Because every service endpoint rejects the request before parsing its body,
+Bonanza Factory must confirm both of the following for the issued client:
+
+- the allowlist for `49.247.139.241/32` was applied specifically to the
+  `https://t-api.transight.io` environment used by the issued credentials;
+- the client has service entitlement for the denylist APIs, especially
+  `/ts/api/denylist/walletTracked`.
+
+This is not an AES payload or WSS normalization failure. OAuth success alone
+does not prove service entitlement. After Bonanza Factory corrects the
+environment/entitlement assignment, rerun `npm run smoke:live` and verify HTTP
+200 plus `rspCode=A0000`; no redeployment should be required.
 
 ## Relevant implementation
 

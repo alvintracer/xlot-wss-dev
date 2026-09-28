@@ -65,7 +65,7 @@ Current browser coverage includes Reference Host session issuance, signed bootst
 ## Phase 3 — institutional providers
 
 1. ◐ TranSight KYT adapter with fail-closed policy and contract tests.
-   - The Edge gateway and BFF fail-closed path are deployed. The iwlnv fixed-egress gateway now owns OAuth token caching, the `walletTracked` provider contract, response minimization, and tested direct/tracked risk normalization. OAuth succeeds live; the service call remains HTTP 403 until Bonanza Factory allowlists `49.247.139.241/32` and enables the issued client's endpoint entitlement. Monitoring and reason-retention approval remain.
+   - The Edge gateway and BFF fail-closed path are deployed. The iwlnv fixed-egress gateway now owns OAuth token caching, the `walletTracked` provider contract, response minimization, and tested direct/tracked risk normalization. OAuth and token inspection succeed live. After allowlisting was reported complete, all denylist endpoints still returned HTTP 403, so Bonanza Factory must confirm the `t-api.transight.io` environment assignment and issued-client service entitlement. Monitoring and reason-retention approval remain.
 2. ◐ Bonanza K-VWAP adapter with source count, freshness, TTL, and receipt evidence.
    - The deployed quote gateway prefers fresh Bonanza snapshots, then uses CoinGecko and CoinMarketCap by stable numeric ID for missing symbols. Both fallbacks are labeled market references; production K-VWAP credentials and receipt evidence remain.
 3. Generic execution adapter for chain capability and fee abstraction.

@@ -44,10 +44,12 @@
   `took-wss-kyt-gateway`, bound to `127.0.0.1:3200` and exposed only through
   Caddy at `https://quote-api.tookpay.xyz/took-wss/kyt`; actual server egress is
   `49.247.139.241/32`
-- TranSight OAuth live verification succeeds with HTTP 200 and `A0000`; the
-  `walletTracked` service call currently returns HTTP 403 pending provider IP
-  allowlisting and/or service entitlement, and the full WSS path was verified
-  to fail closed while that condition remains
+- TranSight OAuth and token inspection succeed with HTTP 200, `A0000`, and
+  `ORG_CLIENT`. After the operator reported allowlisting complete, all three
+  `t-api.transight.io` denylist endpoints still returned HTTP 403 with `You do
+  not have access to the service.` The provider must confirm that the IP was
+  applied to the test API environment and grant the issued client its service
+  entitlement; the full WSS path remains verified fail closed
 - the WSS Edge Function stores only an independent gateway URL/key; actual
   TranSight OAuth and AES material remain solely in the iwlnv root-owned
   mode-0600 environment file
