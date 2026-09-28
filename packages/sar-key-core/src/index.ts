@@ -57,6 +57,8 @@ interface SarShareStore {
   delete(keyHandle: string): Promise<void>;
 }
 
+type SarSecretKind = 'mnemonic-entropy' | 'evm-private-key';
+
 class VolatileShareStore implements SarShareStore {
   readonly #shares = new Map<string, Uint8Array>();
 
@@ -255,6 +257,7 @@ export class ReferenceHostSarKeyCore {
   readonly #stores: readonly [SarShareStore, SarShareStore, SarShareStore];
   readonly #publicAddresses = new Map<string, SarPublicAddress[]>();
   readonly #developmentVaultKeys = new Map<string, CryptoKey>();
+  readonly #secretKinds = new Map<string, SarSecretKind>();
 
   constructor() {
     this.#stores = [new VolatileShareStore(), new VolatileShareStore(), new VolatileShareStore()];
@@ -266,22 +269,61 @@ export class ReferenceHostSarKeyCore {
 
   async prepareWallet(): Promise<PreparedSarWallet> {
     const entropy = crypto.getRandomValues(new Uint8Array(16));
+    try {
+      const mnemonic = ethers.Mnemonic.fromEntropy(entropy).phrase;
+      const addresses = await deriveAddresses(mnemonic);
+      return {
+        mnemonicWords: Object.freeze(mnemonic.split(' ')),
+        wallet: await this.#registerSecret(entropy, 'mnemonic-entropy', addresses),
+      };
+    } finally {
+      entropy.fill(0);
+    }
+  }
+
+  async prepareImportedMnemonic(phrase: string): Promise<SarWalletCreationResult> {
+    const normalized = phrase.normalize('NFKD').trim().toLocaleLowerCase('en-US').split(/\s+/u).join(' ');
+    if (!ethers.Mnemonic.isValidMnemonic(normalized)) throw new Error('invalid_mnemonic');
+    const mnemonic = ethers.Mnemonic.fromPhrase(normalized);
+    const entropy = Uint8Array.from(ethers.getBytes(mnemonic.entropy));
+    try {
+      return await this.#registerSecret(entropy, 'mnemonic-entropy', await deriveAddresses(mnemonic.phrase));
+    } finally {
+      entropy.fill(0);
+    }
+  }
+
+  async prepareImportedEvmPrivateKey(value: string): Promise<SarWalletCreationResult> {
+    const normalized = value.trim();
+    if (!/^(?:0x)?[0-9a-fA-F]{64}$/u.test(normalized)) throw new Error('invalid_private_key');
+    const privateKey = Uint8Array.from(ethers.getBytes(normalized.startsWith('0x') ? normalized : `0x${normalized}`));
+    try {
+      const signer = new ethers.Wallet(ethers.hexlify(privateKey));
+      return await this.#registerSecret(privateKey, 'evm-private-key', [
+        { addressGroupId: 'evm', address: signer.address },
+      ]);
+    } finally {
+      privateKey.fill(0);
+    }
+  }
+
+  async #registerSecret(
+    secret: Uint8Array,
+    kind: SarSecretKind,
+    addresses: SarPublicAddress[],
+  ): Promise<SarWalletCreationResult> {
+    const keyHandle = `sar-key-${crypto.randomUUID()}`;
     const vaultKeyBytes = crypto.getRandomValues(new Uint8Array(32));
     let shares: Uint8Array[] = [];
     try {
-      const keyHandle = `sar-key-${crypto.randomUUID()}`;
-      const mnemonic = ethers.Mnemonic.fromEntropy(entropy).phrase;
-      const addresses = await deriveAddresses(mnemonic);
-      shares = await split(entropy, 3, 2);
+      shares = await split(secret, 3, 2);
       if (shares.length !== 3) throw new Error('SAR share generation failed.');
-
       for (const pair of [[0, 1], [0, 2], [1, 2]] as const) {
         const recovered = await combine([shares[pair[0]]!, shares[pair[1]]!]);
-        const verified = equalBytes(entropy, recovered);
+        const verified = equalBytes(secret, recovered);
         recovered.fill(0);
         if (!verified) throw new Error('SAR recovery verification failed.');
       }
-
       const vaultKey = await crypto.subtle.importKey(
         'raw',
         asBufferSource(vaultKeyBytes),
@@ -295,23 +337,26 @@ export class ReferenceHostSarKeyCore {
       await Promise.all(this.#stores.map((store, index) => store.put(keyHandle, shares[index]!)));
       this.#publicAddresses.set(keyHandle, addresses.map((address) => ({ ...address })));
       this.#developmentVaultKeys.set(keyHandle, vaultKey);
+      this.#secretKinds.set(keyHandle, kind);
       return {
-        mnemonicWords: Object.freeze(mnemonic.split(' ')),
-        wallet: {
-          keyHandle,
-          addresses,
-          recoveryEnvelopes,
-          recovery: {
-            scheme: 'shamir-gf256',
-            threshold: 2,
-            shareCount: 3,
-            recombinationVerified: true,
-            keyCoreVersion: SAR_KEY_CORE_VERSION,
-          },
+        keyHandle,
+        addresses,
+        recoveryEnvelopes,
+        recovery: {
+          scheme: 'shamir-gf256',
+          threshold: 2,
+          shareCount: 3,
+          recombinationVerified: true,
+          keyCoreVersion: SAR_KEY_CORE_VERSION,
         },
       };
+    } catch (error) {
+      await Promise.all(this.#stores.map((store) => store.delete(keyHandle)));
+      this.#publicAddresses.delete(keyHandle);
+      this.#developmentVaultKeys.delete(keyHandle);
+      this.#secretKinds.delete(keyHandle);
+      throw error;
     } finally {
-      entropy.fill(0);
       vaultKeyBytes.fill(0);
       for (const share of shares) share.fill(0);
     }
@@ -321,21 +366,34 @@ export class ReferenceHostSarKeyCore {
     await Promise.all(this.#stores.map((store) => store.delete(keyHandle)));
     this.#publicAddresses.delete(keyHandle);
     this.#developmentVaultKeys.delete(keyHandle);
+    this.#secretKinds.delete(keyHandle);
+  }
+
+  async #withRecoveredSecret<T>(
+    keyHandle: string,
+    operation: (secret: Uint8Array, kind: SarSecretKind) => Promise<T>,
+  ): Promise<T> {
+    const shares = await Promise.all([this.#stores[0].get(keyHandle), this.#stores[1].get(keyHandle)]);
+    if (shares.some((share) => share === null)) throw new Error('SAR shares are unavailable.');
+    const kind = this.#secretKinds.get(keyHandle);
+    if (!kind) throw new Error('SAR secret metadata is unavailable.');
+    const secret = await combine(shares as Uint8Array[]);
+    try {
+      return await operation(secret, kind);
+    } finally {
+      secret.fill(0);
+      for (const share of shares) share?.fill(0);
+    }
   }
 
   async #withRecoveredMnemonic<T>(
     keyHandle: string,
     operation: (mnemonic: string) => Promise<T>,
   ): Promise<T> {
-    const shares = await Promise.all([this.#stores[0].get(keyHandle), this.#stores[1].get(keyHandle)]);
-    if (shares.some((share) => share === null)) throw new Error('SAR shares are unavailable.');
-    const entropy = await combine(shares as Uint8Array[]);
-    try {
-      return await operation(ethers.Mnemonic.fromEntropy(entropy).phrase);
-    } finally {
-      entropy.fill(0);
-      for (const share of shares) share?.fill(0);
-    }
+    return this.#withRecoveredSecret(keyHandle, async (secret, kind) => {
+      if (kind !== 'mnemonic-entropy') throw new Error('This wallet does not contain a mnemonic signer.');
+      return operation(ethers.Mnemonic.fromEntropy(secret).phrase);
+    });
   }
 
   #keyHandleForAddress(addressGroupId: SarAddressGroupId, address: string): string {
@@ -354,10 +412,14 @@ export class ReferenceHostSarKeyCore {
     transaction: EvmTransactionToSign,
   ): Promise<string> {
     const keyHandle = this.#keyHandleForAddress('evm', fromAddress);
-    return this.#withRecoveredMnemonic(keyHandle, async (mnemonic) => {
-      const seed = Uint8Array.from(ethers.getBytes(ethers.Mnemonic.fromPhrase(mnemonic).computeSeed()));
+    return this.#withRecoveredSecret(keyHandle, async (secret, kind) => {
+      const seed = kind === 'mnemonic-entropy'
+        ? Uint8Array.from(ethers.getBytes(ethers.Mnemonic.fromEntropy(secret).computeSeed()))
+        : new Uint8Array();
       try {
-        const signer = ethers.HDNodeWallet.fromSeed(seed).derivePath("m/44'/60'/0'/0/0");
+        const signer = kind === 'mnemonic-entropy'
+          ? ethers.HDNodeWallet.fromSeed(seed).derivePath("m/44'/60'/0'/0/0")
+          : new ethers.Wallet(ethers.hexlify(secret));
         if (signer.address.toLowerCase() !== fromAddress.toLowerCase()) throw new Error('Derived signer address mismatch.');
         return await signer.signTransaction({
           type: 0,
@@ -457,8 +519,11 @@ export class ReferenceHostSarKeyCore {
     const recovered = await combine(shares as Uint8Array[]);
     try {
       const expected = this.#publicAddresses.get(keyHandle);
-      if (!expected) return false;
-      const actual = await deriveAddresses(ethers.Mnemonic.fromEntropy(recovered).phrase);
+      const kind = this.#secretKinds.get(keyHandle);
+      if (!expected || !kind) return false;
+      const actual = kind === 'mnemonic-entropy'
+        ? await deriveAddresses(ethers.Mnemonic.fromEntropy(recovered).phrase)
+        : [{ addressGroupId: 'evm' as const, address: new ethers.Wallet(ethers.hexlify(recovered)).address }];
       return actual.length === expected.length && actual.every((address, index) => (
         address.addressGroupId === expected[index]?.addressGroupId
         && address.address === expected[index]?.address

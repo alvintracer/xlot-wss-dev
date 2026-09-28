@@ -88,6 +88,10 @@
   creation, nine-network registration, a second FSL wallet slot, wallet
   selection, actual QR receive-address display, asset-first/network-second
   receive, and a zero-balance-visible send amount screen.
+- the headless secure-import check completed an ephemeral BIP-39 import with
+  five address groups and an ephemeral private-key import with EVM-only
+  capability, while confirming that neither secret value nor a secret-bearing
+  field crossed the host-to-BFF request boundary.
 
 The current asset adapter queries native balances on all nine configured chains
 and tenant-enabled stablecoin balances across EVM, Solana, TRON, and XRP Ledger.
@@ -133,6 +137,14 @@ host security surface, verifies three randomly selected words, and binds
 provisioning to short-lived host and key-core proofs. A fresh browser
 verification of this updated ceremony is recorded separately by the repository
 checks rather than by sending an automated SMS to a synthetic phone number.
+
+The development Reference Host also has a host-owned secure import surface.
+BIP-39 mnemonic import derives and registers the five supported address groups;
+raw private-key import registers only the EVM address group. Both are wrapped
+into a new SAR 2-of-3 set, receive a public-payload-bound attestation, and can
+sign actual supported transfers while the current page remains open. No
+mnemonic or private key crosses the iframe bridge or BFF request boundary.
+Imported key material is still volatile and is lost on page reload.
 
 ## Deliberate development limitation
 

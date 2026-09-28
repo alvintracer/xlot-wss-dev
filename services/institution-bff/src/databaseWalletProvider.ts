@@ -297,6 +297,19 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
     if ((request.source.type === 'secure-new' || request.source.type === 'secure-import') && request.keyAdapter !== 'took-sar') {
       throw new Error('Secure key-core sources require a SAR wallet slot.');
     }
+    if (request.source.type === 'secure-new'
+      || (request.source.type === 'secure-import' && request.source.method === 'mnemonic')) {
+      const requiredGroups = new Set(manifest.chains.map((chainId) => chainCatalog[chainId]?.addressGroupId ?? chainId));
+      const registeredGroups = new Set(request.source.addresses.map(({ addressGroupId }) => addressGroupId));
+      if ([...requiredGroups].some((groupId) => !registeredGroups.has(groupId))) {
+        throw new Error('Host key-core registration is missing a required address group.');
+      }
+    }
+    if (request.source.type === 'secure-import'
+      && request.source.method === 'private-key'
+      && !request.source.addresses.some(({ addressGroupId }) => addressGroupId === 'evm')) {
+      throw new Error('Imported EVM private key registration is missing its address.');
+    }
 
     const profileId = await this.#resolveProfile(session, manifest);
     if (!profileId) throw new RegistrationError('identity_registration_required');
@@ -322,7 +335,7 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
         LIMIT 1
       `;
       if (consumedAuthorizations[0]) throw new Error('Wallet authorization proof was already consumed.');
-      if (request.source.type === 'secure-new') {
+      if (request.source.type === 'secure-new' || request.source.type === 'secure-import') {
         if (!evidence.keyCoreAttestationId) throw new Error('Key-core attestation proof is required.');
         const consumedKeyCoreAttestations = await transaction<{ id: string }[]>`
           SELECT id FROM wss_wallets
@@ -344,7 +357,9 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
         : request.keyAdapter === 'fsl-mpc' ? 'FSL MPC 지갑' : 'Thirdweb MPC 지갑';
       walletId = randomUUID();
       const secureRefHash = request.source.type === 'secure-new' || request.source.type === 'secure-import'
-        ? createHash('sha256').update(request.source.type === 'secure-new' ? request.source.secureProvisionRef : request.source.secureImportRef).digest('hex')
+        ? createHash('sha256').update(request.source.type === 'secure-new'
+          ? request.source.secureProvisionRef
+          : request.source.secureImportRef).digest('hex')
         : null;
       await transaction`
         INSERT INTO wss_wallets (
@@ -359,12 +374,15 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
         )
       `;
 
-      if (request.source.type === 'secure-new') {
+      if (request.source.type === 'secure-new' || request.source.type === 'secure-import') {
         const addressesByGroup = new Map(request.source.addresses.map((item) => [item.addressGroupId, item.address]));
         for (const chainId of manifest.chains) {
           const chain = chainCatalog[chainId] ?? { addressGroupId: chainId, network: chainId, nativeSymbol: chainId.toUpperCase() };
           const address = addressesByGroup.get(chain.addressGroupId);
-          if (!address) throw new Error(`Missing public address group: ${chain.addressGroupId}`);
+          if (!address) {
+            if (request.source.type === 'secure-import' && request.source.method === 'private-key') continue;
+            throw new Error(`Missing public address group: ${chain.addressGroupId}`);
+          }
           await transaction`
             INSERT INTO wss_wallet_accounts (
               id, tenant_id, wallet_id, chain_id, address_group_id, address_normalized, address_display
@@ -418,7 +436,9 @@ export class DevelopmentPostgresWalletProvider implements WalletQueryProvider, W
     const walletHome = await this.#readyHome(profileId, manifest, walletId);
     if (!walletHome) throw new Error('Persisted wallet could not be loaded.');
     return {
-      mode: request.source.type === 'secure-new' ? 'development-key-core' : 'sandbox-contract-only',
+      mode: request.source.type === 'secure-new' || request.source.type === 'secure-import'
+        ? 'development-key-core'
+        : 'sandbox-contract-only',
       walletHome,
     };
   }

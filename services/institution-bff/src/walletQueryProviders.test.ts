@@ -41,6 +41,16 @@ const secureNewSource = {
   },
 } as const;
 
+const secureImportSource = {
+  type: 'secure-import',
+  method: 'mnemonic',
+  secureImportRef: 'opaque-secure-import-reference-001',
+  keyCoreAttestationProof: 'key-core-import-attestation-proof-for-provider-test',
+  addresses: secureNewSource.addresses,
+  recoveryEnvelopes: secureNewSource.recoveryEnvelopes,
+  recovery: secureNewSource.recovery,
+} as const;
+
 let proofSequence = 0;
 function evidence(includeKeyCore = false) {
   proofSequence += 1;
@@ -155,18 +165,41 @@ describe('tenant wallet query provider', () => {
         keyAdapter: 'took-sar',
         recoverySetupAcknowledged: true,
         hostAuthorizationProof,
-        source: {
-          type: 'secure-import',
-          method: 'mnemonic',
-          secureImportRef: 'opaque-secure-import-reference-001',
-        },
+        source: secureImportSource,
       },
-      evidence: evidence(),
+      evidence: evidence(true),
     });
 
+    expect(result.mode).toBe('development-key-core');
     expect(result.walletHome.wallet).toMatchObject({ keyAdapter: 'took-sar', origin: 'imported' });
     expect(result.walletHome.wallets).toHaveLength(1);
+    expect(result.walletHome.networks.every((network) => network.addressStatus === 'ready')).toBe(true);
     expect(JSON.stringify(result)).not.toMatch(/opaque-secure-import-reference|mnemonic|privateKey|seedPhrase|recoveryShare/i);
+  });
+
+  it('registers an EVM private key import only on EVM-compatible networks', async () => {
+    const provider = walletProvisioningProviders.get('kiwoom');
+    const session = { ...baseSession, sessionId: 'private-key-import-session' };
+    const result = await provider!.provision({
+      manifest: kiwoomManifest,
+      session,
+      request: {
+        idempotencyKey: 'private-key-import-001',
+        keyAdapter: 'took-sar',
+        recoverySetupAcknowledged: true,
+        hostAuthorizationProof,
+        source: {
+          ...secureImportSource,
+          method: 'private-key',
+          secureImportRef: 'opaque-private-key-reference-001',
+          addresses: secureImportSource.addresses.filter(({ addressGroupId }) => addressGroupId === 'evm'),
+        },
+      },
+      evidence: evidence(true),
+    });
+
+    expect(result.walletHome.networks.filter(({ addressGroupId }) => addressGroupId === 'evm').every(({ addressStatus }) => addressStatus === 'ready')).toBe(true);
+    expect(result.walletHome.networks.filter(({ addressGroupId }) => addressGroupId !== 'evm').every(({ addressStatus }) => addressStatus === 'pending-core')).toBe(true);
   });
 
   it('requires SAR setup acknowledgement for the took SAR adapter', async () => {

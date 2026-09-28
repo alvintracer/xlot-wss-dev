@@ -47,9 +47,6 @@ export type HostAuthenticationResult =
   | { status: 'cancelled' };
 export type WalletImportMethod = 'mnemonic' | 'private-key';
 export type WalletProvisioningOrigin = 'created' | 'imported';
-export type SecureWalletImportResult =
-  | { status: 'completed'; secureImportRef: string }
-  | { status: 'cancelled' };
 
 export interface PublicWalletAddressRegistration {
   addressGroupId: string;
@@ -83,6 +80,14 @@ export interface SecureSarWalletPayload {
 export interface SecureSarWalletRegistration extends SecureSarWalletPayload {
   keyCoreAttestationProof: string;
 }
+
+export interface SecureSarWalletImportRegistration extends Omit<SecureSarWalletRegistration, 'secureProvisionRef'> {
+  secureImportRef: string;
+}
+
+export type SecureWalletImportResult =
+  | ({ status: 'completed' } & SecureSarWalletImportRegistration)
+  | { status: 'cancelled' };
 
 export type SecureSarWalletCreationResult =
   | ({ status: 'completed' } & SecureSarWalletRegistration)
@@ -501,7 +506,7 @@ export interface ProvisionWalletRequest {
   source:
     | { type: 'new' }
     | ({ type: 'secure-new' } & SecureSarWalletRegistration)
-    | { type: 'secure-import'; method: WalletImportMethod; secureImportRef: string };
+    | ({ type: 'secure-import'; method: WalletImportMethod } & SecureSarWalletImportRegistration);
 }
 
 export interface ProvisionWalletResponse {
@@ -729,10 +734,7 @@ export function isHostToWalletMessage(value: unknown): value is HostToWalletMess
   if (value.type === 'took-wss:secure-import-result') {
     if (typeof value.requestId !== 'string' || !isRecord(value.result)) return false;
     if (value.result.status === 'cancelled') return true;
-    return value.result.status === 'completed'
-      && typeof value.result.secureImportRef === 'string'
-      && value.result.secureImportRef.length >= 16
-      && value.result.secureImportRef.length <= 256;
+    return value.result.status === 'completed' && isSecureSarWalletImportRegistration(value.result);
   }
   if (value.type === 'took-wss:secure-sar-create-result') {
     if (typeof value.requestId !== 'string' || !isRecord(value.result)) return false;
@@ -956,6 +958,17 @@ export function isSecureSarWalletRegistration(value: unknown): value is SecureSa
     && typeof value.keyCoreAttestationProof === 'string'
     && value.keyCoreAttestationProof.length > 20
     && isSecureSarWalletPayload(value);
+}
+
+export function isSecureSarWalletImportRegistration(value: unknown): value is SecureSarWalletImportRegistration {
+  if (!isRecord(value)
+    || typeof value.secureImportRef !== 'string'
+    || value.secureImportRef.length < 16
+    || value.secureImportRef.length > 256) return false;
+  return isSecureSarWalletRegistration({
+    ...value,
+    secureProvisionRef: value.secureImportRef,
+  });
 }
 
 export function assertTenantManifest(value: TenantManifest): TenantManifest {

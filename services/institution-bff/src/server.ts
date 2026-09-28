@@ -4,6 +4,7 @@ import {
   WSS_PROTOCOL_VERSION,
   MOBILE_CARRIER_CODES,
   isSecureSarWalletRegistration,
+  isSecureSarWalletImportRegistration,
   isSecureSarWalletPayload,
   isRecord,
   type CreateSessionRequest,
@@ -138,13 +139,15 @@ function parseProvisionWalletRequest(value: unknown): ProvisionWalletRequest {
         }
     : value.source.type === 'secure-import'
       && (value.source.method === 'mnemonic' || value.source.method === 'private-key')
-      && typeof value.source.secureImportRef === 'string'
-      && value.source.secureImportRef.length >= 16
-      && value.source.secureImportRef.length <= 256
+      && isSecureSarWalletImportRegistration(value.source)
         ? {
             type: 'secure-import' as const,
             method: value.source.method as 'mnemonic' | 'private-key',
             secureImportRef: value.source.secureImportRef,
+            addresses: value.source.addresses,
+            recoveryEnvelopes: value.source.recoveryEnvelopes,
+            recovery: value.source.recovery,
+            keyCoreAttestationProof: value.source.keyCoreAttestationProof,
           }
         : null;
   if (!source) throw new Error('Invalid secure wallet import reference.');
@@ -375,11 +378,14 @@ async function handleProvisionWallet(request: IncomingMessage, response: ServerR
     return;
   }
   let keyCoreAttestationId: string | undefined;
-  if (provisionRequest.source.type === 'secure-new') {
+  if (provisionRequest.source.type === 'secure-new' || provisionRequest.source.type === 'secure-import') {
     const keyCoreAttestation = verifyHostProof(provisionRequest.source.keyCoreAttestationProof, sessionSecret);
     assertProofSession(keyCoreAttestation, session);
+    const attestedPayload = provisionRequest.source.type === 'secure-new'
+      ? provisionRequest.source
+      : { ...provisionRequest.source, secureProvisionRef: provisionRequest.source.secureImportRef };
     if (keyCoreAttestation.kind !== 'sar-key-core'
-      || keyCoreAttestation.payloadHash !== sarKeyCorePayloadHash(provisionRequest.source)) {
+      || keyCoreAttestation.payloadHash !== sarKeyCorePayloadHash(attestedPayload)) {
       sendJson(response, 403, { error: 'key_core_attestation_required' });
       return;
     }

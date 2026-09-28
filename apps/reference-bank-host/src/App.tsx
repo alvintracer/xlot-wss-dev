@@ -11,12 +11,14 @@ import type {
   SecureSarWalletPayload,
   SecureTransactionSigningRequest,
   SecureTransactionSigningResult,
+  SecureWalletImportResult,
+  WalletImportMethod,
   WalletShellMode,
   WalletToHostMessage,
 } from '@took-wss/contracts';
 import { WssHostClient } from '@took-wss/host-sdk';
 import { KEY_ADAPTERS } from '@took-wss/key-adapters';
-import { ReferenceHostSarKeyCore, type PreparedSarWallet } from '@took-wss/sar-key-core';
+import { ReferenceHostSarKeyCore, type PreparedSarWallet, type SarWalletCreationResult } from '@took-wss/sar-key-core';
 import { kiwoomManifest } from '@took-wss/tenant-kiwoom';
 import { referenceBankManifest } from '@took-wss/tenant-reference-bank';
 import { getHostChromeProfile } from './hostChromeRegistry';
@@ -37,7 +39,7 @@ const hostCapabilities: HostCapabilities = {
   canUseContacts: true,
   canOpenRecovery: true,
   canLinkExternalWallet: true,
-  canSecureWalletImport: false,
+  canSecureWalletImport: import.meta.env.DEV,
   canCreateSecureSarWallet: import.meta.env.DEV,
 };
 
@@ -66,6 +68,7 @@ type TenantId = keyof typeof tenantOptions;
 type SecurityCeremony =
   | Extract<HostSecurityView, { type: 'authentication' }>
   | (Extract<HostSecurityView, { type: 'sar-backup' }> & { prepared: PreparedSarWallet })
+  | Extract<HostSecurityView, { type: 'wallet-import' }>
   | Extract<HostSecurityView, { type: 'transaction-signing' }>;
 
 function chooseConfirmationIndexes(wordCount: number): number[] {
@@ -78,11 +81,15 @@ function chooseConfirmationIndexes(wordCount: number): number[] {
 }
 
 function sarPayload(prepared: PreparedSarWallet): SecureSarWalletPayload {
+  return sarWalletPayload(prepared.wallet);
+}
+
+function sarWalletPayload(wallet: SarWalletCreationResult): SecureSarWalletPayload {
   return {
-    secureProvisionRef: prepared.wallet.keyHandle,
-    addresses: prepared.wallet.addresses,
-    recoveryEnvelopes: prepared.wallet.recoveryEnvelopes,
-    recovery: prepared.wallet.recovery,
+    secureProvisionRef: wallet.keyHandle,
+    addresses: wallet.addresses,
+    recoveryEnvelopes: wallet.recoveryEnvelopes,
+    recovery: wallet.recovery,
   };
 }
 
@@ -101,6 +108,7 @@ export function App() {
   const sarPreparationInProgress = useRef(false);
   const authenticationResolver = useRef<((result: HostAuthenticationResult) => void) | null>(null);
   const sarResolver = useRef<((result: SecureSarWalletCreationResult) => void) | null>(null);
+  const walletImportResolver = useRef<((result: SecureWalletImportResult) => void) | null>(null);
   const transactionSigningResolver = useRef<((result: SecureTransactionSigningResult) => void) | null>(null);
   const hostChrome = getHostChromeProfile(tenantOptions[tenantId].presentationProfileId);
   const HostHeader = hostChrome.Header;
@@ -122,6 +130,9 @@ export function App() {
       void referenceHostSarKeyCore.discardWallet(active.prepared.wallet.keyHandle);
       sarResolver.current?.({ status: 'cancelled' });
       sarResolver.current = null;
+    } else if (active.type === 'wallet-import') {
+      walletImportResolver.current?.({ status: 'cancelled' });
+      walletImportResolver.current = null;
     } else {
       transactionSigningResolver.current?.({ status: 'cancelled' });
       transactionSigningResolver.current = null;
@@ -261,6 +272,77 @@ export function App() {
     resolve({ status: 'completed', ...registration, keyCoreAttestationProof: result.proof });
   }, [session, showSecurityCeremony]);
 
+  const requestSecureWalletImport = useCallback(async (
+    method: WalletImportMethod,
+  ): Promise<SecureWalletImportResult> => {
+    if (!import.meta.env.DEV
+      || !session
+      || sessionTokenRef.current !== session.sessionToken
+      || securityCeremonyRef.current
+      || walletImportResolver.current) return { status: 'cancelled' };
+    return new Promise((resolve) => {
+      walletImportResolver.current = resolve;
+      showSecurityCeremony({ id: crypto.randomUUID(), type: 'wallet-import', method });
+    });
+  }, [session, showSecurityCeremony]);
+
+  const confirmSecureWalletImport = useCallback(async (
+    method: WalletImportMethod,
+    secret: string,
+  ) => {
+    const active = securityCeremonyRef.current;
+    const resolve = walletImportResolver.current;
+    if (!session || active?.type !== 'wallet-import' || active.method !== method || !resolve) {
+      throw new Error('No active wallet import ceremony.');
+    }
+    const activeId = active.id;
+    const activeSessionToken = session.sessionToken;
+    let wallet: SarWalletCreationResult | null = null;
+    try {
+      wallet = method === 'mnemonic'
+        ? await referenceHostSarKeyCore.prepareImportedMnemonic(secret)
+        : await referenceHostSarKeyCore.prepareImportedEvmPrivateKey(secret);
+      const registration = sarWalletPayload(wallet);
+      const response = await fetch(`${bffUrl}/v1/development/sar-key-core-attestations`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${activeSessionToken}`,
+          'Content-Type': 'application/json',
+          'x-wss-institution-key': localDevelopmentInstitutionKey,
+        },
+        body: JSON.stringify({ registration }),
+        cache: 'no-store',
+      });
+      if (!response.ok) throw new Error('SAR key-core attestation was rejected.');
+      const result = await response.json() as unknown;
+      if (!isRecord(result) || typeof result.proof !== 'string' || typeof result.expiresAt !== 'string') {
+        throw new Error('Unsupported SAR key-core attestation response.');
+      }
+      if (sessionTokenRef.current !== activeSessionToken
+        || securityCeremonyRef.current?.id !== activeId
+        || walletImportResolver.current !== resolve) {
+        await referenceHostSarKeyCore.discardWallet(wallet.keyHandle);
+        return;
+      }
+      walletImportResolver.current = null;
+      showSecurityCeremony(null);
+      setHostFeedback(method === 'mnemonic'
+        ? '기존 지갑의 공개 주소를 확인하고 자가복구 설정을 준비했습니다.'
+        : 'EVM 지갑 주소를 확인하고 자가복구 설정을 준비했습니다.');
+      resolve({
+        status: 'completed',
+        secureImportRef: wallet.keyHandle,
+        addresses: wallet.addresses,
+        recoveryEnvelopes: wallet.recoveryEnvelopes,
+        recovery: wallet.recovery,
+        keyCoreAttestationProof: result.proof,
+      });
+    } catch (error) {
+      if (wallet) await referenceHostSarKeyCore.discardWallet(wallet.keyHandle);
+      throw error;
+    }
+  }, [session, showSecurityCeremony]);
+
   const requestSecureTransactionSignature = useCallback(async (
     request: SecureTransactionSigningRequest,
   ): Promise<SecureTransactionSigningResult> => {
@@ -398,15 +480,11 @@ export function App() {
       requestAuthentication: requestHostAuthentication,
       requestSecureSarWalletCreation,
       requestSecureTransactionSignature,
-      requestSecureWalletImport: async (method) => {
-        const label = method === 'mnemonic' ? '니모닉' : '개인키';
-        setHostFeedback(`실제 금융사 ${label} 보안 입력·키 코어 연동이 필요합니다.`);
-        return { status: 'cancelled' };
-      },
+      requestSecureWalletImport,
     });
     client.start();
     return () => client.stop();
-  }, [requestHostAuthentication, requestSecureSarWalletCreation, requestSecureTransactionSignature, session]);
+  }, [requestHostAuthentication, requestSecureSarWalletCreation, requestSecureTransactionSignature, requestSecureWalletImport, session]);
 
   useEffect(() => {
     if (!hostFeedback) return;
@@ -480,6 +558,7 @@ export function App() {
               onCancel={cancelSecurityCeremony}
               onApproveAuthentication={approveHostAuthentication}
               onConfirmSeedBackup={confirmSeedBackup}
+              onConfirmWalletImport={confirmSecureWalletImport}
               onApproveTransaction={approveTransaction}
             />
           ) : null}

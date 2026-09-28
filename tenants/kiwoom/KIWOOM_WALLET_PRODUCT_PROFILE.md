@@ -73,10 +73,11 @@ The import sequence is:
 1. WSS asks the host for `mnemonic` or `private-key` secure import.
 2. The native host opens its approved key-core input surface.
 3. The key core validates and imports the secret locally.
-4. The host returns only an opaque, short-lived `secureImportRef`.
-5. WSS uses that reference to request creation of one imported SAR wallet slot.
+4. The host converts the imported material into a new SAR 2-of-3 set and obtains a payload-bound key-core attestation.
+5. The host returns only an opaque `secureImportRef`, public addresses, encrypted recovery envelopes, non-secret threshold metadata, and the attestation.
+6. WSS uses that public registration to create one imported SAR wallet slot.
 
-The current Reference Host keeps this route fail-closed and never asks for a secret; it does not simulate a successful import. Production must bind the opaque reference to tenant, customer, device, import method, expiry, nonce, and one-time consumption. For a private-key import, compatible network capabilities must be derived by the trusted key core rather than accepted from browser input.
+The development Reference Host now implements this route with a host-owned input surface. A valid BIP-39 mnemonic derives the EVM, Solana, Bitcoin, TRON, and XRP groups; a raw private key is deliberately EVM-only. The secret remains in volatile host key-core memory and can sign during the current page lifetime, while the WSS bridge and BFF receive only the public registration. Production must bind the opaque reference to tenant, customer, device, import method, expiry, nonce, and one-time consumption and replace volatile JavaScript storage with an approved native/hardware-backed key core.
 
 ## 5. Runtime and API shape
 
@@ -102,11 +103,11 @@ their chain-native prepare, host-sign, exact-payload verification, and broadcast
 paths. XRP Ledger issued assets such as RLUSD, USDC, and XSGD require a trust
 line before receipt or transfer.
 
-Provisioning calls `POST /v1/wallets/provision` with a key adapter and a provider-new, host-secure-new, or opaque secure-import source. A host-secure-new source contains only the public address groups, an opaque key-core reference, and non-secret SAR setup metadata. Every successful call adds one wallet slot; it does not add one slot per network.
+Provisioning calls `POST /v1/wallets/provision` with a key adapter and a provider-new, host-secure-new, or host-secure-import source. Both secure sources contain only public address groups, an opaque key-core reference, encrypted recovery envelopes, non-secret SAR setup metadata, and a payload-bound attestation. Every successful call adds one wallet slot; it does not add one slot per network.
 
 The call also carries a short-lived host-authorization proof bound to the
-current session and `wallet-provisioning` purpose. A host-secure-new source
-adds a key-core attestation bound to the canonical hash of the public
+current session and `wallet-provisioning` purpose. A host-secure-new or
+host-secure-import source adds a key-core attestation bound to the canonical hash of the public
 registration. The BFF persists only the proof UUIDs and rejects reuse for a
 different wallet operation.
 
@@ -149,6 +150,12 @@ requires step-up.
 
 When the development database is connected, the BFF persists the Kiwoom WSS profile, wallet slot, public address rows, audit event, three customer-side AES-GCM recovery-envelope ciphertexts, and only the UUIDs of the consumed host proofs in `xlot-wss-dev`. The plaintext shares, recovery phrase, proof strings, signed raw transactions, and envelope key are not persisted; key material remains in volatile Reference Host memory and is lost on reload. This is therefore a real wallet/address, ceremony, proof-binding, ciphertext-persistence, and EVM-native transfer path, but not production storage or durable device-loss recovery. Production remains fail-closed without an approved native key core, independently controlled encrypted factor stores, institution/native device attestation, recovery-factor providers, and security review. The current A/B/C recovery screen records acknowledgement but does not yet enroll three independent durable factors.
 
+The same limitation applies to imported wallets: a funded mnemonic/private-key
+wallet can be queried, shown in receive, signed, and broadcast during the
+current Reference Host page lifetime, but refreshing the page removes its
+development signing material. Re-import/reattachment of an already persisted
+slot is not yet a production recovery mechanism.
+
 The selected wallet now queries real native balances for Ethereum, Polygon, Arbitrum, Base, BNB Chain, Solana, Bitcoin, TRON, and XRP plus tenant-enabled stablecoins on EVM, Solana, TRON, and XRP Ledger. Receive and send both use `asset → network`: the first screen groups all deployments of the same symbol, and the next screen keeps the chain-specific asset ID distinct. Receive then renders an actual QR from the registered address and supports copy/share. Send keeps the asset/network/amount controls visible at zero balance, clearly reports an available amount of zero, and blocks progression rather than replacing the flow with an empty state. The amount field switches between exact token-unit input and KRW input using the catalog reference price without floating-point atomic-amount conversion.
 
 After a valid amount, send offers a wallet-address route and a phone-number route. The address route is executable for EVM native, allowlisted ERC-20, Solana SPL, TRON TRC-20, and XRPL issued assets: actual fee preparation, expiring preparation, fail-closed KYT, a host-owned customer confirmation, SAR key-core signing, exact signed-payload verification, broadcast, and persisted intent/execution audit. XRPL address entry also accepts and reviews an optional destination tag. Solana includes destination associated-token-account creation rent when needed, while TRON labels its fee limit as a maximum rather than an exact charge. The phone route now has a WSS-native sender implementation for Ethereum, Polygon, Arbitrum, and Base: live sender-pays fee calculation, native or ordered ERC-20 approve/deposit signing, exact payload verification, confirmed `Deposited` event matching, encrypted recipient handling, and tenant-branded SOLAPI delivery. It remains unavailable until the WSS claim URL and matching contract signer are explicitly configured, preventing funds from being deposited into an escrow that WSS cannot release. The route is never passed to the ordinary address-transfer endpoint. The deployed price gateway prefers Bonanza K-VWAP and otherwise labels CoinGecko or CoinMarketCap output as a market reference. The deployed KYT gateway blocks address sending when TranSight is unavailable.
@@ -158,6 +165,8 @@ Remaining development gaps are explicit: the phone recipient-claim/OTP/KYT/relay
 The Kiwoom phone-first profile path is implemented against `xlot-wss-dev` and selects `supabase-auth-solapi`. Registration PII is AES-256-GCM encrypted before persistence, the phone lookup uses a separate keyed digest, Supabase Auth owns code generation and verification, and the activated SOLAPI Send SMS Hook only delivers the Auth-owned code. WSS keeps neither the code nor its MAC on that path. The BFF matches the Auth-verified number to the tenant-scoped lookup digest, persists only a domain-separated keyed Auth-subject digest, and then atomically creates the random profile UUID, encrypted private attributes, consent, external institution link, and audit event before purging the intent PII. If delivery is unavailable, the isolated sandbox visibly falls back to the loopback-only MAC-based development code; production never falls back. This still proves phone possession, not carrier-backed legal identity.
 
 ## 8. Change record
+
+- 2026-09-28: Implemented the development host-only mnemonic and EVM-private-key import ceremonies, real SAR wrapping, payload-bound attestation, public-address persistence, and current-session transaction signing. Private-key imports are EVM-only and all imported signing material remains volatile.
 
 - 2026-09-27: Defined `wallet = slot`; removed the earlier interpretation of a chain as a slot.
 - 2026-09-27: Added secure mnemonic/private-key import into a new SAR wallet slot.

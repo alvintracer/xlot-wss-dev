@@ -121,7 +121,7 @@ export function CreateWalletFlow({
   const [developmentCode, setDevelopmentCode] = useState<string | null>(null);
   const [hostAuthorizationProof, setHostAuthorizationProof] = useState<string | null>(null);
   const [walletSource, setWalletSource] = useState<SarWalletSource | null>(null);
-  const [secureImportRef, setSecureImportRef] = useState<string | null>(null);
+  const [preparedImportedWallet, setPreparedImportedWallet] = useState<Extract<SecureWalletImportResult, { status: 'completed' }> | null>(null);
   const [preparedSarWallet, setPreparedSarWallet] = useState<Extract<SecureSarWalletCreationResult, { status: 'completed' }> | null>(null);
   const [recoveryAcknowledged, setRecoveryAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -246,7 +246,7 @@ export function CreateWalletFlow({
   const selectAdapter = (nextAdapter: KeyAdapterId) => {
     setKeyAdapter(nextAdapter);
     setWalletSource(null);
-    setSecureImportRef(null);
+    setPreparedImportedWallet(null);
     setPreparedSarWallet(null);
     setHostAuthorizationProof(null);
     setRecoveryAcknowledged(false);
@@ -348,7 +348,7 @@ export function CreateWalletFlow({
 
   const chooseSource = (source: SarWalletSource) => {
     setWalletSource(source);
-    setSecureImportRef(null);
+    setPreparedImportedWallet(null);
     setPreparedSarWallet(null);
     setError(null);
     setStep(source === 'new' ? 'seed-wallet' : 'secure-import');
@@ -388,7 +388,7 @@ export function CreateWalletFlow({
     try {
       const result = await onRequestSecureImport(method);
       if (result.status === 'completed') {
-        setSecureImportRef(result.secureImportRef);
+        setPreparedImportedWallet(result);
         setStep('sar-setup');
         return;
       }
@@ -406,7 +406,7 @@ export function CreateWalletFlow({
       setStep('authentication');
       return;
     }
-    if (walletSource && walletSource !== 'new' && !secureImportRef) {
+    if (walletSource && walletSource !== 'new' && !preparedImportedWallet) {
       setError('호스트 보안 입력을 먼저 완료해 주세요.');
       return;
     }
@@ -429,11 +429,15 @@ export function CreateWalletFlow({
           recovery: preparedSarWallet.recovery,
           keyCoreAttestationProof: preparedSarWallet.keyCoreAttestationProof,
         };
-      } else if (walletSource && walletSource !== 'new' && secureImportRef) {
+      } else if (walletSource && walletSource !== 'new' && preparedImportedWallet) {
         source = {
           type: 'secure-import',
           method: walletSource === 'import-mnemonic' ? 'mnemonic' : 'private-key',
-          secureImportRef,
+          secureImportRef: preparedImportedWallet.secureImportRef,
+          addresses: preparedImportedWallet.addresses,
+          recoveryEnvelopes: preparedImportedWallet.recoveryEnvelopes,
+          recovery: preparedImportedWallet.recovery,
+          keyCoreAttestationProof: preparedImportedWallet.keyCoreAttestationProof,
         };
       } else {
         source = { type: 'new' };

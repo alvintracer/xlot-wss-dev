@@ -148,6 +148,7 @@ function ReadyWallet({
   const recoveryLabel = walletHome.recovery.profile === 'sar-2-of-3'
     ? walletHome.wallet.origin === 'imported' ? '가져온 지갑 · SAR 자가복구' : 'SAR 자가복구'
     : walletHome.wallet.keyAdapter === 'fsl-mpc' ? 'FSL MPC' : 'Thirdweb MPC';
+  const readyNetworkCount = walletHome.networks.filter(({ addressStatus }) => addressStatus === 'ready').length;
 
   return (
     <div className="kw-wallet-home">
@@ -179,7 +180,7 @@ function ReadyWallet({
         <div className="kw-selected-wallet-card__heading">
           <div>
             <h2 id="kw-selected-wallet-assets-title">보유 자산</h2>
-            <p>{recoveryLabel} · 지원 네트워크 {walletHome.networks.length}개</p>
+            <p>{recoveryLabel} · 지원 네트워크 {readyNetworkCount}개</p>
           </div>
           <span>{walletHome.assets.length}개</span>
         </div>

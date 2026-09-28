@@ -95,8 +95,55 @@ describe('host initialization contract', () => {
       type: 'took-wss:secure-import-result',
       protocolVersion: 1,
       requestId: 'request-2',
-      result: { status: 'completed', secureImportRef: 'opaque-reference-123456' },
+      result: {
+        status: 'completed',
+        secureImportRef: 'opaque-reference-123456',
+        keyCoreAttestationProof: 'signed-key-core-attestation-proof-123456',
+        addresses: [{ addressGroupId: 'evm', address: '0x0000000000000000000000000000000000000001' }],
+        recoveryEnvelopes: [1, 2, 3].map((factorIndex) => ({
+          factorIndex,
+          envelopeVersion: 1,
+          algorithm: 'AES-256-GCM',
+          ivBase64: 'AAAAAAAAAAAAAAAA',
+          ciphertextBase64: 'AAAAAAAAAAAAAAAAAAAAAAAA',
+          aad: `sar-key-core-v1:opaque-reference-123456:factor-${factorIndex}`,
+        })),
+        recovery: {
+          scheme: 'shamir-gf256',
+          threshold: 2,
+          shareCount: 3,
+          recombinationVerified: true,
+          keyCoreVersion: 'sar-key-core-v1',
+        },
+      },
     })).toBe(true);
+    expect(isHostToWalletMessage({
+      type: 'took-wss:secure-import-result',
+      protocolVersion: 1,
+      requestId: 'request-secret-leak',
+      result: {
+        status: 'completed',
+        secureImportRef: 'opaque-reference-123456',
+        keyCoreAttestationProof: 'signed-key-core-attestation-proof-123456',
+        privateKey: 'do-not-cross-the-bridge',
+        addresses: [{ addressGroupId: 'evm', address: '0x0000000000000000000000000000000000000001' }],
+        recoveryEnvelopes: [1, 2, 3].map((factorIndex) => ({
+          factorIndex,
+          envelopeVersion: 1,
+          algorithm: 'AES-256-GCM',
+          ivBase64: 'AAAAAAAAAAAAAAAA',
+          ciphertextBase64: 'AAAAAAAAAAAAAAAAAAAAAAAA',
+          aad: `sar-key-core-v1:opaque-reference-123456:factor-${factorIndex}`,
+        })),
+        recovery: {
+          scheme: 'shamir-gf256',
+          threshold: 2,
+          shareCount: 3,
+          recombinationVerified: true,
+          keyCoreVersion: 'sar-key-core-v1',
+        },
+      },
+    })).toBe(false);
     expect(isWalletToHostMessage({
       type: 'took-wss:secure-sar-create-request',
       protocolVersion: 1,

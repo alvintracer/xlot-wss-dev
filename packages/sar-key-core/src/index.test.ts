@@ -46,6 +46,56 @@ describe('reference host SAR key core', () => {
     await expect(core.verifyRecovery(prepared.wallet.keyHandle, [0, 1])).resolves.toBe(false);
   });
 
+  it('imports a BIP-39 mnemonic into a real multichain SAR wallet and signs from it', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    const mnemonic = ethers.Wallet.createRandom().mnemonic!.phrase;
+    const wallet = await core.prepareImportedMnemonic(`  ${mnemonic.replaceAll(' ', '  ')}  `);
+    const from = wallet.addresses.find(({ addressGroupId }) => addressGroupId === 'evm')!.address;
+    const expected = ethers.HDNodeWallet.fromPhrase(mnemonic, undefined, "m/44'/60'/0'/0/0").address;
+
+    expect(wallet.addresses.map(({ addressGroupId }) => addressGroupId)).toEqual(['evm', 'solana', 'bitcoin', 'tron', 'xrp']);
+    expect(from).toBe(expected);
+    expect(JSON.stringify(wallet)).not.toContain(mnemonic);
+    await expect(core.verifyRecovery(wallet.keyHandle, [0, 2])).resolves.toBe(true);
+
+    const signed = await core.signEvmTransactionForAddress(from, {
+      chainId: 1,
+      nonce: 0,
+      to: '0x0000000000000000000000000000000000000001',
+      value: '1',
+      gasLimit: '21000',
+      gasPrice: '1',
+    });
+    expect(ethers.Transaction.from(signed).from).toBe(from);
+  });
+
+  it('imports an EVM private key as an EVM-only SAR wallet and signs from it', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    const privateKey = ethers.Wallet.createRandom().privateKey;
+    const expected = new ethers.Wallet(privateKey).address;
+    const wallet = await core.prepareImportedEvmPrivateKey(privateKey.slice(2));
+
+    expect(wallet.addresses).toEqual([{ addressGroupId: 'evm', address: expected }]);
+    expect(JSON.stringify(wallet)).not.toContain(privateKey.slice(2));
+    await expect(core.verifyRecovery(wallet.keyHandle, [1, 2])).resolves.toBe(true);
+    const signed = await core.signEvmTransactionForAddress(expected, {
+      chainId: 137,
+      nonce: 2,
+      to: '0x0000000000000000000000000000000000000001',
+      value: '10',
+      gasLimit: '21000',
+      gasPrice: '2',
+    });
+    expect(ethers.Transaction.from(signed).from).toBe(expected);
+    await expect(core.signSolanaTransactionForAddress(expected, 'invalid')).rejects.toThrow();
+  });
+
+  it('rejects invalid wallet import material before a key handle is registered', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    await expect(core.prepareImportedMnemonic('not a valid recovery phrase')).rejects.toThrow('invalid_mnemonic');
+    await expect(core.prepareImportedEvmPrivateKey('0x1234')).rejects.toThrow('invalid_private_key');
+  });
+
   it('reconstructs the EVM signer only inside the key core and signs the exact native transaction', async () => {
     const core = new ReferenceHostSarKeyCore();
     const wallet = await core.createWallet();

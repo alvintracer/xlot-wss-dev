@@ -1,6 +1,6 @@
 import { CheckCircle, Key, LockKey, ShieldCheck, WarningCircle, X } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
-import type { HostAuthenticationPurpose, SecureTransactionSigningRequest } from '@took-wss/contracts';
+import type { HostAuthenticationPurpose, SecureTransactionSigningRequest, WalletImportMethod } from '@took-wss/contracts';
 
 export type HostSecurityView =
   | {
@@ -18,6 +18,11 @@ export type HostSecurityView =
       id: string;
       type: 'transaction-signing';
       request: SecureTransactionSigningRequest;
+    }
+  | {
+      id: string;
+      type: 'wallet-import';
+      method: WalletImportMethod;
     };
 
 interface HostSecurityOverlayProps {
@@ -25,6 +30,7 @@ interface HostSecurityOverlayProps {
   onCancel: () => void;
   onApproveAuthentication: () => Promise<void>;
   onConfirmSeedBackup: () => Promise<void>;
+  onConfirmWalletImport: (method: WalletImportMethod, secret: string) => Promise<void>;
   onApproveTransaction: () => Promise<void>;
 }
 
@@ -39,14 +45,17 @@ export function HostSecurityOverlay({
   onCancel,
   onApproveAuthentication,
   onConfirmSeedBackup,
+  onConfirmWalletImport,
   onApproveTransaction,
 }: HostSecurityOverlayProps) {
   const dialogRef = useRef<HTMLElement>(null);
+  const secureInputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const [seedStep, setSeedStep] = useState<'reveal' | 'confirm'>('reveal');
   const [backupAcknowledged, setBackupAcknowledged] = useState(false);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [secretReady, setSecretReady] = useState(false);
   const confirmationIndexes = view.type === 'sar-backup' ? view.confirmationIndexes : [];
   const allAnswersPresent = confirmationIndexes.every((index) => answers[index]?.trim());
 
@@ -91,6 +100,28 @@ export function HostSecurityOverlay({
       await onApproveTransaction();
     } catch {
       setError('보내기 서명을 완료하지 못했어요. 네트워크와 지갑 상태를 확인해 주세요.');
+      setBusy(false);
+    }
+  };
+
+  const confirmWalletImport = async () => {
+    if (view.type !== 'wallet-import') return;
+    const input = secureInputRef.current;
+    const secret = input?.value ?? '';
+    if (!secret.trim()) return;
+    if (input) input.value = '';
+    setSecretReady(false);
+    setBusy(true);
+    setError(null);
+    try {
+      await onConfirmWalletImport(view.method, secret);
+    } catch (caught) {
+      const reason = caught instanceof Error ? caught.message : '';
+      setError(reason === 'invalid_mnemonic'
+        ? '복구 구문의 단어와 순서를 확인해 주세요.'
+        : reason === 'invalid_private_key'
+          ? '개인키 형식을 확인해 주세요. 64자리 16진수 키를 입력할 수 있어요.'
+          : '지갑 정보를 확인하지 못했어요. 다시 입력해 주세요.');
       setBusy(false);
     }
   };
@@ -142,6 +173,55 @@ export function HostSecurityOverlay({
             <button className="host-security-secondary" type="button" disabled={busy} onClick={onCancel}>취소</button>
             <button className="host-security-primary" type="button" disabled={busy} aria-busy={busy} autoFocus onClick={() => void approveTransaction()}>
               {busy ? '확인하고 있어요' : '인증하고 보내기'}
+            </button>
+          </footer>
+        </>
+      ) : view.type === 'wallet-import' ? (
+        <>
+          <div className="host-security-content">
+            <div className="host-security-symbol" aria-hidden="true"><LockKey size={32} weight="regular" /></div>
+            <p className="host-security-kicker">기존 지갑 가져오기</p>
+            <h2 id="host-security-title">{view.method === 'mnemonic' ? '복구 구문을' : 'EVM 개인키를'}<br />직접 입력해 주세요</h2>
+            <p>{view.method === 'mnemonic'
+              ? '기존 지갑에서 확인한 12~24개 영문 단어를 순서대로 입력해 주세요.'
+              : '이더리움과 EVM 호환 네트워크에서 사용하는 64자리 16진수 개인키를 입력해 주세요.'}</p>
+            <label className="host-secure-import-field">
+              <span>{view.method === 'mnemonic' ? '복구 구문' : '개인키'}</span>
+              {view.method === 'mnemonic' ? (
+                <textarea
+                  ref={(node) => { secureInputRef.current = node; }}
+                  autoFocus
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  rows={4}
+                  placeholder="영문 단어를 띄어쓰기로 구분해 입력"
+                  onInput={(event) => setSecretReady(event.currentTarget.value.trim().length > 0)}
+                />
+              ) : (
+                <input
+                  ref={(node) => { secureInputRef.current = node; }}
+                  autoFocus
+                  type="password"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  placeholder="0x로 시작하거나 64자리인 개인키"
+                  onInput={(event) => setSecretReady(event.currentTarget.value.trim().length > 0)}
+                />
+              )}
+            </label>
+            <div className="host-security-warning">
+              <ShieldCheck size={18} aria-hidden="true" />
+              <span>입력한 정보는 이 기기의 키 코어 안에서만 처리되며 WSS WebView나 키움 서버로 전달되지 않습니다.</span>
+            </div>
+            {view.method === 'private-key' ? <p className="host-security-scope">개인키 지갑에는 EVM 계열 네트워크만 연결됩니다. 여러 체인을 함께 사용하려면 복구 구문으로 가져와 주세요.</p> : null}
+            {error ? <p className="host-security-error" role="alert">{error}</p> : null}
+          </div>
+          <footer className="host-security-footer host-security-footer--split">
+            <button className="host-security-secondary" type="button" disabled={busy} onClick={onCancel}>취소</button>
+            <button className="host-security-primary" type="button" disabled={!secretReady || busy} aria-busy={busy} onClick={() => void confirmWalletImport()}>
+              {busy ? '지갑을 확인하고 있어요' : '안전하게 가져오기'}
             </button>
           </footer>
         </>

@@ -113,7 +113,7 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
     if (!evidence.hostAuthorizationId || this.#hostAuthorizations.has(evidence.hostAuthorizationId)) {
       throw new Error('Wallet authorization proof was already consumed.');
     }
-    if (request.source.type === 'secure-new'
+    if ((request.source.type === 'secure-new' || request.source.type === 'secure-import')
       && (!evidence.keyCoreAttestationId || this.#keyCoreAttestations.has(evidence.keyCoreAttestationId))) {
       throw new Error('Key-core attestation proof was already consumed.');
     }
@@ -132,12 +132,18 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
     if (request.keyAdapter === 'took-sar' && request.source.type === 'new') {
       throw new Error('SAR wallet creation requires a completed host key-core registration.');
     }
-    if (request.source.type === 'secure-new') {
+    if (request.source.type === 'secure-new'
+      || (request.source.type === 'secure-import' && request.source.method === 'mnemonic')) {
       const requiredGroups = new Set(manifest.chains.map((chainId) => chainCatalog[chainId]?.addressGroupId ?? chainId));
       const registeredGroups = new Set(request.source.addresses.map(({ addressGroupId }) => addressGroupId));
       if ([...requiredGroups].some((groupId) => !registeredGroups.has(groupId))) {
         throw new Error('Host key-core registration is missing a required address group.');
       }
+    }
+    if (request.source.type === 'secure-import'
+      && request.source.method === 'private-key'
+      && !request.source.addresses.some(({ addressGroupId }) => addressGroupId === 'evm')) {
+      throw new Error('Imported EVM private key registration is missing its address.');
     }
 
     const homes = this.#homes.get(session.sessionId) ?? [];
@@ -147,7 +153,10 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
     const adapterLabel = request.keyAdapter === 'took-sar'
       ? origin === 'imported' ? '가져온 자가복구 지갑' : '자가복구 지갑'
       : request.keyAdapter === 'fsl-mpc' ? 'FSL MPC 지갑' : 'Thirdweb MPC 지갑';
-    const networks = createSandboxNetworks(manifest, request.source.type === 'secure-new' ? request.source.addresses : []);
+    const networks = createSandboxNetworks(
+      manifest,
+      request.source.type === 'secure-new' || request.source.type === 'secure-import' ? request.source.addresses : [],
+    );
     const walletHome: ReadyWalletHomePayload = {
       status: 'ready',
       wallet: {
@@ -177,7 +186,9 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
     homes.push(walletHome);
     this.#homes.set(session.sessionId, homes);
     const response = {
-      mode: request.source.type === 'secure-new' ? 'development-key-core' : 'sandbox-contract-only',
+      mode: request.source.type === 'secure-new' || request.source.type === 'secure-import'
+        ? 'development-key-core'
+        : 'sandbox-contract-only',
       walletHome: withWalletIndex(walletHome, homes),
     } as const;
     this.#hostAuthorizations.add(evidence.hostAuthorizationId);
