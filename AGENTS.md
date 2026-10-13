@@ -22,15 +22,16 @@ This repository is the independent took Institutional Wallet Service Layer.
 - Treat management surfaces and tenant wallet surfaces as two different design authorities.
 - Studio, dashboards, developer portals, operations consoles, and the outer frame of reference hosts use the tookpay UI / tookpay deck language by default: black, warm paper, white, signal orange, 1px rules, editorial grids, display typography, and mono metadata. Use `@took-wss/ops-ui` rather than recreating these values per app.
 - A tenant wallet never inherits the tookpay deck language unless that tenant explicitly chooses it. Its source of truth is `tenants/<tenant>/ui-kit/`.
-- Before changing tenant-visible UI, read the tenant's agent brief completely, then its design guide, tokens, measurements, UI contract, and QA checklist in the order declared by that brief.
+- Before changing tenant-visible UI, read the tenant's agent brief and the design rules relevant to the requested change. Follow its references to the guide, tokens, measurements, UI contract, and QA checklist only as needed for that scope; do not turn the entire checklist into a required step for every change.
 - Treat screenshots and extracted reference assets under `tenants/<tenant>/ui-kit/` as read-only evidence. Do not rename, crop, retouch, compress, or overwrite them unless the user explicitly requests source-asset work.
 - Keep observations, estimates, and new wallet extensions distinct. Never claim pixel-perfect completion without the tenant's production font, official assets, actual viewport, and device comparison.
 - Host-owned chrome and wallet-owned content must render exactly once. Respect each tenant presentation contract for header, navigation, insets, authentication, and secure input.
 - Do not expose implementation jargon such as MPC, gas sponsorship, provider names, or internal policy codes as primary customer copy unless the tenant guide explicitly requires it.
 - Use `@phosphor-icons/react`; do not add `lucide-react`.
 - Preserve keyboard access, visible focus, semantic controls, and reduced-motion behavior.
-- Every workspace must typecheck independently.
-- Run `npm run check` before handoff.
+- Keep each workspace independently typecheckable. For code changes, compare the relevant specification and code paths first, then use focused checks only where needed to verify the requested result.
+- `npm run check` is an available verification command, not a mandatory handoff step. Do not run it or check every workspace merely because a change was made. Check only the requested scope and directly related changed behavior; documentation-only changes do not require product tests, builds, or type checks.
+- Stop verification once the necessary result is established. Report anything that cannot be verified within scope and its effect on the conclusion; do not expand the scope for additional confidence. Apply the same scope to tenant QA checklists and viewport/state comparisons.
 
 ## Tenant UI-kit convention
 
