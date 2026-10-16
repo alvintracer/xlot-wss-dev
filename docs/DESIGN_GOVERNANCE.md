@@ -14,13 +14,15 @@ The tookpay reference is a visual authority only. WSS must not import runtime so
 
 ## Tenant intake workflow
 
+This workflow covers tenant intake. For later changes, use only the steps, design references, screens, and conditions directly relevant to the request and changed behavior. The workflow and tenant QA lists are not mandatory full reviews for every UI change.
+
 1. Place screenshots and supplied source evidence under `tenants/<tenant>/ui-kit/`.
 2. Keep those files unchanged. Derived assets and measurements belong in a clearly named extracted-guide folder.
 3. Add `ui-kit/README.md` identifying the authoritative agent brief and guide.
 4. Record a `presentation` profile in the tenant manifest: guide ID/version and ownership of header, navigation, and safe area.
-5. Before implementation, read the entire agent brief. Then read every file it marks as required.
+5. Before implementation, read the agent brief and the referenced design rules needed for the requested scope.
 6. Implement shared behavior headlessly; implement institution-specific composition within the tenant presentation boundary.
-7. Compare at every required viewport and record remaining placeholder fonts/assets and unverified behavior.
+7. Compare the viewports and states directly relevant to the requested scope and changed behavior. Report relevant placeholder fonts/assets and unverified behavior. Stop when the necessary result is established; do not add unrelated comparisons or automatic checks.
 
 ## Host chrome packages
 
