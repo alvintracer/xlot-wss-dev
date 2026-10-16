@@ -1,0 +1,6 @@
+# Supplied UI evidence may contain personal and account information.
+tenants/namu/ui-kit/references/
+tenants/namu/ui-kit/extracted/reference-manifest.json
+docs/ui-workflow/artifacts/
+.artifacts/
+apps/namu-android/android/

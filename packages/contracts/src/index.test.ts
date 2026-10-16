@@ -4,9 +4,31 @@ import {
   isHostToWalletMessage,
   isWalletToHostMessage,
   isWalletHomePayload,
+  normalizeWalletLabel,
+  suggestWalletLabel,
   type HostCapabilities,
   type TenantManifest,
 } from './index';
+
+describe('wallet names', () => {
+  it('suggests institution names for new wallets and a separate imported sequence', () => {
+    const wallets = [
+      { label: '나무 월렛 1', origin: 'created' as const },
+      { label: '가져온 월렛 1', origin: 'imported' as const },
+      { label: '나무 월렛 3', origin: 'created' as const },
+    ];
+    expect(suggestWalletLabel('나무', wallets, 'created')).toBe('나무 월렛 4');
+    expect(suggestWalletLabel('나무', wallets, 'imported')).toBe('가져온 월렛 2');
+    expect(suggestWalletLabel('JB', [], 'created')).toBe('JB 월렛 1');
+  });
+
+  it('trims a chosen name and rejects empty, long or control-character names', () => {
+    expect(normalizeWalletLabel('  여행용 지갑  ')).toBe('여행용 지갑');
+    expect(normalizeWalletLabel('   ')).toBeNull();
+    expect(normalizeWalletLabel('가'.repeat(31))).toBeNull();
+    expect(normalizeWalletLabel('지갑\n이름')).toBeNull();
+  });
+});
 
 const capabilities: HostCapabilities = {
   handlesSafeArea: true,
@@ -46,6 +68,12 @@ describe('host initialization contract', () => {
       protocolVersion: 1,
       requestId: 'request-1',
       purpose: 'wallet-provisioning',
+    })).toBe(true);
+    expect(isWalletToHostMessage({
+      type: 'took-wss:host-auth-request',
+      protocolVersion: 1,
+      requestId: 'request-exchange-authorization',
+      purpose: 'exchange-approval',
     })).toBe(true);
     expect(isHostToWalletMessage({
       type: 'took-wss:host-auth-result',
@@ -240,6 +268,24 @@ describe('host initialization contract', () => {
     expect(isWalletToHostMessage({
       type: 'took-wss:secure-transaction-sign-request',
       protocolVersion: 1,
+      requestId: 'request-exchange',
+      request: {
+        ...erc20SigningRequest,
+        operation: 'exchange',
+        recipient: '0x0000000000000000000000000000000000000003',
+        channel: 'exchange',
+        receiveAssetSymbol: 'USDC',
+        receiveAmountDisplay: '24.50',
+        transaction: {
+          ...erc20SigningRequest.transaction,
+          purpose: 'asset-swap',
+          to: '0x0000000000000000000000000000000000000003',
+        },
+      },
+    })).toBe(true);
+    expect(isWalletToHostMessage({
+      type: 'took-wss:secure-transaction-sign-request',
+      protocolVersion: 1,
       requestId: 'request-6',
       request: { ...erc20SigningRequest, transaction: { ...erc20SigningRequest.transaction, data: undefined } },
     })).toBe(false);
@@ -384,6 +430,12 @@ describe('host initialization contract', () => {
         signedTransaction: 'signed-transaction-payload',
         hostAuthorizationProof: 'signed-host-authorization-proof-123456',
       },
+    })).toBe(true);
+    expect(isHostToWalletMessage({
+      type: 'took-wss:secure-transaction-sign-result',
+      protocolVersion: 1,
+      requestId: 'request-4',
+      result: { status: 'wallet-ready' },
     })).toBe(true);
   });
 });

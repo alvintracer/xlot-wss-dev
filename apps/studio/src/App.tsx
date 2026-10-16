@@ -10,6 +10,8 @@ import {
 import { KEY_ADAPTERS, KEY_POLICY_PRESETS } from '@took-wss/key-adapters';
 import { WSS_MODULES, validateModuleSelection } from '@took-wss/module-registry';
 import { kiwoomManifest } from '@took-wss/tenant-kiwoom';
+import { jbManifest } from '@took-wss/tenant-jb';
+import { namuManifest } from '@took-wss/tenant-namu';
 import { referenceBankManifest } from '@took-wss/tenant-reference-bank';
 
 const keyAdapterIds = Object.keys(KEY_ADAPTERS) as KeyAdapterId[];
@@ -63,9 +65,18 @@ const newProjectManifest = assertTenantManifest({
 const templates = {
   'new-project': newProjectManifest,
   kiwoom: kiwoomManifest,
+  jb: jbManifest,
+  namu: namuManifest,
   'reference-bank': referenceBankManifest,
 } as const;
 type TemplateId = keyof typeof templates;
+const templateRoles: Record<TemplateId, string> = {
+  'new-project': 'New project',
+  kiwoom: 'First tenant',
+  jb: 'Second tenant',
+  namu: 'Third tenant · sandbox preview',
+  'reference-bank': 'Generic reference',
+};
 
 function cloneManifest(manifest: TenantManifest): TenantManifest {
   return JSON.parse(JSON.stringify(manifest)) as TenantManifest;
@@ -234,7 +245,7 @@ export function App() {
           {(Object.keys(templates) as TemplateId[]).map((id) => (
             <button className={templateId === id ? 'selected' : ''} type="button" key={id} onClick={() => loadTemplate(id)}>
               <span>{id === 'new-project' ? <Plus size={15} weight="bold" /> : null}{id === 'new-project' ? '새 WSS 프로젝트' : templates[id].institutionName}</span>
-              <strong>{id === 'new-project' ? 'New project' : id === 'kiwoom' ? 'First tenant' : 'Generic reference'}</strong>
+              <strong>{templateRoles[id]}</strong>
             </button>
           ))}
         </div>

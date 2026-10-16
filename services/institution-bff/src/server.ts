@@ -7,20 +7,27 @@ import {
   isSecureSarWalletImportRegistration,
   isSecureSarWalletPayload,
   isRecord,
+  normalizeWalletLabel,
   type CreateSessionRequest,
   type CreateSessionResponse,
   type CreateRegistrationIntentRequest,
   type HostAuthenticationPurpose,
   type KeyAdapterId,
+  type PrepareExchangeRequest,
   type PrepareTransferRequest,
   type ProvisionWalletRequest,
+  type RequestExchangeQuote,
+  type SubmitExchangeRequest,
   type SubmitTransferRequest,
   type TenantManifest,
   type WssRuntimeBootstrap,
 } from '@took-wss/contracts';
 import { kiwoomManifest } from '@took-wss/tenant-kiwoom';
+import { jbManifest } from '@took-wss/tenant-jb';
+import { namuManifest } from '@took-wss/tenant-namu';
 import { referenceBankManifest } from '@took-wss/tenant-reference-bank';
 import { issueSessionToken, verifySessionToken } from './sessionToken.js';
+import { resolveAppPreviewIdentity } from './appPreviewIdentity.js';
 import {
   assertProofSession,
   issueSarKeyCoreProof,
@@ -29,15 +36,53 @@ import {
   verifyHostProof,
 } from './hostProof.js';
 import { RegistrationError } from './phoneRegistration.js';
+import { PhoneClaimError, assertInstitutionClaimPhone, getPhoneClaimInfo, requestPhoneClaimOtp, submitPhoneClaim } from './phoneEscrowClaimService.js';
+import { retryPhoneEscrowNotification } from './phoneEscrowService.js';
+import { getPhoneRefundSigningRequest, getPhoneRefundStatus, preparePhoneRefund, submitPhoneRefund } from './phoneEscrowRefundService.js';
 import { identityRegistrationProviders, walletProvisioningProviders, walletQueryProviders } from './walletQueryProviders.js';
-import { getTransferSigningRequest, prepareTransfer, submitTransfer } from './transferService.js';
+import { getPhoneEscrowQuote, getTransferSigningRequest, getTransferStatus, listWalletTransferActivity, prepareTransfer, prepareTransferRelayForHost, submitTransfer } from './transferService.js';
+import { assertQrPaymentMatches, bindQrPaymentIntent, createQrPaymentRequest, getQrPaymentRequest, listQrPaymentRequests, listSpentQrPayments, markQrPaymentSubmitted } from './qrPaymentService.js';
+import { assertOwnedWalletAddress, verifyOwnedWalletDestination } from './ownedWalletTransfer.js';
+import { publicTransferPreparationError } from './transferErrors.js';
+import { publicWalletProvisioningError } from './walletProvisioningErrors.js';
+import { WalletRemovalError, WalletRenameError } from './databaseWalletProvider.js';
+import { issueThirdwebWalletChallenge, thirdwebClientIdForTenant, verifyThirdwebWalletProof } from './thirdwebProvider.js';
+import {
+  SarVaultError,
+  loadSarVaultShares,
+  sarVaultStatus,
+  startSarVaultChallenge,
+  storeSarVaultShares,
+  verifySarVaultFactor,
+} from './sarVaultService.js';
+import {
+  SarVaultV2Error,
+  loadSarVaultV2FactorShare,
+  loadSarVaultV2PasswordShare,
+  sarVaultV2Status,
+  startSarVaultV2Challenge,
+  storeSarVaultV2Share,
+  verifySarVaultV2Factor,
+} from './sarVaultV2Service.js';
+import {
+  getExchangeSigningRequest,
+  getExchangeStatus,
+  prepareExchange,
+  requestExchangeQuote,
+  submitExchange,
+} from './exchangeService.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
+const isDevelopmentPreview = process.env.WSS_DEPLOYMENT_MODE === 'development-preview';
 const port = Number(process.env.PORT || 4100);
 const sessionSecret = requiredEnvironment('WSS_SESSION_SECRET', 'local-wss-session-secret-must-never-ship');
 const subjectHashSecret = requiredEnvironment('WSS_SUBJECT_HASH_SECRET', 'local-wss-subject-hash-secret-must-never-ship');
 const institutionApiKey = requiredEnvironment('WSS_INSTITUTION_API_KEY', 'local-wss-development-only');
-const walletUrl = requiredEnvironment('WSS_WALLET_URL', 'http://localhost:5174');
+const configuredWalletUrl = process.env.WSS_WALLET_URL?.trim();
+const previewAccessCode = process.env.WSS_PREVIEW_ACCESS_CODE?.trim() || '';
+if (isDevelopmentPreview && previewAccessCode.length < 12) {
+  throw new Error('WSS_PREVIEW_ACCESS_CODE must contain at least 12 characters in development-preview mode.');
+}
 const allowedOrigins = new Set((process.env.WSS_ALLOWED_ORIGINS || [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
@@ -49,7 +94,14 @@ const allowedOrigins = new Set((process.env.WSS_ALLOWED_ORIGINS || [
 
 const tenants = new Map<string, TenantManifest>([
   [kiwoomManifest.tenantId, kiwoomManifest],
+  [jbManifest.tenantId, jbManifest],
+  [namuManifest.tenantId, namuManifest],
   [referenceBankManifest.tenantId, referenceBankManifest],
+]);
+const appPreviewTenants = new Map<string, TenantManifest>([
+  [kiwoomManifest.tenantId, kiwoomManifest],
+  [jbManifest.tenantId, jbManifest],
+  [namuManifest.tenantId, namuManifest],
 ]);
 
 function requiredEnvironment(name: string, developmentFallback: string): string {
@@ -67,12 +119,42 @@ function requiredEnvironment(name: string, developmentFallback: string): string 
 function setCors(request: IncomingMessage, response: ServerResponse): boolean {
   const origin = request.headers.origin;
   if (!origin) return true;
-  if (!allowedOrigins.has(origin)) return false;
+  if (!allowedOrigins.has(origin) && origin !== requestPublicOrigin(request)) return false;
   response.setHeader('Access-Control-Allow-Origin', origin);
   response.setHeader('Vary', 'Origin');
-  response.setHeader('Access-Control-Allow-Headers', 'authorization,content-type,x-wss-institution-key');
-  response.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  response.setHeader('Access-Control-Allow-Headers', 'authorization,content-type,x-wss-institution-key,x-wss-preview-code');
+  response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
   return true;
+}
+
+function firstForwardedHeader(value: string | string[] | undefined): string {
+  return (Array.isArray(value) ? value[0] : value)?.split(',')[0]?.trim() || '';
+}
+
+function requestPublicOrigin(request: IncomingMessage): string | null {
+  const forwardedProtocol = firstForwardedHeader(request.headers['x-forwarded-proto']);
+  const protocol = forwardedProtocol === 'http' || forwardedProtocol === 'https'
+    ? forwardedProtocol
+    : 'http';
+  const host = firstForwardedHeader(request.headers['x-forwarded-host'])
+    || firstForwardedHeader(request.headers.host);
+  if (!host || !/^(?:\[[0-9a-f:]+\]|[a-z0-9.-]+)(?::\d{1,5})?$/i.test(host)) return null;
+  return `${protocol}://${host}`;
+}
+
+function walletUrlForRequest(request: IncomingMessage, manifest: TenantManifest): string {
+  if (isDevelopmentPreview) {
+    const origin = requestPublicOrigin(request);
+    if (!origin) throw new Error('Preview wallet origin is unavailable.');
+    return `${origin}/${manifest.tenantId}/wallet`;
+  }
+  if (configuredWalletUrl) return configuredWalletUrl;
+  if (isProduction) throw new Error('WSS_WALLET_URL is required in production.');
+  return 'http://localhost:5174';
+}
+
+function isSameOriginRequest(request: IncomingMessage): boolean {
+  return Boolean(request.headers.origin && request.headers.origin === requestPublicOrigin(request));
 }
 
 function sendJson(response: ServerResponse, status: number, body: unknown): void {
@@ -86,6 +168,16 @@ function constantTimeEqual(left: string, right: string): boolean {
   const a = Buffer.from(left);
   const b = Buffer.from(right);
   return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function isSessionAuthenticationError(message: string): boolean {
+  return message === 'Missing bearer session.'
+    || message === 'Malformed session token.'
+    || message === 'Invalid session signature.'
+    || message === 'Unsupported session token.'
+    || message === 'Unsupported session protocol.'
+    || message === 'Session expired.'
+    || message === 'Session issued in the future.';
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {
@@ -126,8 +218,25 @@ function parseProvisionWalletRequest(value: unknown): ProvisionWalletRequest {
     throw new Error('Invalid wallet provisioning request.');
   }
   if (!isRecord(value.source)) throw new Error('Invalid wallet provisioning source.');
+  const label = value.label === undefined ? undefined : normalizeWalletLabel(value.label);
+  if (value.label !== undefined && !label) throw new WalletRenameError('invalid_wallet_label', 422);
   const source: ProvisionWalletRequest['source'] | null = value.source.type === 'new'
     ? { type: 'new' } as const
+    : value.source.type === 'provider-auth'
+      && typeof value.source.address === 'string'
+      && /^0x[0-9a-fA-F]{40}$/.test(value.source.address)
+      && typeof value.source.challenge === 'string'
+      && value.source.challenge.length >= 40
+      && value.source.challenge.length <= 2048
+      && typeof value.source.signature === 'string'
+      && /^0x[0-9a-fA-F]{130}$/.test(value.source.signature)
+      && (value.source.existingWalletId === undefined
+        || (typeof value.source.existingWalletId === 'string' && /^[0-9a-f-]{36}$/i.test(value.source.existingWalletId)))
+      ? {
+          type: 'provider-auth', address: value.source.address,
+          challenge: value.source.challenge, signature: value.source.signature,
+          ...(value.source.existingWalletId ? { existingWalletId: value.source.existingWalletId } : {}),
+        }
     : value.source.type === 'secure-new' && isSecureSarWalletRegistration(value.source)
       ? {
           type: 'secure-new' as const,
@@ -154,6 +263,7 @@ function parseProvisionWalletRequest(value: unknown): ProvisionWalletRequest {
   return {
     idempotencyKey: value.idempotencyKey,
     keyAdapter: value.keyAdapter,
+    ...(label ? { label } : {}),
     recoverySetupAcknowledged: value.recoverySetupAcknowledged,
     hostAuthorizationProof: value.hostAuthorizationProof,
     source,
@@ -181,7 +291,9 @@ function parsePrepareTransferRequest(value: unknown): PrepareTransferRequest {
     || typeof value.recipient !== 'string'
     || typeof value.amountAtomic !== 'string'
     || (value.channel !== 'address' && value.channel !== 'phone')
+    || (value.destinationWalletId !== undefined && (typeof value.destinationWalletId !== 'string' || !/^[0-9a-z-]{8,160}$/i.test(value.destinationWalletId)))
     || (value.destinationTag !== undefined && typeof value.destinationTag !== 'string')
+    || (value.paymentRequestId !== undefined && (typeof value.paymentRequestId !== 'string' || !/^[0-9a-f-]{36}$/i.test(value.paymentRequestId)))
     || (value.complianceReason !== undefined && typeof value.complianceReason !== 'string')) {
     throw new Error('invalid_transfer_request');
   }
@@ -202,6 +314,44 @@ function parseSubmitTransferRequest(value: unknown): SubmitTransferRequest {
     throw new Error('invalid_transfer_submission');
   }
   return value as unknown as SubmitTransferRequest;
+}
+
+function parseExchangeQuoteRequest(value: unknown): RequestExchangeQuote {
+  if (!isRecord(value)
+    || typeof value.walletId !== 'string'
+    || typeof value.chainId !== 'string'
+    || typeof value.sellAssetId !== 'string'
+    || typeof value.buyAssetId !== 'string'
+    || value.sellAssetId === value.buyAssetId
+    || (value.mode !== 'exact-in' && value.mode !== 'exact-out')
+    || typeof value.amountAtomic !== 'string'
+    || !/^\d+$/.test(value.amountAtomic)) {
+    throw new Error('invalid_exchange_quote_request');
+  }
+  return value as unknown as RequestExchangeQuote;
+}
+
+function parsePrepareExchangeRequest(value: unknown): PrepareExchangeRequest {
+  if (!isRecord(value) || typeof value.quoteId !== 'string' || value.quoteId.length < 8 || value.quoteId.length > 160) {
+    throw new Error('invalid_exchange_prepare_request');
+  }
+  return { quoteId: value.quoteId };
+}
+
+function parseSubmitExchangeRequest(value: unknown): SubmitExchangeRequest {
+  if (!isRecord(value)
+    || typeof value.intentId !== 'string'
+    || typeof value.signedTransaction !== 'string'
+    || value.signedTransaction.length < 8
+    || value.signedTransaction.length > 65_536
+    || typeof value.hostAuthorizationProof !== 'string'
+    || value.hostAuthorizationProof.length <= 20
+    || typeof value.idempotencyKey !== 'string'
+    || value.idempotencyKey.length < 8
+    || value.idempotencyKey.length > 128) {
+    throw new Error('invalid_exchange_submission');
+  }
+  return value as unknown as SubmitExchangeRequest;
 }
 
 function sessionFromClaims(claims: ReturnType<typeof verifySessionToken>) {
@@ -229,6 +379,10 @@ function isLoopbackRequest(request: IncomingMessage): boolean {
 }
 
 function requireDevelopmentHost(request: IncomingMessage): void {
+  if (isDevelopmentPreview) {
+    if (!isSameOriginRequest(request)) throw new Error('Development preview host origin required.');
+    return;
+  }
   if (isProduction) throw new Error('Production host authorization provider required.');
   if (!isLoopbackRequest(request)) throw new Error('Development host origin required.');
   const providedKey = String(request.headers['x-wss-institution-key'] || '');
@@ -239,7 +393,9 @@ function parseHostAuthenticationPurpose(value: unknown): HostAuthenticationPurpo
   if (!isRecord(value)
     || (value.purpose !== 'wallet-provisioning'
       && value.purpose !== 'transfer-approval'
-      && value.purpose !== 'wallet-recovery')) {
+      && value.purpose !== 'exchange-approval'
+      && value.purpose !== 'wallet-recovery'
+      && value.purpose !== 'wallet-removal')) {
     throw new Error('Invalid host authentication purpose.');
   }
   return value.purpose;
@@ -274,7 +430,66 @@ async function handleCreateSession(request: IncomingMessage, response: ServerRes
   const result: CreateSessionResponse = {
     sessionToken: issued.token,
     expiresAt: new Date(issued.claims.expiresAt * 1000).toISOString(),
-    walletUrl,
+    walletUrl: walletUrlForRequest(request, manifest),
+  };
+  sendJson(response, 201, result);
+}
+
+async function handleCreateDevelopmentPreviewSession(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  if (!isDevelopmentPreview || !isSameOriginRequest(request)) {
+    sendJson(response, 404, { error: 'not_found' });
+    return;
+  }
+  const providedCode = String(request.headers['x-wss-preview-code'] || '');
+  if (!constantTimeEqual(providedCode, previewAccessCode)) {
+    sendJson(response, 401, { error: 'preview_access_denied' });
+    return;
+  }
+  const body = parseCreateSessionRequest(await readJson(request));
+  const manifest = appPreviewTenants.get(body.tenantId);
+  if (!manifest) {
+    sendJson(response, 403, { error: 'preview_tenant_not_allowed' });
+    return;
+  }
+  const keyAdapter = (body.requestedKeyAdapter || manifest.keyManagement.defaultAdapter) as KeyAdapterId;
+  if (!manifest.keyManagement.allowedAdapters.includes(keyAdapter)) {
+    sendJson(response, 400, { error: 'key_adapter_not_allowed' });
+    return;
+  }
+  const issued = issueSessionToken({
+    tenantId: manifest.tenantId,
+    customerRef: body.customerRef,
+    keyAdapter,
+    secret: sessionSecret,
+    subjectHashSecret,
+  });
+  const result: CreateSessionResponse = {
+    sessionToken: issued.token,
+    expiresAt: new Date(issued.claims.expiresAt * 1000).toISOString(),
+    walletUrl: walletUrlForRequest(request, manifest),
+  };
+  sendJson(response, 201, result);
+}
+
+async function handleCreateAppPreviewSession(request: IncomingMessage, response: ServerResponse, manifest: TenantManifest): Promise<void> {
+  const origin = requestPublicOrigin(request);
+  if (!isDevelopmentPreview || !isSameOriginRequest(request) || !origin?.startsWith('https://')) {
+    sendJson(response, 404, { error: 'not_found' });
+    return;
+  }
+  const identity = resolveAppPreviewIdentity(request.headers.cookie, subjectHashSecret);
+  const issued = issueSessionToken({
+    tenantId: manifest.tenantId,
+    customerRef: identity.customerRef,
+    keyAdapter: manifest.keyManagement.defaultAdapter,
+    secret: sessionSecret,
+    subjectHashSecret,
+  });
+  if (identity.setCookie) response.setHeader('Set-Cookie', identity.setCookie);
+  const result: CreateSessionResponse = {
+    sessionToken: issued.token,
+    expiresAt: new Date(issued.claims.expiresAt * 1000).toISOString(),
+    walletUrl: walletUrlForRequest(request, manifest),
   };
   sendJson(response, 201, result);
 }
@@ -291,7 +506,7 @@ async function handleBootstrap(request: IncomingMessage, response: ServerRespons
     sendJson(response, 503, { error: 'wallet_query_provider_unavailable' });
     return;
   }
-  if (isProduction && (walletQueryProvider.id === 'sandbox-wallet-provider'
+  if (isProduction && !isDevelopmentPreview && (walletQueryProvider.id === 'sandbox-wallet-provider'
     || walletQueryProvider.id === 'development-postgres-wallet-provider')) {
     sendJson(response, 503, { error: 'production_wallet_query_provider_required' });
     return;
@@ -308,6 +523,11 @@ async function handleBootstrap(request: IncomingMessage, response: ServerRespons
     manifest,
     identity: await identityProvider.getIdentity({ session, manifest }),
     walletHome: await walletQueryProvider.getHome({ session, manifest }),
+    publicProviders: {
+      ...(thirdwebClientIdForTenant(manifest.tenantId)
+        ? { thirdwebClientId: thirdwebClientIdForTenant(manifest.tenantId) }
+        : {}),
+    },
   };
   sendJson(response, 200, bootstrap);
 }
@@ -353,7 +573,7 @@ async function handleProvisionWallet(request: IncomingMessage, response: ServerR
     sendJson(response, 503, { error: 'wallet_provisioning_provider_unavailable' });
     return;
   }
-  if (isProduction && (provider.id === 'sandbox-wallet-provider' || provider.id === 'development-postgres-wallet-provider')) {
+  if (isProduction && !isDevelopmentPreview && (provider.id === 'sandbox-wallet-provider' || provider.id === 'development-postgres-wallet-provider')) {
     sendJson(response, 503, { error: 'production_wallet_provisioning_provider_required' });
     return;
   }
@@ -371,7 +591,25 @@ async function handleProvisionWallet(request: IncomingMessage, response: ServerR
     sendJson(response, 400, { error: 'secure_sar_creation_requires_sar' });
     return;
   }
-  const hostAuthorization = verifyHostProof(provisionRequest.hostAuthorizationProof, sessionSecret);
+  if (provisionRequest.keyAdapter === 'thirdweb-user-wallet'
+    && provisionRequest.source.type !== 'provider-auth') {
+    sendJson(response, 400, { error: 'provider_auth_required' });
+    return;
+  }
+  if (provisionRequest.source.type === 'provider-auth'
+    && provisionRequest.keyAdapter !== 'thirdweb-user-wallet') {
+    sendJson(response, 400, { error: 'provider_auth_policy_mismatch' });
+    return;
+  }
+  let hostAuthorization: ReturnType<typeof verifyHostProof>;
+  try {
+    hostAuthorization = verifyHostProof(provisionRequest.hostAuthorizationProof, sessionSecret);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Host proof expired.') {
+      throw new Error('wallet_authorization_expired');
+    }
+    throw error;
+  }
   assertProofSession(hostAuthorization, session);
   if (hostAuthorization.kind !== 'wallet-authorization' || hostAuthorization.purpose !== 'wallet-provisioning') {
     sendJson(response, 403, { error: 'wallet_authorization_required' });
@@ -379,7 +617,15 @@ async function handleProvisionWallet(request: IncomingMessage, response: ServerR
   }
   let keyCoreAttestationId: string | undefined;
   if (provisionRequest.source.type === 'secure-new' || provisionRequest.source.type === 'secure-import') {
-    const keyCoreAttestation = verifyHostProof(provisionRequest.source.keyCoreAttestationProof, sessionSecret);
+    let keyCoreAttestation: ReturnType<typeof verifyHostProof>;
+    try {
+      keyCoreAttestation = verifyHostProof(provisionRequest.source.keyCoreAttestationProof, sessionSecret);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Host proof expired.') {
+        throw new Error('wallet_import_proof_expired');
+      }
+      throw error;
+    }
     assertProofSession(keyCoreAttestation, session);
     const attestedPayload = provisionRequest.source.type === 'secure-new'
       ? provisionRequest.source
@@ -398,6 +644,16 @@ async function handleProvisionWallet(request: IncomingMessage, response: ServerR
     evidence: {
       hostAuthorizationId: hostAuthorization.proofId,
       ...(keyCoreAttestationId ? { keyCoreAttestationId } : {}),
+      ...(provisionRequest.source.type === 'provider-auth'
+        ? { providerAccount: await verifyThirdwebWalletProof({
+          tenantId: manifest.tenantId,
+          sessionId: session.sessionId,
+          address: provisionRequest.source.address,
+          existingWalletId: provisionRequest.source.existingWalletId,
+          challenge: provisionRequest.source.challenge,
+          signature: provisionRequest.source.signature,
+        }, { challengeSecret: sessionSecret, subjectHashSecret }) }
+        : {}),
     },
   });
   sendJson(response, 201, result);
@@ -419,7 +675,7 @@ async function handleWalletHome(request: IncomingMessage, response: ServerRespon
     sendJson(response, 503, { error: 'wallet_query_provider_unavailable' });
     return;
   }
-  if (isProduction && (provider.id === 'sandbox-wallet-provider'
+  if (isProduction && !isDevelopmentPreview && (provider.id === 'sandbox-wallet-provider'
     || provider.id === 'development-postgres-wallet-provider')) {
     sendJson(response, 503, { error: 'production_wallet_query_provider_required' });
     return;
@@ -428,7 +684,67 @@ async function handleWalletHome(request: IncomingMessage, response: ServerRespon
   sendJson(response, 200, await provider.getHome({ session, manifest, walletId }));
 }
 
+async function handleIssueProviderChallenge(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const manifest = tenants.get(claims.tenantId);
+  const identityProvider = manifest ? identityRegistrationProviders.get(manifest.tenantId) : null;
+  if (!manifest || !identityProvider || !thirdwebClientIdForTenant(manifest.tenantId)) {
+    sendJson(response, 503, { error: 'thirdweb_not_configured' });
+    return;
+  }
+  const session = sessionFromClaims(claims);
+  if ((await identityProvider.getIdentity({ session, manifest })).status !== 'established') {
+    sendJson(response, 403, { error: 'identity_registration_required' });
+    return;
+  }
+  const body = await readJson(request);
+  if (!isRecord(body) || typeof body.address !== 'string'
+    || !/^0x[0-9a-fA-F]{40}$/.test(body.address)
+    || (body.existingWalletId !== undefined
+      && (typeof body.existingWalletId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.existingWalletId)))) {
+    sendJson(response, 400, { error: 'provider_address_invalid' });
+    return;
+  }
+  sendJson(response, 201, issueThirdwebWalletChallenge({
+    tenantId: manifest.tenantId, sessionId: session.sessionId,
+    address: body.address,
+    ...(body.existingWalletId ? { existingWalletId: body.existingWalletId } : {}),
+  }, sessionSecret));
+}
+
+async function handleVerifyProviderWallet(request: IncomingMessage, response: ServerResponse, walletId: string): Promise<void> {
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const manifest = tenants.get(claims.tenantId);
+  const provider = manifest ? walletQueryProviders.get(manifest.tenantId) : null;
+  if (!manifest || !provider?.verifyProviderWallet || !/^[0-9a-f-]{36}$/i.test(walletId)) {
+    sendJson(response, 403, { error: 'provider_wallet_unavailable' });
+    return;
+  }
+  const body = await readJson(request);
+  if (!isRecord(body) || typeof body.challenge !== 'string' || body.challenge.length < 40
+    || body.challenge.length > 2048 || typeof body.signature !== 'string'
+    || !/^0x[0-9a-fA-F]{130}$/.test(body.signature) || typeof body.address !== 'string'
+    || !/^0x[0-9a-fA-F]{40}$/.test(body.address)) {
+    sendJson(response, 400, { error: 'provider_auth_required' });
+    return;
+  }
+  const account = await verifyThirdwebWalletProof({
+    tenantId: manifest.tenantId, sessionId: claims.sessionId,
+    address: body.address, existingWalletId: walletId,
+    challenge: body.challenge, signature: body.signature,
+  }, { challengeSecret: sessionSecret, subjectHashSecret });
+  const verified = await provider.verifyProviderWallet({
+    session: sessionFromClaims(claims), manifest, walletId, account,
+  });
+  if (!verified) {
+    sendJson(response, 403, { error: 'provider_wallet_link_conflict' });
+    return;
+  }
+  sendJson(response, 200, { verified: true, address: account.address });
+}
+
 async function handlePrepareTransfer(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const startedAt = Date.now();
   const claims = verifySessionToken(bearerToken(request), sessionSecret);
   const manifest = tenants.get(claims.tenantId);
   if (!manifest || !manifest.enabledModules.includes('send-receive') || !manifest.enabledModules.includes('kyt')) {
@@ -447,14 +763,58 @@ async function handlePrepareTransfer(request: IncomingMessage, response: ServerR
     sendJson(response, 404, { error: 'wallet_not_found' });
     return;
   }
-  sendJson(response, 201, await prepareTransfer({ session, home, request: transferRequest }));
+  const ownedDestination = await verifyOwnedWalletDestination({
+    provider, session, manifest, request: transferRequest,
+  });
+  await assertQrPaymentMatches(transferRequest);
+  const prepared = await prepareTransfer({ session, home, request: transferRequest, ownedDestination });
+  if (transferRequest.paymentRequestId) {
+    if (prepared.compliance.status === 'allow') {
+      if (!prepared.signingRequest) throw new Error('payment_request_unavailable');
+      await bindQrPaymentIntent({ session, paymentRequestId: transferRequest.paymentRequestId,
+        intentId: prepared.intentId, expiresAt: prepared.expiresAt });
+    }
+  }
+  if (transferRequest.paymentRequestId) console.info('wss_qr_prepare', {
+    paymentRequestId: transferRequest.paymentRequestId,
+    complianceTraceId: prepared.compliance.traceId ?? null,
+    complianceStatus: prepared.compliance.status,
+    durationMs: Date.now() - startedAt,
+  });
+  sendJson(response, 201, prepared);
+}
+
+async function handlePhoneEscrowQuote(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const manifest = tenants.get(claims.tenantId);
+  const provider = manifest ? walletQueryProviders.get(manifest.tenantId) : null;
+  if (!manifest?.enabledModules.includes('send-receive') || !provider) throw new Error('transfer_policy_mismatch');
+  const body = await readJson(request);
+  if (!isRecord(body) || typeof body.walletId !== 'string' || typeof body.assetId !== 'string'
+    || typeof body.chainId !== 'string' || typeof body.amountAtomic !== 'string'
+    || body.walletId.length > 160 || body.assetId.length > 160 || body.chainId.length > 64) {
+    throw new Error('invalid_transfer_amount');
+  }
+  const session = sessionFromClaims(claims);
+  const home = await provider.getHome({ session, manifest, walletId: body.walletId });
+  if (home.status !== 'ready') throw new Error('wallet_not_found');
+  sendJson(response, 200, await getPhoneEscrowQuote({
+    home, walletId: body.walletId, assetId: body.assetId,
+    chainId: body.chainId, amountAtomic: body.amountAtomic,
+  }));
 }
 
 async function handleSubmitTransfer(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const startedAt = Date.now();
   const claims = verifySessionToken(bearerToken(request), sessionSecret);
   const manifest = tenants.get(claims.tenantId);
   if (!manifest || !manifest.enabledModules.includes('send-receive')) {
     sendJson(response, 403, { error: 'transfer_policy_mismatch' });
+    return;
+  }
+  const provider = walletQueryProviders.get(manifest.tenantId);
+  if (!provider) {
+    sendJson(response, 503, { error: 'wallet_query_provider_unavailable' });
     return;
   }
   const session = sessionFromClaims(claims);
@@ -465,11 +825,85 @@ async function handleSubmitTransfer(request: IncomingMessage, response: ServerRe
     sendJson(response, 403, { error: 'transfer_authorization_required' });
     return;
   }
-  sendJson(response, 202, await submitTransfer({
+  const submitted = await submitTransfer({
     session,
     request: submission,
     authorizationId: authorization.proofId,
+    assertOwnedDestination: async (walletId, chainId, recipient) => {
+      await assertOwnedWalletAddress({ provider, session, manifest, walletId, chainId, recipient });
+    },
+  });
+  if (submitted.status === 'submitted' || submitted.status === 'processing' || submitted.status === 'confirmed') {
+    try {
+      await markQrPaymentSubmitted({ intentId: submission.intentId, transactionHash: submitted.transactionHash });
+    } catch (error) {
+      console.error('wss_qr_payment_audit_update_failed', error instanceof Error ? error.message : 'unknown');
+    }
+  }
+  console.info('wss_transfer_submit', { intentId: submission.intentId, status: submitted.status, durationMs: Date.now() - startedAt });
+  sendJson(response, 202, submitted);
+}
+
+async function exchangeContext(request: IncomingMessage) {
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const manifest = tenants.get(claims.tenantId);
+  if (!manifest || !manifest.enabledModules.includes('exchange-connect')) {
+    throw new Error('exchange_policy_mismatch');
+  }
+  const provider = walletQueryProviders.get(manifest.tenantId);
+  if (!provider) throw new Error('wallet_query_provider_unavailable');
+  return { session: sessionFromClaims(claims), manifest, provider };
+}
+
+async function handleRequestExchangeQuote(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const context = await exchangeContext(request);
+  const quoteRequest = parseExchangeQuoteRequest(await readJson(request));
+  const home = await context.provider.getHome({
+    session: context.session,
+    manifest: context.manifest,
+    walletId: quoteRequest.walletId,
+  });
+  if (home.status !== 'ready') {
+    sendJson(response, 404, { error: 'wallet_not_found' });
+    return;
+  }
+  sendJson(response, 201, await requestExchangeQuote({ session: context.session, home, request: quoteRequest }));
+}
+
+async function handlePrepareExchange(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const context = await exchangeContext(request);
+  sendJson(response, 201, await prepareExchange({
+    session: context.session,
+    request: parsePrepareExchangeRequest(await readJson(request)),
   }));
+}
+
+async function handleSubmitExchange(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  const context = await exchangeContext(request);
+  const submission = parseSubmitExchangeRequest(await readJson(request));
+  const authorization = verifyHostProof(submission.hostAuthorizationProof, sessionSecret);
+  assertProofSession(authorization, context.session);
+  if (authorization.kind !== 'wallet-authorization' || authorization.purpose !== 'exchange-approval') {
+    sendJson(response, 403, { error: 'exchange_authorization_required' });
+    return;
+  }
+  sendJson(response, 202, await submitExchange({
+    session: context.session,
+    request: submission,
+    authorizationId: authorization.proofId,
+  }));
+}
+
+async function handleExchangeApprovalPayload(request: IncomingMessage, response: ServerResponse, intentId: string): Promise<void> {
+  const context = await exchangeContext(request);
+  if (intentId.length < 8 || intentId.length > 160) throw new Error('invalid_exchange_intent');
+  sendJson(response, 200, getExchangeSigningRequest({ session: context.session, intentId }));
+}
+
+async function handleExchangeStatus(request: IncomingMessage, response: ServerResponse, intentId: string): Promise<void> {
+  const context = await exchangeContext(request);
+  if (!/^[0-9a-f-]{36}$/i.test(intentId)) throw new Error('invalid_exchange_intent');
+  sendJson(response, 200, await getExchangeStatus({ session: context.session, intentId }));
 }
 
 async function handleTransferApprovalPayload(request: IncomingMessage, response: ServerResponse, intentId: string): Promise<void> {
@@ -483,7 +917,23 @@ async function handleTransferApprovalPayload(request: IncomingMessage, response:
     sendJson(response, 400, { error: 'invalid_transfer_intent' });
     return;
   }
-  sendJson(response, 200, getTransferSigningRequest({ session: sessionFromClaims(claims), intentId }));
+  sendJson(response, 200, await getTransferSigningRequest({ session: sessionFromClaims(claims), intentId }));
+}
+
+async function handleTransferRelayPrepare(request: IncomingMessage, response: ServerResponse, intentId: string): Promise<void> {
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const manifest = tenants.get(claims.tenantId);
+  if (!manifest || !manifest.enabledModules.includes('send-receive') || !manifest.enabledModules.includes('gas-sponsorship')) {
+    sendJson(response, 403, { error: 'transfer_policy_mismatch' });
+    return;
+  }
+  if (intentId.length < 8 || intentId.length > 160) throw new Error('invalid_transfer_intent');
+  const body = await readJson(request);
+  if (!isRecord(body) || typeof body.walletAuthSignature !== 'string'
+    || !/^0x[0-9a-fA-F]{130}$/.test(body.walletAuthSignature)) throw new Error('relay_signature_invalid');
+  sendJson(response, 200, await prepareTransferRelayForHost({
+    session: sessionFromClaims(claims), intentId, walletAuthSignature: body.walletAuthSignature,
+  }));
 }
 
 async function identityContext(request: IncomingMessage) {
@@ -492,7 +942,7 @@ async function identityContext(request: IncomingMessage) {
   if (!manifest) throw new RegistrationError('session_policy_mismatch');
   const provider = identityRegistrationProviders.get(manifest.tenantId);
   if (!provider) throw new RegistrationError('identity_provider_unavailable');
-  if (isProduction && provider.id === 'development-postgres-wallet-provider') {
+  if (isProduction && !isDevelopmentPreview && provider.id === 'development-postgres-wallet-provider') {
     throw new RegistrationError('production_identity_provider_required');
   }
   return { session: sessionFromClaims(claims), manifest, provider };
@@ -542,7 +992,7 @@ async function handleVerifyPhoneChallenge(
   sendJson(response, 200, result);
 }
 
-const server = createServer(async (request, response) => {
+export async function handleBffRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
   if (!setCors(request, response)) {
     sendJson(response, 403, { error: 'origin_not_allowed' });
     return;
@@ -553,14 +1003,86 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
+  const routedPath = url.searchParams.get('path');
+  if (url.pathname === '/api' && routedPath && /^[a-z0-9/_-]+$/i.test(routedPath)) {
+    url.pathname = `/${routedPath.replace(/^\/+/, '')}`;
+  } else if (url.pathname === '/api') url.pathname = '/';
+  else if (url.pathname.startsWith('/api/')) url.pathname = url.pathname.slice('/api'.length);
   try {
-    const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
     if (request.method === 'GET' && url.pathname === '/health') {
       sendJson(response, 200, { status: 'ok', service: 'took-wss-institution-bff' });
       return;
     }
+    const claimMatch = url.pathname.match(/^\/v1\/claims\/([^/]+)(?:\/(otp|submit))?$/);
+    if (claimMatch) {
+      const code = decodeURIComponent(claimMatch[1]!);
+      const action = claimMatch[2];
+      if (request.method === 'GET' && !action) {
+        sendJson(response, 200, await getPhoneClaimInfo(code));
+        return;
+      }
+      if (request.method === 'POST' && (action === 'otp' || action === 'submit')) {
+        const body = await readJson(request);
+        if (!isRecord(body) || typeof body.phone !== 'string' || body.phone.length > 24) throw new PhoneClaimError('invalid_claim_request');
+        if (action === 'otp') {
+          await requestPhoneClaimOtp(code, body.phone);
+          sendJson(response, 202, { status: 'sent' });
+          return;
+        }
+        if (typeof body.otp !== 'string' || typeof body.recipient !== 'string' || body.recipient.length > 80) throw new PhoneClaimError('invalid_claim_request');
+        sendJson(response, 202, await submitPhoneClaim({ code, phone: body.phone, otp: body.otp, recipient: body.recipient }));
+        return;
+      }
+    }
+    const institutionClaimMatch = url.pathname.match(/^\/v1\/claims\/([^/]+)\/institution-(otp|submit)$/);
+    if (request.method === 'POST' && institutionClaimMatch) {
+      const code = decodeURIComponent(institutionClaimMatch[1]!);
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      const manifest = tenants.get(claims.tenantId);
+      const provider = manifest ? walletQueryProviders.get(manifest.tenantId) : null;
+      const identityProvider = manifest ? identityRegistrationProviders.get(manifest.tenantId) : null;
+      if (!manifest?.enabledModules.includes('send-receive') || !provider || !identityProvider
+        || (isProduction && !isDevelopmentPreview && (provider.id === 'sandbox-wallet-provider'
+          || provider.id === 'development-postgres-wallet-provider'))) {
+        throw new PhoneClaimError('claim_service_unavailable', 503);
+      }
+      const body = await readJson(request);
+      if (!isRecord(body) || typeof body.phone !== 'string' || body.phone.length > 24) throw new PhoneClaimError('invalid_claim_request');
+      const session = sessionFromClaims(claims);
+      if ((await identityProvider.getIdentity({ session, manifest })).status !== 'established') {
+        throw new PhoneClaimError('institution_identity_required', 403);
+      }
+      const phone = await assertInstitutionClaimPhone(session, body.phone);
+      if (institutionClaimMatch[2] === 'otp') {
+        await requestPhoneClaimOtp(code, phone, manifest.tenantId);
+        sendJson(response, 202, { status: 'sent' });
+        return;
+      }
+      if (typeof body.otp !== 'string' || !/^\d{6}$/.test(body.otp)
+        || typeof body.walletId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.walletId)) {
+        throw new PhoneClaimError('invalid_claim_request');
+      }
+      const claim = await getPhoneClaimInfo(code);
+      if (claim.status !== 'ready' || !manifest.chains.includes(claim.network)) throw new PhoneClaimError('claim_wallet_network_unavailable', 422);
+      // The browser supplies a wallet ID only. Its address is resolved from the authenticated tenant profile.
+      const recipient = await provider.getOwnedReceiveAddress({ session, manifest, walletId: body.walletId, chainId: claim.network });
+      if (!recipient || !/^0x[0-9a-fA-F]{40}$/.test(recipient)) throw new PhoneClaimError('claim_wallet_network_unavailable', 422);
+      sendJson(response, 202, await submitPhoneClaim({ code, phone, otp: body.otp, recipient }));
+      return;
+    }
     if (request.method === 'POST' && url.pathname === '/v1/sessions') {
       await handleCreateSession(request, response);
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/development/preview-sessions') {
+      await handleCreateDevelopmentPreviewSession(request, response);
+      return;
+    }
+    const appPreviewMatch = url.pathname.match(/^\/v1\/development\/([a-z0-9-]+)-app-sessions$/);
+    const appPreviewManifest = appPreviewMatch ? appPreviewTenants.get(appPreviewMatch[1] || '') : null;
+    if (request.method === 'POST' && (url.pathname === '/v1/development/app-sessions' || appPreviewManifest)) {
+      await handleCreateAppPreviewSession(request, response, appPreviewManifest || kiwoomManifest);
       return;
     }
     if (request.method === 'GET' && url.pathname === '/v1/runtime/bootstrap') {
@@ -598,12 +1120,141 @@ const server = createServer(async (request, response) => {
       await handleProvisionWallet(request, response);
       return;
     }
+    if (request.method === 'POST' && url.pathname === '/v1/wallets/provider-challenges') {
+      await handleIssueProviderChallenge(request, response);
+      return;
+    }
+    const providerVerificationMatch = url.pathname.match(/^\/v1\/wallets\/([^/]+)\/provider-verify$/);
+    if (request.method === 'POST' && providerVerificationMatch) {
+      await handleVerifyProviderWallet(request, response, decodeURIComponent(providerVerificationMatch[1]!));
+      return;
+    }
     if (request.method === 'POST' && url.pathname === '/v1/transfers/prepare') {
       await handlePrepareTransfer(request, response);
       return;
     }
+    if (request.method === 'POST' && url.pathname === '/v1/payments/requests') {
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      const manifest = tenants.get(claims.tenantId);
+      const provider = manifest ? walletQueryProviders.get(manifest.tenantId) : null;
+      if (!manifest?.enabledModules.includes('send-receive') || !provider) throw new Error('payment_unavailable');
+      const body = await readJson(request);
+      if (!isRecord(body) || typeof body.walletId !== 'string' || typeof body.chainId !== 'string'
+        || typeof body.assetId !== 'string' || typeof body.amountAtomic !== 'string') throw new Error('invalid_payment_request');
+      const session = sessionFromClaims(claims);
+      const home = await provider.getHome({ session, manifest, walletId: body.walletId });
+      if (home.status !== 'ready') throw new Error('wallet_not_found');
+      sendJson(response, 201, await createQrPaymentRequest({ session, home, chainId: body.chainId,
+        assetId: body.assetId, amountAtomic: body.amountAtomic }));
+      return;
+    }
+    const paymentRequestMatch = url.pathname.match(/^\/v1\/payments\/requests\/([^/]+)$/);
+    if (request.method === 'GET' && paymentRequestMatch) {
+      verifySessionToken(bearerToken(request), sessionSecret);
+      sendJson(response, 200, await getQrPaymentRequest(decodeURIComponent(paymentRequestMatch[1]!)));
+      return;
+    }
+    const paymentListMatch = url.pathname.match(/^\/v1\/wallets\/([^/]+)\/payments$/);
+    if (request.method === 'GET' && paymentListMatch) {
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      sendJson(response, 200, await listQrPaymentRequests({ session: sessionFromClaims(claims), walletId: decodeURIComponent(paymentListMatch[1]!) }));
+      return;
+    }
+    const paymentSpentMatch = url.pathname.match(/^\/v1\/wallets\/([^/]+)\/payments\/spent$/);
+    if (request.method === 'GET' && paymentSpentMatch) {
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      sendJson(response, 200, await listSpentQrPayments({ session: sessionFromClaims(claims), walletId: decodeURIComponent(paymentSpentMatch[1]!) }));
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/phone-escrows/quote') {
+      await handlePhoneEscrowQuote(request, response);
+      return;
+    }
     if (request.method === 'POST' && url.pathname === '/v1/transfers/submit') {
       await handleSubmitTransfer(request, response);
+      return;
+    }
+    const transferStatusMatch = url.pathname.match(/^\/v1\/transfers\/([^/]+)\/status$/);
+    const phoneNotificationMatch = url.pathname.match(/^\/v1\/phone-escrows\/([^/]+)\/notify$/);
+    if (request.method === 'POST' && phoneNotificationMatch) {
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      const manifest = tenants.get(claims.tenantId);
+      if (!manifest?.enabledModules.includes('send-receive')) throw new Error('transfer_policy_mismatch');
+      sendJson(response, 200, await retryPhoneEscrowNotification({
+        session: sessionFromClaims(claims),
+        transferIntentId: decodeURIComponent(phoneNotificationMatch[1]!),
+      }));
+      return;
+    }
+    const refundPrepareMatch = url.pathname.match(/^\/v1\/phone-escrows\/([^/]+)\/refund\/prepare$/);
+    const refundStatusMatch = url.pathname.match(/^\/v1\/phone-escrows\/([^/]+)\/refund\/status$/);
+    const refundApprovalMatch = url.pathname.match(/^\/v1\/refunds\/([^/]+)\/approval-payload$/);
+    const refundSubmitMatch = url.pathname.match(/^\/v1\/refunds\/([^/]+)\/submit$/);
+    if ((request.method === 'POST' && (refundPrepareMatch || refundSubmitMatch))
+      || (request.method === 'GET' && (refundStatusMatch || refundApprovalMatch))) {
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      const manifest = tenants.get(claims.tenantId);
+      if (!manifest?.enabledModules.includes('send-receive')) throw new Error('transfer_policy_mismatch');
+      const session = sessionFromClaims(claims);
+      if (refundPrepareMatch) {
+        sendJson(response, 201, await preparePhoneRefund({ session, transferIntentId: decodeURIComponent(refundPrepareMatch[1]!) }));
+        return;
+      }
+      if (refundStatusMatch) {
+        sendJson(response, 200, await getPhoneRefundStatus({ session, transferIntentId: decodeURIComponent(refundStatusMatch[1]!) }));
+        return;
+      }
+      if (refundApprovalMatch) {
+        sendJson(response, 200, await getPhoneRefundSigningRequest({ session, refundIntentId: decodeURIComponent(refundApprovalMatch[1]!) }));
+        return;
+      }
+      if (refundSubmitMatch) {
+        const submission = parseSubmitTransferRequest(await readJson(request));
+        if (submission.intentId !== decodeURIComponent(refundSubmitMatch[1]!)) throw new Error('phone_refund_intent_mismatch');
+        const authorization = verifyHostProof(submission.hostAuthorizationProof, sessionSecret);
+        assertProofSession(authorization, session);
+        if (authorization.kind !== 'wallet-authorization' || authorization.purpose !== 'transfer-approval') throw new Error('transfer_authorization_required');
+        sendJson(response, 202, await submitPhoneRefund({ session, request: submission, authorizationId: authorization.proofId }));
+        return;
+      }
+    }
+    if (request.method === 'GET' && transferStatusMatch) {
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      const manifest = tenants.get(claims.tenantId);
+      if (!manifest?.enabledModules.includes('send-receive')) throw new Error('transfer_policy_mismatch');
+      sendJson(response, 200, await getTransferStatus({ session: sessionFromClaims(claims), intentId: decodeURIComponent(transferStatusMatch[1]!) }));
+      return;
+    }
+    const transferActivityMatch = url.pathname.match(/^\/v1\/wallets\/([^/]+)\/activity$/);
+    if (request.method === 'GET' && transferActivityMatch) {
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      const manifest = tenants.get(claims.tenantId);
+      if (!manifest?.enabledModules.includes('send-receive')) throw new Error('transfer_policy_mismatch');
+      const walletId = decodeURIComponent(transferActivityMatch[1]!);
+      if (walletId.length < 8 || walletId.length > 160) throw new Error('invalid_wallet_id');
+      sendJson(response, 200, await listWalletTransferActivity({ session: sessionFromClaims(claims), walletId }));
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/exchanges/quotes') {
+      await handleRequestExchangeQuote(request, response);
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/exchanges/prepare') {
+      await handlePrepareExchange(request, response);
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/exchanges/submit') {
+      await handleSubmitExchange(request, response);
+      return;
+    }
+    const exchangeApprovalMatch = url.pathname.match(/^\/v1\/exchanges\/([^/]+)\/approval-payload$/);
+    if (request.method === 'GET' && exchangeApprovalMatch) {
+      await handleExchangeApprovalPayload(request, response, decodeURIComponent(exchangeApprovalMatch[1]!));
+      return;
+    }
+    const exchangeStatusMatch = url.pathname.match(/^\/v1\/exchanges\/([^/]+)\/status$/);
+    if (request.method === 'GET' && exchangeStatusMatch) {
+      await handleExchangeStatus(request, response, decodeURIComponent(exchangeStatusMatch[1]!));
       return;
     }
     const transferApprovalMatch = url.pathname.match(/^\/v1\/transfers\/([^/]+)\/approval-payload$/);
@@ -611,14 +1262,157 @@ const server = createServer(async (request, response) => {
       await handleTransferApprovalPayload(request, response, decodeURIComponent(transferApprovalMatch[1]!));
       return;
     }
+    const transferRelayMatch = url.pathname.match(/^\/v1\/transfers\/([^/]+)\/relay-prepare$/);
+    if (request.method === 'POST' && transferRelayMatch) {
+      await handleTransferRelayPrepare(request, response, decodeURIComponent(transferRelayMatch[1]!));
+      return;
+    }
+    const sarVaultV2Match = url.pathname.match(/^\/v1\/wallets\/([^/]+)\/sar-vault-v2\/(status|challenges|verify|password-share|shares\/(?:password|phone|email)|unlock\/(?:phone|email))$/);
+    if (sarVaultV2Match) {
+      const walletId = decodeURIComponent(sarVaultV2Match[1]!);
+      const action = sarVaultV2Match[2]!;
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      const session = sessionFromClaims(claims);
+      if (request.method === 'GET' && action === 'status') {
+        sendJson(response, 200, await sarVaultV2Status(session, walletId));
+        return;
+      }
+      if (request.method === 'POST' && action === 'challenges') {
+        const body = await readJson(request);
+        if (!isRecord(body)) throw new SarVaultV2Error('invalid_vault_request');
+        sendJson(response, 201, await startSarVaultV2Challenge(session, walletId, body));
+        return;
+      }
+      if (request.method === 'POST' && action === 'verify') {
+        const body = await readJson(request);
+        if (!isRecord(body) || typeof body.challengeId !== 'string'
+          || (body.factor !== 'phone' && body.factor !== 'email') || typeof body.code !== 'string') {
+          throw new SarVaultV2Error('invalid_vault_request');
+        }
+        sendJson(response, 200, await verifySarVaultV2Factor(session, walletId, body.challengeId, body.factor, body.code));
+        return;
+      }
+      if (request.method === 'PUT' && action.startsWith('shares/')) {
+        const body = await readJson(request);
+        if (!isRecord(body) || typeof body.challengeId !== 'string'
+          || typeof body.enrollmentToken !== 'string') throw new SarVaultV2Error('invalid_vault_request');
+        const factor = action.slice('shares/'.length) as 'password' | 'phone' | 'email';
+        sendJson(response, 200, await storeSarVaultV2Share(
+          session, walletId, body.challengeId, body.enrollmentToken, factor, body.share,
+        ));
+        return;
+      }
+      if (request.method === 'GET' && action === 'password-share') {
+        sendJson(response, 200, await loadSarVaultV2PasswordShare(session, walletId));
+        return;
+      }
+      if (request.method === 'POST' && action.startsWith('unlock/')) {
+        const body = await readJson(request);
+        if (!isRecord(body) || typeof body.challengeId !== 'string'
+          || typeof body.factorAccessToken !== 'string') throw new SarVaultV2Error('invalid_vault_request');
+        const factor = action.slice('unlock/'.length) as 'phone' | 'email';
+        sendJson(response, 200, await loadSarVaultV2FactorShare(
+          session, walletId, body.challengeId, factor, body.factorAccessToken,
+        ));
+        return;
+      }
+      sendJson(response, 405, { error: 'method_not_allowed' });
+      return;
+    }
+    const sarVaultMatch = url.pathname.match(/^\/v1\/wallets\/([^/]+)\/sar-vault\/(status|challenges|verify|shares|unlock)$/);
+    if (sarVaultMatch) {
+      const walletId = decodeURIComponent(sarVaultMatch[1]!);
+      const action = sarVaultMatch[2]!;
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      const session = sessionFromClaims(claims);
+      if (request.method === 'GET' && action === 'status') {
+        sendJson(response, 200, await sarVaultStatus(session, walletId));
+        return;
+      }
+      if (request.method === 'POST' && action === 'challenges') {
+        const body = await readJson(request);
+        if (!isRecord(body)) throw new SarVaultError('invalid_vault_request');
+        sendJson(response, 201, await startSarVaultChallenge(session, walletId, body));
+        return;
+      }
+      if (request.method === 'POST' && action === 'verify') {
+        const body = await readJson(request);
+        if (!isRecord(body)
+          || typeof body.challengeId !== 'string'
+          || (body.factor !== 'phone' && body.factor !== 'email')
+          || typeof body.code !== 'string') throw new SarVaultError('invalid_vault_request');
+        sendJson(response, 200, await verifySarVaultFactor(session, walletId, body.challengeId, body.factor, body.code));
+        return;
+      }
+      if (request.method === 'PUT' && action === 'shares') {
+        const body = await readJson(request);
+        if (!isRecord(body)
+          || typeof body.challengeId !== 'string'
+          || typeof body.accessToken !== 'string') throw new SarVaultError('invalid_vault_request');
+        await storeSarVaultShares(session, walletId, body.challengeId, body.accessToken, body.shareB, body.shareC);
+        sendJson(response, 201, { stored: true });
+        return;
+      }
+      if (request.method === 'POST' && action === 'unlock') {
+        const body = await readJson(request);
+        if (!isRecord(body)
+          || typeof body.challengeId !== 'string'
+          || typeof body.accessToken !== 'string') throw new SarVaultError('invalid_vault_request');
+        sendJson(response, 200, await loadSarVaultShares(session, walletId, body.challengeId, body.accessToken));
+        return;
+      }
+      sendJson(response, 405, { error: 'method_not_allowed' });
+      return;
+    }
     const walletHomeMatch = url.pathname.match(/^\/v1\/wallets\/([^/]+)\/home$/);
     if (request.method === 'GET' && walletHomeMatch) {
       await handleWalletHome(request, response, decodeURIComponent(walletHomeMatch[1]!));
       return;
     }
+    const walletRemovalMatch = url.pathname.match(/^\/v1\/wallets\/([^/]+)$/);
+    if (request.method === 'PATCH' && walletRemovalMatch) {
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      const provider = walletQueryProviders.get(claims.tenantId);
+      if (!provider) throw new WalletRenameError('wallet_provider_unavailable', 503);
+      const walletId = decodeURIComponent(walletRemovalMatch[1]!);
+      if (!/^[0-9a-f-]{36}$/i.test(walletId) && !/^sandbox-wallet-[0-9a-f-]{36}$/i.test(walletId)) throw new WalletRenameError('invalid_wallet_id', 400);
+      const body = await readJson(request);
+      if (!isRecord(body) || typeof body.label !== 'string') throw new WalletRenameError('invalid_wallet_label', 422);
+      const label = body.label.trim();
+      if (!label || Array.from(label).length > 30 || /[\u0000-\u001f\u007f]/.test(label)) throw new WalletRenameError('invalid_wallet_label', 422);
+      sendJson(response, 200, await provider.renameWallet({ session: sessionFromClaims(claims), walletId, label }));
+      return;
+    }
+    if (request.method === 'DELETE' && walletRemovalMatch) {
+      const claims = verifySessionToken(bearerToken(request), sessionSecret);
+      const manifest = tenants.get(claims.tenantId);
+      const provider = walletQueryProviders.get(claims.tenantId);
+      if (!manifest || !provider) throw new Error('wallet_provider_unavailable');
+      const walletId = decodeURIComponent(walletRemovalMatch[1]!);
+      if (!/^[0-9a-f-]{36}$/i.test(walletId) && !/^sandbox-wallet-[0-9a-f-]{36}$/i.test(walletId)) throw new Error('invalid_wallet_id');
+      const body = await readJson(request);
+      if (!isRecord(body) || typeof body.hostAuthorizationProof !== 'string') throw new Error('wallet_authorization_required');
+      const authorization = verifyHostProof(body.hostAuthorizationProof, sessionSecret);
+      assertProofSession(authorization, sessionFromClaims(claims));
+      if (authorization.kind !== 'wallet-authorization' || authorization.purpose !== 'wallet-removal') throw new Error('wallet_authorization_required');
+      sendJson(response, 200, await provider.removeWallet({ session: sessionFromClaims(claims), manifest, walletId, authorizationId: authorization.proofId }));
+      return;
+    }
     sendJson(response, 404, { error: 'not_found' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    if (error instanceof PhoneClaimError) {
+      sendJson(response, error.status, { error: error.code });
+      return;
+    }
+    if (error instanceof SarVaultError) {
+      sendJson(response, error.status, { error: error.code });
+      return;
+    }
+    if (error instanceof SarVaultV2Error) {
+      sendJson(response, error.status, { error: error.code });
+      return;
+    }
     if (error instanceof RegistrationError) {
       const status = error.code.includes('rate_limited') ? 429
         : error.code.includes('not_found') ? 404
@@ -627,11 +1421,70 @@ const server = createServer(async (request, response) => {
       sendJson(response, status, { error: error.code });
       return;
     }
-    const status = message.includes('session') || message.includes('token') || message.includes('expired') ? 401 : 400;
+    if (error instanceof WalletRemovalError) {
+      sendJson(response, error.status, { error: error.code });
+      return;
+    }
+    if (error instanceof WalletRenameError) {
+      sendJson(response, error.status, { error: error.code });
+      return;
+    }
+    if (message === 'exchange_provider_not_configured') {
+      sendJson(response, 503, { error: message });
+      return;
+    }
+    if (request.method === 'POST' && /^\/v1\/phone-escrows\/[^/]+\/notify$/.test(url.pathname)) {
+      const status = message === 'phone_escrow_sms_rate_limited' || message === 'phone_escrow_sms_limit_reached' ? 429 : 409;
+      sendJson(response, status, { error: message.startsWith('phone_escrow_') ? message : 'phone_escrow_notification_unavailable' });
+      return;
+    }
+    if (message === 'exchange_liquidity_unavailable') {
+      sendJson(response, 422, { error: message });
+      return;
+    }
+    if (message.startsWith('exchange_quote_provider_')) {
+      sendJson(response, 502, { error: 'exchange_quote_unavailable' });
+      return;
+    }
+    if (isSessionAuthenticationError(message)) {
+      sendJson(response, 401, { error: 'request_rejected' });
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/transfers/prepare') {
+      const publicError = publicTransferPreparationError(error);
+      sendJson(response, publicError.status, { error: publicError.code });
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/phone-escrows/quote') {
+      const publicError = publicTransferPreparationError(error);
+      sendJson(response, publicError.status, { error: publicError.code });
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/transfers/submit'
+      && message === 'own_wallet_destination_invalid') {
+      sendJson(response, 400, { error: message });
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/wallets/provision') {
+      const publicError = publicWalletProvisioningError(error);
+      const databaseError = error as { code?: unknown; constraint_name?: unknown } | null;
+      console.warn(JSON.stringify({
+        event: 'wss_wallet_provision_failed',
+        code: publicError.code,
+        ...(typeof databaseError?.code === 'string' ? { sqlState: databaseError.code } : {}),
+        ...(typeof databaseError?.constraint_name === 'string' ? { constraint: databaseError.constraint_name } : {}),
+      }));
+      sendJson(response, publicError.status, { error: publicError.code });
+      return;
+    }
+    const status = 400;
     sendJson(response, status, { error: 'request_rejected' });
   }
-});
+}
 
-server.listen(port, '127.0.0.1', () => {
-  console.log(`took WSS Institution BFF listening on http://127.0.0.1:${port}`);
-});
+if (!process.env.VERCEL) {
+  const server = createServer(handleBffRequest);
+  server.listen(port, '127.0.0.1', () => {
+    console.log(`took WSS Institution BFF listening on http://127.0.0.1:${port}`);
+  });
+}

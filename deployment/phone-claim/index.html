@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>디지털 자산 수령</title>
+    <link rel="stylesheet" href="/c/styles.css" />
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">↙</div>
+      <p class="eyebrow">DIGITAL WALLET</p>
+      <h1>보내주신 자산을<br />받아볼까요?</h1>
+      <p class="description">금융사 앱에서 고객 정보를 확인하고 받을 월렛을 선택해 주세요.</p>
+      <section class="claim-summary" aria-live="polite">
+        <span>수령 예정 자산</span>
+        <strong id="claim-asset">확인 중이에요</strong>
+        <small id="claim-network"></small>
+      </section>
+      <section id="institution-options" class="institution-options" hidden>
+        <h2>금융사 월렛으로 받기</h2>
+        <p>문자를 받은 번호로 등록된 금융사 월렛을 선택해 주세요.</p>
+        <nav aria-label="금융사 월렛 선택">
+          <a data-institution="kiwoom" href="#">키움 월렛에서 받기 <span aria-hidden="true">→</span></a>
+          <a data-institution="jb" href="#">JB 월렛에서 받기 <span aria-hidden="true">→</span></a>
+          <a data-institution="namu" href="#">나무 월렛에서 받기 <span aria-hidden="true">→</span></a>
+        </nav>
+      </section>
+      <details id="external-details" class="external-details" hidden>
+        <summary>외부 지갑 주소로 받기</summary>
+      <form id="claim-form" hidden>
+        <label for="phone">안내를 받은 휴대폰 번호</label>
+        <input id="phone" name="phone" inputmode="tel" autocomplete="tel-national" placeholder="01012345678" maxlength="16" required />
+        <button id="otp-button" type="button">인증번호 받기</button>
+        <div id="otp-fields" hidden>
+          <button id="change-phone" class="text-button" type="button">휴대폰 번호 다시 입력</button>
+          <label for="otp">문자로 받은 인증번호</label>
+          <input id="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="6자리 숫자" required />
+          <label for="recipient">받을 지갑 주소</label>
+          <button id="connect-wallet" class="secondary-button" type="button">외부 지갑 주소 가져오기</button>
+          <input id="recipient" name="recipient" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="0x로 시작하는 주소" required />
+          <small id="connected-wallet" class="connected-wallet" hidden></small>
+          <p class="hint">입력한 주소의 네트워크가 위 수령 네트워크와 같은지 확인해 주세요.</p>
+          <button id="claim-button" type="submit">인증하고 자산 받기</button>
+        </div>
+      </form>
+      </details>
+      <p id="status" role="status" aria-live="polite"></p>
+      <a id="transaction-link" class="transaction-link" target="_blank" rel="noopener noreferrer" hidden>수령 거래 확인</a>
+      <p class="footnote">수령 기한이 지나면 보낸 분이 환불할 수 있어요.</p>
+    </main>
+    <script src="/c/app.js" defer></script>
+  </body>
+</html>

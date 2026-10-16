@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": { ".": "./src/index.ts", "./install-landing": "./src/installLanding.ts" },
   "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
   "dependencies": { "@took-wss/contracts": "0.1.0", "@took-wss/module-registry": "0.1.0" }
 }

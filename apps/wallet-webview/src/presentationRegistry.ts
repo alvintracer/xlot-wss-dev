@@ -6,6 +6,8 @@ type WalletPresentation = LazyExoticComponent<ComponentType<WalletPresentationPr
 const genericPresentation = lazy(() => import('./GenericWalletPresentation'));
 const presentations: Record<string, WalletPresentation> = {
   'kiwoom-simple-mode-v1': lazy(() => import('@took-wss/tenant-kiwoom-presentation')),
+  'jb-mobile-wallet-v1': lazy(() => import('@took-wss/tenant-jb-presentation')),
+  'namu-investment-wallet-v1': lazy(() => import('@took-wss/tenant-namu-presentation')),
   'wss-reference-bank-v1': genericPresentation,
 };
 

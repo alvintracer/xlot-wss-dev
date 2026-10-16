@@ -118,6 +118,57 @@ test("issues one OAuth token, calls wallet, and normalizes provider risk", async
   assert.equal(second.provider_code, "A0000");
 });
 
+test("retries one intermittent screening HTTP 403 with a fresh token", async () => {
+  let tokenCalls = 0;
+  let screenCalls = 0;
+  const client = new TransightClient({
+    baseUrl: "https://t-api.transight.io",
+    clientId: "client-id",
+    clientSecret: "client-secret",
+    encryptionCodec,
+    rateGate: { schedule: (task) => task() },
+    fetchImpl: async (url) => {
+      if (String(url).endsWith("/oauth/token")) {
+        tokenCalls += 1;
+        return jsonResponse({ rspCode: "A0000", access_token: `token-${tokenCalls}`, expires_in: 3600 });
+      }
+      screenCalls += 1;
+      return screenCalls === 1
+        ? jsonResponse({ error: "Forbidden" }, 403)
+        : encryptedResponse({ rspCode: "A0000", isDenylist: "N", isTrackedDenylist: "N" });
+    },
+  });
+
+  const result = await client.screenAddress("0x0000000000000000000000000000000000000000");
+  assert.equal(result.provider_code, "A0000");
+  assert.equal(tokenCalls, 2);
+  assert.equal(screenCalls, 2);
+});
+
+test("persistent screening HTTP 403 still fails closed after one retry", async () => {
+  let screenCalls = 0;
+  const client = new TransightClient({
+    baseUrl: "https://t-api.transight.io",
+    clientId: "client-id",
+    clientSecret: "client-secret",
+    encryptionCodec,
+    rateGate: { schedule: (task) => task() },
+    fetchImpl: async (url) => {
+      if (String(url).endsWith("/oauth/token")) {
+        return jsonResponse({ rspCode: "A0000", access_token: "token", expires_in: 3600 });
+      }
+      screenCalls += 1;
+      return jsonResponse({ error: "Forbidden" }, 403);
+    },
+  });
+
+  await assert.rejects(
+    client.screenAddress("0x0000000000000000000000000000000000000000"),
+    (error) => error.code === "HTTP_403",
+  );
+  assert.equal(screenCalls, 2);
+});
+
 test("direct regulatory denylist is always critical and sanctioned", () => {
   const result = normalizeTransightResult({
     rspCode: "A0000",
@@ -133,6 +184,24 @@ test("direct regulatory denylist is always critical and sanctioned", () => {
   assert.equal(result.risk_score, 100);
   assert.equal(result.is_sanctioned, true);
   assert.equal(result.flags[0].severity, "CRITICAL");
+});
+
+test("forwards only validated direct-list date and Korean risk category", () => {
+  const result = normalizeTransightResult({
+    rspCode: "A0000", isDenylist: "Y", dataType: "RDL",
+    denylistDetail: {
+      ra_code2: "VP", ra_code2_kor: "보이스피싱", added_date: "20260523",
+      comments: "private complaint", evidenceImage: "private evidence",
+    },
+  });
+  assert.equal(result.added_date, "2026-05-23");
+  assert.equal(result.ra_code2_kor, "보이스피싱");
+  assert.equal(result.flags[0].description, "보이스피싱");
+  assert.equal("comments" in result, false);
+  assert.equal("evidenceImage" in result, false);
+  const clean = normalizeTransightResult({ rspCode: "A0000", isDenylist: "N", added_date: "20260523", ra_code2_kor: "보이스피싱" });
+  assert.equal("added_date" in clean, false);
+  assert.equal("ra_code2_kor" in clean, false);
 });
 
 test("rejects an unapproved upstream origin", () => {

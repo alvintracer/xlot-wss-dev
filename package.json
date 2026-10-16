@@ -17,6 +17,8 @@
     "dev:wallet": "npm run dev -w @took-wss/wallet-webview",
     "dev:host": "npm run dev -w @took-wss/reference-bank-host",
     "dev:studio": "npm run dev -w @took-wss/studio",
+    "ui:tenant": "node scripts/tenant-ui.mjs",
+    "ui:tenant:test": "node --test scripts/tenant-ui.node.mjs",
     "db:apply:development": "node --env-file-if-exists=.env.local scripts/apply-linked-development-migrations.mjs",
     "db:apply:direct": "node --env-file-if-exists=.env.local scripts/apply-development-migrations.mjs",
     "auth:activate:solapi": "node --env-file-if-exists=.env.local scripts/activate-supabase-phone-auth.mjs",
@@ -29,10 +31,11 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "build": "npm run build -w @took-wss/institution-bff && npm run build -w @took-wss/wallet-webview && npm run build -w @took-wss/reference-bank-host && npm run build -w @took-wss/studio",
+    "build:vercel-preview": "node scripts/build-vercel-preview.mjs",
     "check:boundaries": "node scripts/check-boundaries.mjs",
-    "check:edge": "deno fmt --check supabase/functions/wss-dev-sar-vault/index.ts supabase/functions/wss-auth-send-sms/index.ts supabase/functions/wss-auth-send-sms/index_test.ts supabase/functions/wallet-price-quote/index.ts supabase/functions/wallet-price-quote/index_test.ts supabase/functions/kyt-screen/index.ts && deno check supabase/functions/wss-dev-sar-vault/index.ts supabase/functions/wss-auth-send-sms/index.ts supabase/functions/wallet-price-quote/index.ts supabase/functions/kyt-screen/index.ts && deno test supabase/functions/wss-auth-send-sms/index_test.ts supabase/functions/wallet-price-quote/index_test.ts",
+    "check:edge": "deno fmt --check supabase/functions/wss-dev-sar-vault/index.ts supabase/functions/wss-auth-send-sms/index.ts supabase/functions/wss-auth-send-sms/index_test.ts supabase/functions/wallet-price-quote/index.ts supabase/functions/wallet-price-quote/index_test.ts supabase/functions/kyt-screen/index.ts supabase/functions/kyt-screen/policy.ts supabase/functions/kyt-screen/policy_test.ts && deno check supabase/functions/wss-dev-sar-vault/index.ts supabase/functions/wss-auth-send-sms/index.ts supabase/functions/wallet-price-quote/index.ts supabase/functions/kyt-screen/index.ts supabase/functions/kyt-screen/policy_test.ts && deno test supabase/functions/wss-auth-send-sms/index_test.ts supabase/functions/wallet-price-quote/index_test.ts supabase/functions/kyt-screen/policy_test.ts",
     "check:kyt-gateway": "npm run check -w @took-wss/kyt-gateway && npm test -w @took-wss/kyt-gateway",
-    "check": "npm run check:boundaries && npm run check:edge && npm run check:kyt-gateway && npm run typecheck && npm test && npm run build"
+    "check": "npm run check:boundaries && npm run ui:tenant:test && npm run check:edge && npm run check:kyt-gateway && npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
@@ -43,6 +46,7 @@
     "esbuild": "^0.28.2",
     "pgsql-ast-parser": "^12.0.2",
     "playwright-core": "^1.63.0",
+    "sharp": "^0.35.5",
     "tsx": "^4.20.6",
     "typescript": "~5.9.3",
     "vite": "^7.2.4",

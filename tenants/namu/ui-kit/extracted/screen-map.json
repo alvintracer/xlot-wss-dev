@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "namu",
+  "screens": [
+    {
+      "referenceId": "R001",
+      "kind": "host-owned",
+      "screenFamily": "trading-menu",
+      "state": "trading-menu-domestic-overseas",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R002",
+      "kind": "host-owned",
+      "screenFamily": "home",
+      "state": "home-search-investing",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R003",
+      "kind": "host-owned",
+      "screenFamily": "watchlist",
+      "state": "watchlist-recent",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R004",
+      "kind": "host-owned",
+      "screenFamily": "watchlist",
+      "state": "watchlist-realtime-best",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R005",
+      "kind": "host-owned",
+      "screenFamily": "market",
+      "state": "market-indices",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R006",
+      "kind": "host-owned",
+      "screenFamily": "news",
+      "state": "news-insight",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R007",
+      "kind": "host-owned",
+      "screenFamily": "account-transfer",
+      "state": "account-transfer",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R008",
+      "kind": "host-owned",
+      "screenFamily": "stock-detail",
+      "state": "stock-company-overview",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R009",
+      "kind": "host-owned",
+      "screenFamily": "stock-detail",
+      "state": "stock-news",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R010",
+      "kind": "host-owned",
+      "screenFamily": "stock-detail",
+      "state": "stock-investor-flows",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R011",
+      "kind": "host-owned",
+      "screenFamily": "stock-detail",
+      "state": "stock-trading-data",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R012",
+      "kind": "host-owned",
+      "screenFamily": "stock-detail",
+      "state": "stock-nh-investor",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R013",
+      "kind": "host-owned",
+      "screenFamily": "stock-detail",
+      "state": "stock-community",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R014",
+      "kind": "host-owned",
+      "screenFamily": "stock-detail",
+      "state": "stock-execution-history",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R015",
+      "kind": "host-owned",
+      "screenFamily": "stock-detail",
+      "state": "stock-holdings-tab",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R016",
+      "kind": "host-owned",
+      "screenFamily": "stock-detail",
+      "state": "stock-trade-history-empty",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R017",
+      "kind": "host-owned",
+      "screenFamily": "stock-detail",
+      "state": "stock-order-book",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R018",
+      "kind": "component-evidence",
+      "screenFamily": "stock-detail",
+      "state": "stock-quote-slide-panel",
+      "productUse": "visual evidence only; new wallet extension"
+    },
+    {
+      "referenceId": "R019",
+      "kind": "component-evidence",
+      "screenFamily": "portfolio",
+      "state": "portfolio-holdings",
+      "productUse": "visual evidence only; new wallet extension"
+    },
+    {
+      "referenceId": "R020",
+      "kind": "component-evidence",
+      "screenFamily": "portfolio",
+      "state": "portfolio-profit-loss",
+      "productUse": "visual evidence only; new wallet extension"
+    },
+    {
+      "referenceId": "R021",
+      "kind": "host-owned",
+      "screenFamily": "profile",
+      "state": "my-profile",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R022",
+      "kind": "host-owned",
+      "screenFamily": "notifications",
+      "state": "notifications",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R023",
+      "kind": "host-owned",
+      "screenFamily": "discovery",
+      "state": "discover-search",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R024",
+      "kind": "host-owned",
+      "screenFamily": "discovery",
+      "state": "discover-news",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R025",
+      "kind": "component-evidence",
+      "screenFamily": "my-investment",
+      "state": "my-investment-holdings-news",
+      "productUse": "visual evidence only; new wallet extension"
+    },
+    {
+      "referenceId": "R026",
+      "kind": "host-owned",
+      "screenFamily": "discovery",
+      "state": "discover-us-insights",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R027",
+      "kind": "host-owned",
+      "screenFamily": "discovery",
+      "state": "discover-live-guide",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R028",
+      "kind": "host-owned",
+      "screenFamily": "feed",
+      "state": "feed-themed-investing",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R029",
+      "kind": "host-owned",
+      "screenFamily": "feed",
+      "state": "feed-top-movers",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R030",
+      "kind": "host-owned",
+      "screenFamily": "feed",
+      "state": "feed-etf-ranking",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R031",
+      "kind": "component-evidence",
+      "screenFamily": "my-investment",
+      "state": "my-stock-detail",
+      "productUse": "visual evidence only; new wallet extension"
+    },
+    {
+      "referenceId": "R032",
+      "kind": "component-evidence",
+      "screenFamily": "my-investment",
+      "state": "my-investment-stock-list",
+      "productUse": "visual evidence only; new wallet extension"
+    },
+    {
+      "referenceId": "R033",
+      "kind": "component-evidence",
+      "screenFamily": "my-investment",
+      "state": "my-investment-assets-home",
+      "productUse": "visual evidence only; new wallet extension"
+    },
+    {
+      "referenceId": "R034",
+      "kind": "host-owned",
+      "screenFamily": "discovery",
+      "state": "discover-home",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R035",
+      "kind": "component-evidence",
+      "screenFamily": "order-keypad",
+      "state": "order-quantity-calculator-keypad",
+      "productUse": "visual evidence only; new wallet extension"
+    },
+    {
+      "referenceId": "R036",
+      "kind": "host-owned",
+      "screenFamily": "settings",
+      "state": "app-settings",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R037",
+      "kind": "platform-owned",
+      "screenFamily": "search-keyboard",
+      "state": "search-korean-keyboard",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R038",
+      "kind": "host-owned",
+      "screenFamily": "onboarding",
+      "state": "onboarding-permissions",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R039",
+      "kind": "host-owned",
+      "screenFamily": "onboarding",
+      "state": "onboarding-account-prep",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R040",
+      "kind": "host-owned",
+      "screenFamily": "identity",
+      "state": "identity-name-empty",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R041",
+      "kind": "platform-owned",
+      "screenFamily": "identity",
+      "state": "identity-number-secure-keypad",
+      "productUse": "host or platform reference; no wallet authentication implementation"
+    },
+    {
+      "referenceId": "R042",
+      "kind": "component-evidence",
+      "screenFamily": "authentication",
+      "state": "certificate-pin-entry",
+      "productUse": "visual evidence only; new wallet extension"
+    }
+  ]
+}

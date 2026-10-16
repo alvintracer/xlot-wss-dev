@@ -28,14 +28,15 @@ const secrets = [
   'WSS_SOLAPI_API_KEY',
   'WSS_SOLAPI_API_SECRET',
   'WSS_SOLAPI_SENDER_NUMBER',
+  'WSS_PHONE_LOOKUP_SECRET',
 ].map((name) => `${name}=${required(name)}`);
 
-await execFileAsync('supabase', ['functions', 'deploy', 'wss-auth-send-sms', '--no-verify-jwt'], {
-  cwd: repositoryRoot,
-});
 await execFileAsync('supabase', ['secrets', 'set', ...secrets], {
   cwd: repositoryRoot,
   maxBuffer: 1024 * 1024,
+});
+await execFileAsync('supabase', ['functions', 'deploy', 'wss-auth-send-sms', '--no-verify-jwt'], {
+  cwd: repositoryRoot,
 });
 await execFileAsync('supabase', ['config', 'push', '--yes'], {
   cwd: repositoryRoot,

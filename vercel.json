@@ -1,0 +1,112 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:vercel-preview",
+  "outputDirectory": ".vercel-preview",
+  "installCommand": "npm ci",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 120
+    }
+  },
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/kiwoom",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api?path=:path"
+    },
+    {
+      "source": "/kiwoom",
+      "destination": "/kiwoom/index.html"
+    },
+    {
+      "source": "/kiwoom/app",
+      "destination": "/kiwoom/index.html"
+    },
+    {
+      "source": "/kiwoom/wallet",
+      "destination": "/kiwoom/wallet/index.html"
+    },
+    {
+      "source": "/jb",
+      "destination": "/jb/index.html"
+    },
+    {
+      "source": "/jb/app",
+      "destination": "/jb/index.html"
+    },
+    {
+      "source": "/jb/wallet",
+      "destination": "/jb/wallet/index.html"
+    },
+    {
+      "source": "/namu",
+      "destination": "/namu/index.html"
+    },
+    {
+      "source": "/namu/app",
+      "destination": "/namu/index.html"
+    },
+    {
+      "source": "/namu/wallet",
+      "destination": "/namu/wallet/index.html"
+    },
+    {
+      "source": "/c",
+      "destination": "/c/index.html"
+    },
+    {
+      "source": "/c/:claimCode",
+      "destination": "/c/index.html"
+    },
+    {
+      "source": "/pay/:paymentRequestId",
+      "destination": "/pay/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=()" }
+      ]
+    },
+    {
+      "source": "/kiwoom/(.*)",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; connect-src 'self' https://*.thirdweb.com https://*.thirdwebcdn.com wss://relay.walletconnect.org https://verify.walletconnect.org; img-src 'self' data: https://*.thirdwebcdn.com; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' https://*.thirdweb.com; frame-ancestors 'self'" }
+      ]
+    },
+    {
+      "source": "/jb/(.*)",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; connect-src 'self' https://*.thirdweb.com https://*.thirdwebcdn.com wss://relay.walletconnect.org https://verify.walletconnect.org; img-src 'self' data: https://*.thirdwebcdn.com; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' https://*.thirdweb.com; frame-ancestors 'self'" }
+      ]
+    },
+    {
+      "source": "/namu/(.*)",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; connect-src 'self' https://*.thirdweb.com https://*.thirdwebcdn.com wss://relay.walletconnect.org https://verify.walletconnect.org; img-src 'self' data: https://*.thirdwebcdn.com; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' https://*.thirdweb.com; frame-ancestors 'self'" }
+      ]
+    },
+    {
+      "source": "/c/(.*)",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'" }
+      ]
+    },
+    {
+      "source": "/pay/(.*)",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'" }
+      ]
+    }
+  ]
+}

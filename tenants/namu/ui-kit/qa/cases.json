@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "namu",
+  "cases": [
+    { "id": "wallet-main", "kind": "wallet-extension", "referenceIds": ["R033", "R032"], "selector": ".namu-review-device", "viewport": { "width": 1200, "height": 1000 }, "state": "wallet", "captureScope": "host+wallet", "comparison": "review-only" },
+    { "id": "bottom-nav", "kind": "component-evidence", "referenceIds": ["R032"], "selector": ".namu-host-nav", "viewport": { "width": 1200, "height": 1000 }, "state": "wallet", "captureScope": "component", "comparison": "visual", "referenceCrop": { "x": 0, "y": 2489, "width": 1290, "height": 307 }, "privacyReviewed": true, "privacyMask": [] },
+    { "id": "light-keypad", "kind": "component-evidence", "referenceIds": ["R035"], "selector": ".namu-review-pad", "viewport": { "width": 1200, "height": 1000 }, "state": "light-keypad", "captureScope": "component", "comparison": "review-only" },
+    { "id": "dark-keypad", "kind": "host-owned", "referenceIds": ["R041"], "selector": ".namu-review-pad", "viewport": { "width": 1200, "height": 1000 }, "state": "dark-keypad", "captureScope": "component", "comparison": "review-only" },
+    { "id": "wallet-sheet", "kind": "wallet-extension", "referenceIds": ["R018", "R022"], "selector": ".namu-review-device", "viewport": { "width": 1200, "height": 1000 }, "state": "wallet", "openButton": "모달 보기", "captureScope": "host+wallet", "comparison": "review-only" }
+  ]
+}

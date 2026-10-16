@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7f5f0" />
+  <title>월렛 QR 결제 | took WSS</title>
+  <link rel="stylesheet" href="/pay/payment.css" />
+  <script src="/pay/payment.js" defer></script>
+</head>
+<body>
+  <main class="pay-entry">
+    <div class="pay-entry__brand"><span class="pay-entry__brand-mark">took<span>!</span></span><small>WALLET SERVICE LAYER</small></div>
+    <div class="pay-entry__icon" aria-hidden="true">▦</div>
+    <p class="pay-entry__eyebrow">WALLET PAYMENT</p>
+    <h1>어느 월렛으로<br />결제할까요?</h1>
+    <p class="pay-entry__lead">이용 중인 금융사 앱을 선택해 주세요.<br />앱에서 결제 금액과 네트워크를 확인한 뒤 서명해요.</p>
+    <nav class="pay-entry__choices" aria-label="결제할 금융사 선택">
+      <a data-tenant="namu" href="#"><span class="pay-entry__badge pay-entry__badge--namu">나무</span><strong>나무 월렛</strong><span class="pay-entry__chevron" aria-hidden="true">→</span></a>
+      <a data-tenant="kiwoom" href="#"><span class="pay-entry__badge pay-entry__badge--kiwoom">키움</span><strong>키움 디지털 월렛</strong><span class="pay-entry__chevron" aria-hidden="true">→</span></a>
+      <a data-tenant="jb" href="#"><span class="pay-entry__badge pay-entry__badge--jb">JB</span><strong>JB 월렛</strong><span class="pay-entry__chevron" aria-hidden="true">→</span></a>
+    </nav>
+    <p class="pay-entry__error" role="alert" hidden>결제 QR을 확인할 수 없어요. 새 QR을 스캔해 주세요.</p>
+    <p class="pay-entry__foot">결제는 선택한 앱의 고객 확인과 월렛 서명 후 진행돼요.</p>
+  </main>
+</body>
+</html>

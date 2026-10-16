@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { walletPublicAssetUrl } from './publicAssetUrl';
 
 interface AssetIconProps {
   symbol: string;
@@ -16,7 +17,7 @@ function assetIconUrl(symbol: string, iconAssetId?: string): string | null {
   if (!supportedSymbols.has(normalized)) return null;
   if (iconAssetId && iconAssetId !== `coin:${normalized.toLowerCase()}`) return null;
   const extension = normalized === 'XRP' ? 'svg' : 'png';
-  return `/assets/coins/${normalized.toLowerCase()}.${extension}`;
+  return walletPublicAssetUrl(`assets/coins/${normalized.toLowerCase()}.${extension}`);
 }
 
 export function AssetIcon({ symbol, iconAssetId, className }: AssetIconProps) {

@@ -15,6 +15,7 @@ export const kiwoomManifest = assertTenantManifest({
     rootHeaderOwner: 'host',
     rootNavigationOwner: 'host',
     safeAreaOwner: 'host',
+    secureKeypadLayout: 'four-column',
     navigation: {
       rootEntry: 'host-tabs',
       focusedFlow: 'hide-host-chrome',
@@ -23,6 +24,7 @@ export const kiwoomManifest = assertTenantManifest({
   },
   brand: {
     logoText: '키움',
+    paymentCoinLogoUrl: '/icons/kiwoom-wallet-v2-512.png',
     primaryColor: '#7D3BDD',
     accentColor: '#7D42C3',
     surfaceColor: '#F5F5F5',

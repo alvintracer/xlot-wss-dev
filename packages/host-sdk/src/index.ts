@@ -4,8 +4,10 @@ import {
   type HostCapabilities,
   type HostAuthenticationPurpose,
   type HostAuthenticationResult,
+  type HostRecipientPickResult,
   type HostToWalletMessage,
   type SecureSarWalletCreationResult,
+  type SecureSarVaultEnrollmentResult,
   type SecureTransactionSigningRequest,
   type SecureTransactionSigningResult,
   type SecureWalletImportResult,
@@ -20,10 +22,13 @@ export interface WssHostClientOptions {
   bffUrl: string;
   hostCapabilities: HostCapabilities;
   onEvent?: (event: WalletToHostMessage) => void;
+  requestSessionRefresh?: () => Promise<string | null>;
   requestAuthentication?: (purpose: HostAuthenticationPurpose) => Promise<HostAuthenticationResult>;
   requestSecureSarWalletCreation?: () => Promise<SecureSarWalletCreationResult>;
+  requestSecureSarVaultEnrollment?: (walletId: string, secureRef: string) => Promise<SecureSarVaultEnrollmentResult>;
   requestSecureWalletImport?: (method: WalletImportMethod) => Promise<SecureWalletImportResult>;
   requestSecureTransactionSignature?: (request: SecureTransactionSigningRequest) => Promise<SecureTransactionSigningResult>;
+  requestRecipientPick?: (mode: 'qr' | 'contacts', chainId: string) => Promise<HostRecipientPickResult>;
 }
 
 export class WssHostClient {
@@ -64,6 +69,11 @@ export class WssHostClient {
       void this.#respondToAuthentication(event.data.requestId, event.data.purpose);
       return;
     }
+    if (event.data.type === 'took-wss:session-refresh-request') {
+      this.#options.onEvent?.(event.data);
+      void this.#respondToSessionRefresh(event.data.requestId);
+      return;
+    }
     if (event.data.type === 'took-wss:secure-import-request') {
       this.#options.onEvent?.(event.data);
       void this.#respondToSecureImport(event.data.requestId, event.data.method);
@@ -74,13 +84,40 @@ export class WssHostClient {
       void this.#respondToSecureSarWalletCreation(event.data.requestId);
       return;
     }
+    if (event.data.type === 'took-wss:secure-sar-enroll-request') {
+      this.#options.onEvent?.(event.data);
+      void this.#respondToSarVaultEnrollment(event.data.requestId, event.data.walletId, event.data.secureRef);
+      return;
+    }
     if (event.data.type === 'took-wss:secure-transaction-sign-request') {
       this.#options.onEvent?.(event.data);
       void this.#respondToSecureTransactionSignature(event.data.requestId, event.data.request);
       return;
     }
+    if (event.data.type === 'took-wss:recipient-pick-request') {
+      this.#options.onEvent?.(event.data);
+      void this.#respondToRecipientPick(event.data.requestId, event.data.mode, event.data.chainId);
+      return;
+    }
     this.#options.onEvent?.(event.data);
   };
+
+  async #respondToSessionRefresh(requestId: string): Promise<void> {
+    let sessionToken: string | null = null;
+    try {
+      sessionToken = await this.#options.requestSessionRefresh?.() ?? null;
+    } catch {
+      sessionToken = null;
+    }
+    if (!this.#started) return;
+    const message: HostToWalletMessage = {
+      type: 'took-wss:session-refresh-result',
+      protocolVersion: WSS_PROTOCOL_VERSION,
+      requestId,
+      ...(sessionToken ? { sessionToken } : {}),
+    };
+    this.#options.frame.contentWindow?.postMessage(message, this.#options.walletOrigin);
+  }
 
   async #respondToAuthentication(requestId: string, purpose: HostAuthenticationPurpose): Promise<void> {
     let result: HostAuthenticationResult = { status: 'cancelled' };
@@ -133,6 +170,23 @@ export class WssHostClient {
     this.#options.frame.contentWindow?.postMessage(message, this.#options.walletOrigin);
   }
 
+  async #respondToSarVaultEnrollment(requestId: string, walletId: string, secureRef: string): Promise<void> {
+    let result: SecureSarVaultEnrollmentResult = { status: 'cancelled' };
+    try {
+      result = await this.#options.requestSecureSarVaultEnrollment?.(walletId, secureRef) ?? { status: 'cancelled' };
+    } catch {
+      result = { status: 'cancelled' };
+    }
+    if (!this.#started) return;
+    const message: HostToWalletMessage = {
+      type: 'took-wss:secure-sar-enroll-result',
+      protocolVersion: WSS_PROTOCOL_VERSION,
+      requestId,
+      result,
+    };
+    this.#options.frame.contentWindow?.postMessage(message, this.#options.walletOrigin);
+  }
+
   async #respondToSecureTransactionSignature(requestId: string, request: SecureTransactionSigningRequest): Promise<void> {
     let result: SecureTransactionSigningResult = { status: 'cancelled' };
     try {
@@ -146,6 +200,19 @@ export class WssHostClient {
       protocolVersion: WSS_PROTOCOL_VERSION,
       requestId,
       result,
+    };
+    this.#options.frame.contentWindow?.postMessage(message, this.#options.walletOrigin);
+  }
+
+  async #respondToRecipientPick(requestId: string, mode: 'qr' | 'contacts', chainId: string): Promise<void> {
+    let result: HostRecipientPickResult = { status: 'cancelled' };
+    try {
+      result = await this.#options.requestRecipientPick?.(mode, chainId) ?? { status: 'cancelled' };
+    } catch { result = { status: 'cancelled' }; }
+    if (!this.#started) return;
+    const message: HostToWalletMessage = {
+      type: 'took-wss:recipient-pick-result', protocolVersion: WSS_PROTOCOL_VERSION,
+      requestId, result,
     };
     this.#options.frame.contentWindow?.postMessage(message, this.#options.walletOrigin);
   }

@@ -1,9 +1,41 @@
 # xlot-wss-dev environment status
 
-- Last verified: 2026-09-28
+- Last verified: 2026-09-29
 - Supabase project: `xlot-wss-dev`
 - Project ref: `opgtfobitjrmujlpfhtd`
 - GitHub: `https://github.com/alvintracer/xlot-wss-dev`
+
+## Vercel mobile proposal environment
+
+- Vercel project `took-wss` is linked to the GitHub repository above.
+- The verified production entry point is
+  `https://took-wss.vercel.app/kiwoom`; the embedded wallet is served from the
+  same origin at `/kiwoom/wallet`.
+- The app-only entry point is `https://took-wss.vercel.app/kiwoom/app`. It keeps
+  the Kiwoom host header, bottom navigation, and secure host flows while
+  removing the simulator controls and device frame. Desktop Chrome keeps a
+  centered mobile viewport; phone Chrome fills the available viewport. A
+  signed, HttpOnly browser cookie gives fresh visitors separate preview
+  customers without asking for a code. The original `/kiwoom` simulator keeps
+  its preview access code.
+- A fresh desktop and phone Chrome profile both opened `/kiwoom/app` directly
+  and restored the same cookie-backed customer on reload. Session creation
+  returned 201 and wallet bootstrap returned 200 on both visits; no access-code
+  input or browser error appeared.
+- The WSS-owned phone claimant namespace is reserved at `/c/{claimCode}` and
+  `WSS_PHONE_CLAIM_BASE_URL` points to `https://took-wss.vercel.app/c` in both
+  Preview and Production.
+- Phone-escrow execution remains deliberately disabled. The `/c` page is a
+  domain-separated holding surface until claim authentication, KYT, signer
+  relay, resolution, and refund pass an end-to-end test.
+- On 2026-09-29 the promoted production deployment returned 200 for the host,
+  wallet, claimant surface, and BFF health endpoint. Same-origin preview-session
+  creation returned 201 and bootstrap returned 200 with tenant `kiwoom`, the
+  `took-sar` adapter, identity `registration-required`, and wallet home
+  `absent`.
+- The application preview access code is stored only in the development Mac's
+  Keychain under service `took-wss-vercel-preview`; no value is stored in Git
+  or this status document.
 
 ## Applied backend
 
@@ -14,7 +46,8 @@
 - `0005_wss_wallet_host_proofs.sql` applied and checksum recorded
 - `0006_wss_transfer_lifecycle.sql` applied and checksum recorded
 - `0007_wss_phone_escrow.sql` applied and checksum recorded
-- 21 `public.wss_%` tables present, including the migration ledger
+- `0008_wss_exchange_lifecycle.sql` applied and checksum recorded
+- 23 `public.wss_%` tables present, including the migration ledger
 - Row Level Security enabled on every WSS table
 - zero table grants to `anon` and `authenticated`
 - deployment marker verified as `proposal-and-early-function-sandbox`
@@ -61,6 +94,9 @@
 - transfer intent and execution tables deployed with RLS and no browser-role
   grants; raw signatures, signed transactions, proof tokens, and key material
   are not columns in either table
+- exchange intent and execution tables deployed with the same RLS/no-browser-
+  grant boundary; provider credentials, calldata, raw quotes, signatures, and
+  raw signed transactions are not columns in either table
 
 ## Verified persistent vertical slice
 
@@ -126,6 +162,33 @@ the phone recipient claim and refund service, and general confirmation
 reconciliation remain open. Every
 direct token send still requires the chain's native fee asset even when a relay
 quote reports that the asset is eligible.
+
+A development-only KYT fixture maps
+`0xad321e628c8b829fb979d85886ff0f8256a1d8ce` to a confirmable high-risk review
+with the dated voice-phishing warning requested for the Kiwoom demonstration.
+It is disabled when `NODE_ENV=production`; the presentation consumes the normal
+KYT review contract and contains no address-specific branch. On 2026-09-29 a
+funded imported wallet completed the live preparation path with HTTP 201, showed
+the in-button loading spinner and warning dialog, and continued through the
+explicit confirmation to the host-owned transaction-signing screen. The check
+cancelled at that screen and did not sign or broadcast a transaction. A Base
+USDC preparation without Base ETH also returned the actionable public error
+`insufficient_balance_for_fee` instead of the former generic rejection.
+
+The Kiwoom exchange sheet now supports same-chain EVM exact-input and
+exact-output flows on Ethereum, Polygon, Arbitrum, Base, and BNB Chain. Sell and
+receive fields default to KRW and can switch to token units. K-VWAP or labeled
+market references translate KRW input only; a short-lived BFF-owned 0x quote
+defines executable amounts, allowance, slippage bounds, and fees. Preparation,
+host confirmation, exact transaction verification, sequential allowance/swap
+broadcast, and database audit are implemented and covered by provider/contract
+tests plus a mocked browser interaction. The existing local took 0x credential
+is now mapped to the server-only `WSS_ZEROX_API_KEY` without exposing its value
+to the browser or repository. A live Base ETH→USDC exact-input request returned
+HTTP 201 with executable amounts, minimum receive, and network fee. Exact-output
+provider access also returned HTTP 200 directly; a full browser exact-output
+check and funded-wallet sign/broadcast smoke test remain required before
+treating exchange execution as live.
 
 The non-EVM SDK addition currently leaves four moderate production-dependency
 audit findings in the `@solana/web3.js` 1.x → `jayson` tree (`stream-json` and

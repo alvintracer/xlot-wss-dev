@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { suggestWalletLabel } from '@took-wss/contracts';
 import type {
   CreateRegistrationIntentRequest,
   ProvisionWalletRequest,
@@ -101,6 +102,35 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
     return withWalletIndex(selected, homes);
   }
 
+  async getOwnedReceiveAddress({ session, manifest, walletId, chainId }: {
+    session: Session; manifest: TenantManifest; walletId: string; chainId: string;
+  }): Promise<string | null> {
+    if (!manifest.chains.includes(chainId)) return null;
+    const home = (this.#homes.get(session.sessionId) ?? []).find(({ wallet }) => wallet.walletId === walletId);
+    return home?.networks.find((network) => network.chainId === chainId && network.addressStatus === 'ready')?.address ?? null;
+  }
+
+  async renameWallet({ session, walletId, label }: { session: Session; walletId: string; label: string }): Promise<WalletProfileSummary> {
+    const home = (this.#homes.get(session.sessionId) ?? []).find(({ wallet }) => wallet.walletId === walletId);
+    if (!home) throw new Error('wallet_not_found');
+    home.wallet = { ...home.wallet, label };
+    return home.wallet;
+  }
+
+  async removeWallet({ session, manifest, walletId, authorizationId }: {
+    session: Session; manifest: TenantManifest; walletId: string; authorizationId: string;
+  }) {
+    if (!authorizationId || this.#hostAuthorizations.has(authorizationId)) throw new Error('wallet_authorization_required');
+    const homes = this.#homes.get(session.sessionId) ?? [];
+    const index = homes.findIndex((home) => home.wallet.walletId === walletId);
+    if (index < 0) throw new Error('wallet_not_found');
+    if (homes[index]!.assets.some(({ balanceAtomic }) => balanceAtomic !== '0')) throw new Error('wallet_balance_unavailable_or_nonzero');
+    this.#hostAuthorizations.add(authorizationId);
+    homes.splice(index, 1);
+    this.#homes.set(session.sessionId, homes);
+    return this.getHome({ session, manifest });
+  }
+
   async provision({ session, manifest, request, evidence }: {
     session: Session;
     manifest: TenantManifest;
@@ -132,6 +162,9 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
     if (request.keyAdapter === 'took-sar' && request.source.type === 'new') {
       throw new Error('SAR wallet creation requires a completed host key-core registration.');
     }
+    if (request.keyAdapter === 'thirdweb-user-wallet' || request.source.type === 'provider-auth') {
+      throw new Error('thirdweb_persistent_provider_required');
+    }
     if (request.source.type === 'secure-new'
       || (request.source.type === 'secure-import' && request.source.method === 'mnemonic')) {
       const requiredGroups = new Set(manifest.chains.map((chainId) => chainCatalog[chainId]?.addressGroupId ?? chainId));
@@ -148,11 +181,8 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
 
     const homes = this.#homes.get(session.sessionId) ?? [];
     const asOf = new Date().toISOString();
-    const walletNumber = homes.length + 1;
     const origin = request.source.type === 'secure-import' ? 'imported' : 'created';
-    const adapterLabel = request.keyAdapter === 'took-sar'
-      ? origin === 'imported' ? '가져온 자가복구 지갑' : '자가복구 지갑'
-      : request.keyAdapter === 'fsl-mpc' ? 'FSL MPC 지갑' : 'Thirdweb MPC 지갑';
+    const label = request.label ?? suggestWalletLabel(manifest.brand.logoText, homes.map(({ wallet }) => wallet), origin);
     const networks = createSandboxNetworks(
       manifest,
       request.source.type === 'secure-new' || request.source.type === 'secure-import' ? request.source.addresses : [],
@@ -161,7 +191,7 @@ class SandboxWalletProvider implements WalletQueryProvider, WalletProvisioningPr
       status: 'ready',
       wallet: {
         walletId: `sandbox-wallet-${randomUUID()}`,
-        label: `${adapterLabel} ${walletNumber}`,
+        label,
         keyAdapter: request.keyAdapter,
         origin,
       },
@@ -215,19 +245,27 @@ const developmentDatabaseProvider = databaseUrl && !process.env.VITEST
     })
   : null;
 const kiwoomSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();
+const jbSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();
+const namuSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();
 const referenceSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();
 
 export const walletQueryProviders = new Map<string, WalletQueryProvider>([
   ['kiwoom', kiwoomSandboxProvider],
+  ['jb', jbSandboxProvider],
+  ['namu', namuSandboxProvider],
   ['reference-bank', referenceSandboxProvider],
 ]);
 
 export const walletProvisioningProviders = new Map<string, WalletProvisioningProvider>([
   ['kiwoom', kiwoomSandboxProvider],
+  ['jb', jbSandboxProvider],
+  ['namu', namuSandboxProvider],
   ['reference-bank', referenceSandboxProvider],
 ]);
 
 export const identityRegistrationProviders = new Map<string, IdentityRegistrationProvider>([
   ['kiwoom', kiwoomSandboxProvider],
+  ['jb', jbSandboxProvider],
+  ['namu', namuSandboxProvider],
   ['reference-bank', referenceSandboxProvider],
 ]);

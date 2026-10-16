@@ -145,7 +145,11 @@ export function verifyHostProof(token: string, secret: string, now = Math.floor(
   if (claims.expiresAt <= now) throw new Error('Host proof expired.');
   if (claims.issuedAt > now + 30) throw new Error('Host proof issued in the future.');
   if (claims.kind === 'wallet-authorization'
-    && (claims.purpose === 'wallet-provisioning' || claims.purpose === 'transfer-approval' || claims.purpose === 'wallet-recovery')
+    && (claims.purpose === 'wallet-provisioning'
+      || claims.purpose === 'transfer-approval'
+      || claims.purpose === 'exchange-approval'
+      || claims.purpose === 'wallet-recovery'
+      || claims.purpose === 'wallet-removal')
     && claims.method === 'development-reference-host') return claims as unknown as HostProofClaims;
   if (claims.kind === 'sar-key-core' && typeof claims.payloadHash === 'string') return claims as unknown as HostProofClaims;
   throw new Error('Unsupported host proof claims.');

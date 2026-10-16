@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "namu",
+  "runtimeTokenPath": "tenants/namu/ui-kit/extracted/design/tokens.css",
+  "candidates": [
+    { "name": "canvas", "value": "#D3E9EA", "kind": "measured", "referenceIds": ["R033", "R032"], "sample": "R033 (500,300) physical px", "confidence": "medium", "approval": "pending" },
+    { "name": "bottom", "value": "#222222", "kind": "measured", "referenceIds": ["R032", "R003"], "sample": "R032 (700,2500) physical px", "confidence": "high", "approval": "pending" },
+    { "name": "green", "value": "#84C43D", "kind": "estimated", "referenceIds": ["R035", "R041"], "sample": "green confirmation button flat areas in JPEG", "confidence": "low", "approval": "pending" },
+    { "name": "cardRadius", "value": 18, "unit": "CSS px", "kind": "estimated", "referenceIds": ["R033"], "sample": "white card corner at provisional 430 CSS px", "confidence": "medium", "approval": "pending" },
+    { "name": "bodyFont", "value": "Nanum Gothic", "kind": "proposed", "referenceIds": [], "sample": "user-selected preview font; official Namu font unavailable", "confidence": "high", "approval": "user-directed-preview" }
+  ]
+}

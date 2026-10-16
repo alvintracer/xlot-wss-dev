@@ -1,0 +1,15 @@
+{
+  "id": "/namu/app",
+  "name": "나무 월렛",
+  "short_name": "나무 월렛",
+  "description": "나무 앱 내 지갑 개발 미리보기",
+  "start_url": "/namu/app",
+  "scope": "/namu/",
+  "display": "standalone",
+  "background_color": "#D3E9EA",
+  "theme_color": "#D3E9EA",
+  "icons": [
+    { "src": "icons/namu-wallet-v3-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/namu-wallet-v3-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

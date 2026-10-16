@@ -58,6 +58,13 @@ describe('one-time host proof boundary', () => {
     expect(() => assertProofSession(verified, session)).not.toThrow();
   });
 
+  it('accepts a removal proof only with its removal purpose', () => {
+    const issued = issueWalletAuthorizationProof({ session, purpose: 'wallet-removal', secret, now: 200 });
+    const verified = verifyHostProof(issued.proof, secret, 250);
+    expect(verified).toMatchObject({ kind: 'wallet-authorization', purpose: 'wallet-removal' });
+    expect(() => assertProofSession(verified, session)).not.toThrow();
+  });
+
   it('binds a key-core proof to every public registration field', () => {
     const issued = issueSarKeyCoreProof({ session, payload: sarPayload, secret, now: 200 });
     const verified = verifyHostProof(issued.proof, secret, 250);

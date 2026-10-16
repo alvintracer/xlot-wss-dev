@@ -12,6 +12,7 @@ import { Wallet } from 'xrpl';
 import {
   verifySolanaNativeTransfer,
   verifySolanaSplTransfer,
+  verifyCosignedSolanaTransfer,
   verifyTronNativeTransfer,
   verifyTronTrc20Transfer,
   verifyXrplNativeTransfer,
@@ -26,6 +27,44 @@ type XrplTransaction = Extract<SecureTransactionSigningRequest['transaction'], {
 type XrplNativeTransaction = Extract<SecureTransactionSigningRequest['transaction'], { type: 'xrpl-native' }>;
 
 describe('non-EVM signed transfer verification', () => {
+  it('keeps the customer signature intact while the fee payer cosigns', async () => {
+    const payer = Keypair.generate();
+    const owner = Keypair.generate();
+    const message = new TransactionMessage({
+      payerKey: payer.publicKey,
+      recentBlockhash: '11111111111111111111111111111111',
+      instructions: [SystemProgram.transfer({
+        fromPubkey: owner.publicKey, toPubkey: Keypair.generate().publicKey, lamports: 1,
+      })],
+    }).compileToV0Message();
+    const unsigned = new VersionedTransaction(message);
+    const partial = new VersionedTransaction(message);
+    partial.sign([owner]);
+    const expected: SolanaTransaction = {
+      type: 'solana-spl', unsignedTransactionBase64: Buffer.from(unsigned.serialize()).toString('base64'),
+      recentBlockhash: message.recentBlockhash, lastValidBlockHeight: 100,
+      mintAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      sourceTokenAccount: owner.publicKey.toBase58(), destinationTokenAccount: Keypair.generate().publicKey.toBase58(),
+      amountAtomic: '1', feeLamports: '10000', sponsorFeePayer: payer.publicKey.toBase58(),
+    };
+    const partialBase64 = Buffer.from(partial.serialize()).toString('base64');
+    await expect(verifySolanaSplTransfer({
+      fromAddress: owner.publicKey.toBase58(), signedTransactionBase64: partialBase64, expected,
+    })).resolves.toEqual(expect.objectContaining({ transactionHash: expect.any(String) }));
+    const full = VersionedTransaction.deserialize(partial.serialize());
+    full.sign([payer]);
+    await expect(verifyCosignedSolanaTransfer({
+      partial: partial.serialize(), cosignedBase64: Buffer.from(full.serialize()).toString('base64'),
+      payer: payer.publicKey.toBase58(), owner: owner.publicKey.toBase58(),
+    })).resolves.toEqual(expect.objectContaining({ transactionHash: expect.any(String) }));
+    const payerSignature = full.signatures[0]!;
+    payerSignature[0] = (payerSignature[0] ?? 0) ^ 1;
+    await expect(verifyCosignedSolanaTransfer({
+      partial: partial.serialize(), cosignedBase64: Buffer.from(full.serialize()).toString('base64'),
+      payer: payer.publicKey.toBase58(), owner: owner.publicKey.toBase58(),
+    })).rejects.toThrow('solana_sponsor_signature_invalid');
+  });
+
   it('accepts only a valid signature over the exact prepared Solana message', async () => {
     const signer = Keypair.generate();
     const message = new TransactionMessage({

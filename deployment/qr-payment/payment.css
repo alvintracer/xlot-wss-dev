@@ -1,0 +1,24 @@
+:root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; color: #171714; background: #f7f5f0; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100dvh; }
+.pay-entry { width: min(100%, 440px); min-height: 100dvh; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 24px calc(25px + env(safe-area-inset-bottom)); }
+.pay-entry__brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 17px; border-bottom: 1px solid #26251f; }
+.pay-entry__brand-mark { font-family: Georgia, serif; font-size: 30px; font-weight: 700; letter-spacing: -.08em; line-height: 1; }
+.pay-entry__brand-mark span { color: #ef6a2c; }
+.pay-entry__brand small { color: #6d6a61; font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: .04em; }
+.pay-entry__icon { display: grid; width: 68px; height: 68px; place-items: center; margin-top: 42px; border-radius: 19px; background: #20201c; color: #fff; font-size: 36px; line-height: 1; }
+.pay-entry__eyebrow { margin: 30px 0 9px; color: #e86327; font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; letter-spacing: .1em; }
+h1 { margin: 0; font-size: clamp(29px, 8vw, 37px); line-height: 1.25; letter-spacing: -.055em; word-break: keep-all; }
+.pay-entry__lead { margin: 15px 0 30px; color: #615e57; font-size: 14px; line-height: 1.65; word-break: keep-all; }
+.pay-entry__choices { display: grid; gap: 10px; }
+.pay-entry__choices a { display: flex; min-height: 72px; align-items: center; gap: 13px; padding: 12px 15px; border: 1px solid #dedbd4; border-radius: 14px; background: #fff; color: #171714; text-decoration: none; }
+.pay-entry__choices a:focus-visible { outline: 2px solid #ef6a2c; outline-offset: 2px; }
+.pay-entry__choices strong { min-width: 0; flex: 1; font-size: 15px; }
+.pay-entry__badge { display: grid; min-width: 44px; height: 44px; place-items: center; padding: 0 6px; border-radius: 11px; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.pay-entry__badge--namu { background: #eaf7db; color: #377322; }
+.pay-entry__badge--kiwoom { background: #f0e9fc; color: #7132b3; }
+.pay-entry__badge--jb { background: #e4f1ff; color: #1368c3; }
+.pay-entry__chevron { color: #8a8982; font-size: 22px; }
+.pay-entry__error { margin-top: 17px; color: #b8323b; font-size: 13px; line-height: 1.5; }
+.pay-entry__foot { margin-top: 28px; color: #88857d; font-size: 11px; line-height: 1.55; word-break: keep-all; }
+@media (max-width: 340px) { .pay-entry { padding-right: 18px; padding-left: 18px; } .pay-entry__brand small { font-size: 8px; } }

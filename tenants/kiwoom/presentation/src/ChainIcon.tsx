@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { walletPublicAssetUrl } from './publicAssetUrl';
 
 interface ChainIconProps {
   chainId: string;
@@ -20,7 +21,7 @@ const chainIconExtensions: Record<string, 'png' | 'svg'> = {
 function chainIconUrl(chainId: string): string | null {
   const normalized = chainId.trim().toLowerCase();
   const extension = chainIconExtensions[normalized];
-  return extension ? `/assets/chains/${normalized}.${extension}` : null;
+  return extension ? walletPublicAssetUrl(`assets/chains/${normalized}.${extension}`) : null;
 }
 
 export function ChainIcon({ chainId, className }: ChainIconProps) {

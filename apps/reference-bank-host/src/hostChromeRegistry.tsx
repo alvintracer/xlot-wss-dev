@@ -4,11 +4,22 @@ import {
   KiwoomHostNavigation,
   type KiwoomHostChromeProps,
 } from '@took-wss/tenant-kiwoom-host-chrome';
+import { JbHostHeader, JbHostNavigation, JbHostPreview } from '@took-wss/tenant-jb-host-chrome';
+import { NamuHostHeader, NamuHostNavigation } from '@took-wss/tenant-namu-host-chrome';
 import type { ComponentType } from 'react';
 
+export interface HostChromeProps extends KiwoomHostChromeProps {
+  activeTab?: string;
+  onSelectTab?: (tab: string) => void;
+  customerName?: string | null;
+}
+
 export interface HostChromeProfile {
-  Header: ComponentType<KiwoomHostChromeProps>;
-  Navigation: ComponentType<KiwoomHostChromeProps>;
+  Header: ComponentType<HostChromeProps>;
+  Navigation: ComponentType<HostChromeProps>;
+  Preview?: ComponentType<HostChromeProps>;
+  initialTab: string;
+  walletTab: string;
 }
 
 function GenericHostHeader() {
@@ -22,12 +33,29 @@ function GenericHostNavigation() {
 const genericHostChrome: HostChromeProfile = {
   Header: GenericHostHeader,
   Navigation: GenericHostNavigation,
+  initialTab: 'wallet',
+  walletTab: 'wallet',
 };
 
 const hostChromeProfiles: Readonly<Record<string, HostChromeProfile>> = {
   'kiwoom-simple-mode-v1': {
     Header: KiwoomHostHeader,
     Navigation: KiwoomHostNavigation,
+    initialTab: 'wallet',
+    walletTab: 'wallet',
+  },
+  'jb-mobile-wallet-v1': {
+    Header: JbHostHeader,
+    Navigation: JbHostNavigation,
+    Preview: JbHostPreview,
+    initialTab: 'wallet',
+    walletTab: 'wallet',
+  },
+  'namu-investment-wallet-v1': {
+    Header: NamuHostHeader,
+    Navigation: NamuHostNavigation,
+    initialTab: 'wallet',
+    walletTab: 'wallet',
   },
 };
 

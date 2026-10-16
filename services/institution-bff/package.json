@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file=../../.env.local src/server.ts",
-    "build": "esbuild src/server.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/server.js",
+    "build": "esbuild src/server.ts --bundle --platform=node --format=cjs --target=node22 --outfile=dist/server.cjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -16,6 +16,8 @@
     "@took-wss/contracts": "0.1.0",
     "@took-wss/provider-adapters": "0.1.0",
     "@took-wss/tenant-kiwoom": "0.1.0",
+    "@took-wss/tenant-jb": "0.1.0",
+    "@took-wss/tenant-namu": "0.1.0",
     "@took-wss/tenant-reference-bank": "0.1.0",
     "ethers": "^6.17.0",
     "postgres": "3.4.9",

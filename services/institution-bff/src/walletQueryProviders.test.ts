@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { kiwoomManifest } from '@took-wss/tenant-kiwoom';
+import { jbManifest } from '@took-wss/tenant-jb';
+import { namuManifest } from '@took-wss/tenant-namu';
 import { walletProvisioningProviders, walletQueryProviders } from './walletQueryProviders';
 
 const baseSession = {
@@ -65,6 +67,40 @@ function evidence(includeKeyCore = false) {
 const hostAuthorizationProof = 'host-authorization-proof-for-provider-test';
 
 describe('tenant wallet query provider', () => {
+  it('persists tenant defaults, imported defaults and chosen names in wallet slots', async () => {
+    const provider = walletProvisioningProviders.get('namu')!;
+    const session = { ...baseSession, sessionId: 'named-namu-session', tenantId: 'namu' };
+    const provision = (idempotencyKey: string, label?: string, imported = false) => provider.provision({
+      manifest: namuManifest,
+      session,
+      request: {
+        idempotencyKey,
+        keyAdapter: 'took-sar',
+        ...(label ? { label } : {}),
+        recoverySetupAcknowledged: true,
+        hostAuthorizationProof,
+        source: imported ? secureImportSource : secureNewSource,
+      },
+      evidence: evidence(true),
+    });
+    const first = await provision('named-namu-001');
+    expect(first.walletHome.wallet.label).toBe('나무 월렛 1');
+    const second = await provision('named-namu-002', '생활비 지갑');
+    expect(second.walletHome.wallet.label).toBe('생활비 지갑');
+    const third = await provision('named-namu-003', undefined, true);
+    expect(third.walletHome.wallet.label).toBe('가져온 월렛 1');
+    expect(third.walletHome.wallets.map(({ label }) => label)).toEqual(['나무 월렛 1', '생활비 지갑', '가져온 월렛 1']);
+
+    const jbProvider = walletProvisioningProviders.get('jb')!;
+    const jb = await jbProvider.provision({
+      manifest: jbManifest,
+      session: { ...baseSession, sessionId: 'named-jb-session', tenantId: 'jb' },
+      request: { idempotencyKey: 'named-jb-001', keyAdapter: 'took-sar', recoverySetupAcknowledged: true, hostAuthorizationProof, source: secureNewSource },
+      evidence: evidence(true),
+    });
+    expect(jb.walletHome.wallet.label).toBe('JB 월렛 1');
+  });
+
   it('returns W00 absent instead of a fabricated sandbox portfolio', async () => {
     const provider = walletQueryProviders.get('kiwoom');
     expect(provider).toBeDefined();
@@ -152,6 +188,47 @@ describe('tenant wallet query provider', () => {
     expect(selected.wallet.walletId).toBe(first.walletHome.wallet.walletId);
     expect(selected.wallets).toHaveLength(2);
     expect(selected.assets).toEqual(first.walletHome.assets);
+  });
+
+  it('removes only the requested empty slot and rejects proof reuse', async () => {
+    const provider = walletProvisioningProviders.get('kiwoom')!;
+    const query = walletQueryProviders.get('kiwoom')!;
+    const session = { ...baseSession, sessionId: 'remove-wallet-session' };
+    const request = (idempotencyKey: string) => ({
+      manifest: kiwoomManifest,
+      session,
+      request: { idempotencyKey, keyAdapter: 'fsl-mpc' as const, recoverySetupAcknowledged: true, hostAuthorizationProof, source: { type: 'new' as const } },
+      evidence: evidence(),
+    });
+    const first = await provider.provision(request('remove-wallet-001'));
+    const second = await provider.provision(request('remove-wallet-002'));
+    const authorizationId = evidence().hostAuthorizationId;
+    const after = await query.removeWallet({ session, manifest: kiwoomManifest, walletId: second.walletHome.wallet.walletId, authorizationId });
+    expect(after.status).toBe('ready');
+    if (after.status !== 'ready') throw new Error('Expected remaining wallet.');
+    expect(after.wallet.walletId).toBe(first.walletHome.wallet.walletId);
+    expect(after.wallets).toHaveLength(1);
+    await expect(query.removeWallet({ session, manifest: kiwoomManifest, walletId: first.walletHome.wallet.walletId, authorizationId })).rejects.toThrow('wallet_authorization_required');
+  });
+
+  it('renames an owned slot and keeps that name in the wallet list', async () => {
+    const provider = walletProvisioningProviders.get('kiwoom')!;
+    const query = walletQueryProviders.get('kiwoom')!;
+    const session = { ...baseSession, sessionId: 'rename-wallet-session' };
+    const created = await provider.provision({
+      manifest: kiwoomManifest,
+      session,
+      request: { idempotencyKey: 'rename-wallet-001', keyAdapter: 'fsl-mpc', recoverySetupAcknowledged: true, hostAuthorizationProof, source: { type: 'new' } },
+      evidence: evidence(),
+    });
+    const walletId = created.walletHome.wallet.walletId;
+    const renamed = await query.renameWallet({ session, walletId, label: '여행용 지갑' });
+    expect(renamed).toMatchObject({ walletId, label: '여행용 지갑' });
+    const home = await query.getHome({ session, manifest: kiwoomManifest });
+    expect(home.status).toBe('ready');
+    if (home.status !== 'ready') throw new Error('Expected ready wallet home.');
+    expect(home.wallets[0]?.label).toBe('여행용 지갑');
+    await expect(query.renameWallet({ session: { ...session, sessionId: 'another-session' }, walletId, label: '잘못된 변경' })).rejects.toThrow('wallet_not_found');
   });
 
   it('registers a secure mnemonic import as one imported SAR wallet slot', async () => {

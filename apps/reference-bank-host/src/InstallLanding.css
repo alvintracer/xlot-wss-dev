@@ -1,0 +1,49 @@
+.install-landing {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(22px, env(safe-area-inset-top)) 20px max(22px, env(safe-area-inset-bottom));
+  background: var(--install-canvas);
+  color: var(--install-ink);
+  font-family: var(--install-font);
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+.install-landing__content { display: flex; width: min(100%, 430px); min-height: min(740px, calc(100dvh - 44px)); flex-direction: column; }
+.install-landing__brand { display: flex; align-items: center; gap: 8px; color: var(--install-ink); font-size: 14px; font-weight: 800; }
+.install-landing__brand-mark { display: block; width: 27px; height: 27px; object-fit: contain; }
+.install-landing__hero { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; padding: 28px 0 30px; text-align: center; }
+.install-landing__icon { display: block; width: clamp(112px, 35vw, 152px); height: auto; margin-bottom: 29px; object-fit: contain; }
+.install-landing__eyebrow { color: var(--install-accent); font-size: 11px; font-weight: 800; letter-spacing: .17em; }
+.install-landing__hero h1 { margin: 13px 0 0; color: var(--install-ink); font-size: clamp(30px, 8vw, 38px); font-weight: 800; line-height: 1.26; letter-spacing: -.065em; }
+.install-landing__hero p { margin: 16px 0 0; color: var(--install-muted); font-size: 14px; line-height: 1.65; }
+.install-landing__actions { width: 100%; padding-bottom: 4px; }
+.install-landing__buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.install-landing__button { display: inline-flex; min-width: 0; min-height: 54px; align-items: center; justify-content: center; gap: 5px; padding: 0 8px; border: 1px solid transparent; border-radius: 13px; font: inherit; font-size: clamp(11px, 3.25vw, 14px); font-weight: 800; line-height: 1.2; text-align: center; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.install-landing__button svg { width: 17px; height: 17px; flex: 0 0 auto; }
+.install-landing__button--primary { background: var(--install-primary); color: var(--install-primary-ink); }
+.install-landing__button--secondary { border-color: var(--install-border); background: #fff; color: var(--install-ink); }
+.install-landing__button:disabled { opacity: .64; cursor: default; }
+.install-landing__button:focus-visible, .install-landing__copy:focus-visible, .install-landing__help:focus-visible { outline: 3px solid var(--install-accent); outline-offset: 3px; }
+.install-landing__hint { margin: 15px 0 0; color: var(--install-muted); font-size: 11px; line-height: 1.6; text-align: center; }
+.install-landing__message { margin: 13px 0 0; padding: 11px 12px; border-radius: 10px; background: rgb(255 255 255 / 72%); color: var(--install-ink); font-size: 12px; line-height: 1.55; text-align: center; }
+.install-landing__steps { margin-top: 17px; padding: 17px 18px; border: 1px solid var(--install-border); border-radius: 16px; background: #fff; color: var(--install-ink); }
+.install-landing__steps > strong { display: flex; align-items: center; gap: 7px; font-size: 14px; }
+.install-landing__steps > strong svg { color: var(--install-accent); }
+.install-landing__steps ol { display: grid; gap: 9px; margin: 14px 0 0; padding-left: 21px; font-size: 12px; line-height: 1.5; }
+.install-landing__steps li::marker { color: var(--install-accent); font-weight: 800; }
+.install-landing__steps p { margin: 11px 0 0; color: var(--install-muted); font-size: 11px; line-height: 1.55; }
+.install-landing__copy, .install-landing__help { display: inline-flex; min-height: 35px; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; color: var(--install-accent); font-size: 12px; font-weight: 800; cursor: pointer; }
+.install-landing__copy { margin-top: 7px; }
+.install-landing__help { display: flex; margin: 10px auto 0; }
+.install-landing__loading { display: grid; min-height: 100dvh; align-content: center; justify-items: center; gap: 10px; padding: 32px; text-align: center; word-break: keep-all; }
+.install-landing__loading-mark { position: relative; display: grid; width: 58px; height: 58px; place-items: center; margin-bottom: 8px; color: var(--app-loading-primary); }
+.install-landing__loading-mark span { position: absolute; inset: -5px; border: 2px solid color-mix(in srgb, var(--app-loading-primary) 14%, transparent); border-top-color: var(--app-loading-primary); border-radius: 50%; animation: install-landing-spin 800ms linear infinite; }
+.install-landing__loading strong { font-size: 18px; line-height: 1.5; }
+.install-landing__loading p { margin: 0; opacity: .66; font-size: 13px; line-height: 1.6; }
+.install-landing__loading > button { min-height: 48px; margin-top: 12px; padding: 0 20px; border: 0; border-radius: 12px; background: var(--app-loading-primary); color: var(--app-loading-primary-ink); font: inherit; font-weight: 700; }
+.install-landing__loading > button:focus-visible { outline: 3px solid var(--app-loading-primary); outline-offset: 3px; }
+@keyframes install-landing-spin { to { transform: rotate(360deg); } }
+@media (max-height: 700px) { .install-landing__content { min-height: calc(100dvh - 44px); } .install-landing__hero { padding: 24px 0; } .install-landing__icon { width: 112px; margin-bottom: 15px; } }
+@media (prefers-reduced-motion: reduce) { .install-landing *, .install-landing *::before, .install-landing *::after { scroll-behavior: auto !important; transition-duration: 0s !important; animation-duration: 0s !important; } .install-landing__loading-mark span { animation-duration: 0s; } }

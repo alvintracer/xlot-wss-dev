@@ -1,0 +1,14 @@
+{
+  "name": "@took-wss/tenant-jb-presentation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.tsx" },
+  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "@took-wss/contracts": "0.1.0",
+    "@took-wss/tenant-kiwoom-presentation": "0.1.0",
+    "react": "^19.2.0"
+  }
+}

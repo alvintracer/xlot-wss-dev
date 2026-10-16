@@ -12,11 +12,16 @@ button { font: inherit; }
   gap: 10px;
   padding: 32px;
   text-align: center;
-  background: #f8f7fa;
+  background: var(--runtime-canvas);
 }
 .runtime-gate strong { font-size: 18px; }
-.runtime-gate p { max-width: 280px; margin: 0; color: #716b78; font-size: 13px; line-height: 1.6; }
-.runtime-mark { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 8px; border-radius: 20px; background: #fff; color: #5b2ca0; box-shadow: 0 14px 38px rgb(32 18 48 / 10%); }
+.runtime-gate p { max-width: 280px; margin: 0; color: var(--runtime-muted); font-size: 13px; line-height: 1.6; }
+.runtime-review-link { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; margin-top: 10px; padding: 0 16px; border-radius: 8px; background: #202728; color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+.runtime-review-link:focus-visible { outline: 2px solid #3c9c51; outline-offset: 3px; }
+.runtime-mark { position: relative; display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 8px; border-radius: 50%; background: transparent; color: var(--runtime-primary); }
+.runtime-spinner { position: absolute; inset: -5px; border: 2px solid color-mix(in srgb, var(--runtime-primary) 14%, transparent); border-top-color: var(--runtime-primary); border-radius: 50%; animation: runtime-spin 800ms linear infinite; }
+
+@keyframes runtime-spin { to { transform: rotate(360deg); } }
 
 .generic-wallet {
   --tenant-primary: #5b2ca0;
@@ -34,6 +39,19 @@ button { font: inherit; }
 .generic-wallet p { max-width: 290px; margin: 0; color: #667085; font-size: 14px; line-height: 1.6; }
 .generic-wallet button { width: 100%; min-height: 52px; margin-top: 28px; border: 0; border-radius: 18px; background: var(--tenant-primary); color: #fff; font-weight: 700; }
 
+.native-thirdweb-auth-backdrop { position: fixed; inset: 0; z-index: 2147483646; display: flex; align-items: flex-end; background: rgb(16 28 22 / 38%); }
+.native-thirdweb-auth { width: 100%; padding: 22px 22px max(26px, env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; background: #fff; box-shadow: 0 -12px 36px rgb(0 0 0 / 12%); color: #1b2520; }
+.native-thirdweb-auth__mark { display: grid; place-items: center; width: 45px; height: 45px; margin-bottom: 18px; border-radius: 14px; background: color-mix(in srgb, var(--native-auth-color) 16%, white); color: var(--native-auth-color); }
+.native-thirdweb-auth h2 { margin: 0 0 8px; font-size: 21px; line-height: 1.3; }
+.native-thirdweb-auth p { margin: 0 0 22px; color: #69756f; font-size: 14px; line-height: 1.55; word-break: keep-all; }
+.native-thirdweb-auth__methods { display: grid; gap: 9px; }
+.native-thirdweb-auth__methods button { min-height: 50px; border: 1px solid #e1e9e4; border-radius: 13px; background: #fff; color: #1b2520; font-weight: 700; }
+.native-thirdweb-auth__methods button:first-child { border-color: var(--native-auth-color); background: var(--native-auth-color); color: #152117; }
+.native-thirdweb-auth__cancel { display: block; width: 100%; min-height: 44px; margin-top: 9px; border: 0; background: transparent; color: #69756f; font-weight: 700; }
+.native-thirdweb-auth-wait { position: fixed; inset: 0; z-index: 2147483645; display: grid; place-items: center; padding: 24px; background: #fff; color: #1b2520; font-size: 16px; font-weight: 700; }
+.native-thirdweb-auth button:focus-visible { outline: 2px solid var(--native-auth-color); outline-offset: 3px; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; }
+  .runtime-spinner { animation: none; border-top-color: rgb(91 44 160 / 14%); }
 }

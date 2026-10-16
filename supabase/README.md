@@ -47,9 +47,11 @@ browser or add it to a `VITE_*` variable.
 ## Supabase Auth + SOLAPI phone OTP
 
 `wss-auth-send-sms` is an HTTP Send SMS Auth Hook. Supabase Auth owns OTP
-generation, expiry, and verification; the hook only verifies the Standard
-Webhooks signature and sends the supplied code through SOLAPI. WSS never stores
-that code or a second copy of its MAC.
+generation, expiry, and verification. Before requesting an OTP, the BFF stores
+the tenant manifest's wallet name in a 90-second, one-use delivery context
+indexed by an HMAC of the phone. The signed hook consumes that context and sends
+the supplied code through SOLAPI. WSS never stores the code or a second copy of
+its MAC. Requests without a matching context fail closed.
 
 Add these values to the ignored, mode-0600 `.env.local`:
 
@@ -58,8 +60,10 @@ Add these values to the ignored, mode-0600 `.env.local`:
 - `WSS_SOLAPI_API_KEY`;
 - `WSS_SOLAPI_API_SECRET`;
 - `WSS_SOLAPI_SENDER_NUMBER`: a sender already registered with SOLAPI.
+- `WSS_PHONE_LOOKUP_SECRET`: the same server-only HMAC secret used by the BFF.
 
-Then activate the linked development project in one guarded command:
+Apply the latest development migration, deploy the BFF, then activate the linked
+development project's SMS hook:
 
 ```bash
 npm run auth:activate:solapi

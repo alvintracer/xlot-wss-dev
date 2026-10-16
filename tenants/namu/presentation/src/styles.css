@@ -1,0 +1,134 @@
+@import "../../ui-kit/extracted/design/tokens.css";
+
+.namu-wallet { height: 100%; min-height: 0; background: var(--namu-canvas); font-family: var(--namu-body-font); }
+.namu-wallet .kw-root {
+  --kw-font-family: var(--namu-body-font);
+  --kw-color-brand-primary: var(--namu-green);
+  --kw-color-canvas: var(--namu-canvas);
+  --kw-color-surface: var(--namu-surface);
+  --kw-color-text-primary: var(--namu-ink);
+  --kw-color-text-body: #313638;
+  --kw-color-text-muted: var(--namu-secondary);
+  --kw-color-text-purple: #3a6f24;
+  --kw-color-surface-lavender: var(--namu-green-soft);
+  --kw-color-surface-quiet: var(--namu-soft);
+  --kw-color-border: var(--namu-rule);
+  --kw-color-price-up: var(--namu-positive);
+  --kw-color-price-down: var(--namu-negative);
+  --kw-radius-card: var(--namu-card-radius);
+  --kw-radius-button: var(--namu-small-radius);
+  --kw-radius-item: var(--namu-small-radius);
+  --kw-layout-card-gutter: var(--namu-page-inset);
+  --kw-layout-card-padding: 19px;
+  --kw-layout-card-padding-y: 21px;
+}
+.namu-wallet .kw-wallet-home { padding-top: 10px; }
+.namu-wallet .kw-card { margin-bottom: 10px; }
+.namu-wallet .kw-payment-section { padding: 19px; }
+.namu-wallet .kw-payment-tiles > button { border-radius: 12px; background: #fff; }
+.namu-wallet .kw-payment-scan { border-radius: 10px; background: #edf8df; color: #3c8423; }
+.namu-wallet .kw-wallet-card-visual { border-radius: 16px; background: linear-gradient(125deg, #8bcf45, #3f9432); color: #12230b; }
+.namu-wallet .kw-wallet-card-visual__shine { border-color: rgb(255 255 255 / 45%); }
+.namu-wallet .kw-wallet-card-visual__register { color: #fff; }
+.namu-wallet .kw-payment-primary { color: #18270c; }
+.namu-wallet .kw-selected-wallet-card { padding-top: 18px; }
+.namu-wallet .kw-selected-wallet-card__heading h2,
+.namu-wallet .kw-transfer-activity__heading h2 { font-size: 18px; line-height: 25px; }
+.namu-wallet .kw-selected-wallet-card__heading p { color: var(--namu-secondary); font-size: 11px; }
+.namu-wallet .kw-asset-list { margin-top: 12px; }
+.namu-wallet .kw-asset-row { min-height: 72px; gap: 10px; border-top: 1px solid var(--namu-rule); }
+.namu-wallet .kw-asset-row:first-child { border-top: 0; }
+.namu-wallet .kw-asset-icon { width: 26px; height: 26px; font-size: 10px; }
+.namu-wallet .kw-asset-name { font-size: 15px; font-weight: 500; }
+.namu-wallet .kw-asset-sub { font-size: 11px; }
+.namu-wallet .kw-asset-value strong { font-size: 15px; font-weight: 700; }
+.namu-wallet .kw-asset-value small { color: var(--namu-secondary); font-size: 11px; }
+.namu-wallet .kw-sheet { border-radius: 18px 18px 0 0; box-shadow: 0 -8px 32px rgb(0 0 0 / 9%); }
+.namu-wallet .kw-sheet-scrim { background: rgb(0 0 0 / 46%); }
+.namu-wallet .kw-choice { border-radius: 9px; }
+.namu-wallet .kw-choice[aria-pressed='true'], .namu-wallet .kw-wallet-choice-row[data-selected='true'] { border-color: var(--namu-green); }
+.namu-wallet .kw-button { color: #18270c; }
+.namu-wallet .kw-own-wallet-primary { color: #18270c; }
+.namu-wallet .kw-button--secondary { color: var(--namu-ink); }
+.namu-wallet .kw-link { color: #347b24; }
+.namu-wallet .kw-wallet-assets-empty > svg { border-radius: 50%; }
+.namu-wallet .kw-root .kw-asset-action-rail { border-color: #d7e6cf; }
+.namu-wallet .kw-root .kw-exchange-card--active { box-shadow: inset 0 0 0 1px rgb(132 196 61 / 35%); }
+
+.namu-wallet .namu-service-section { margin: 0 10px 10px; padding: 19px; border-radius: var(--namu-card-radius); background: #fff; }
+.namu-wallet .namu-service-section__head h2 { margin: 0; color: var(--namu-ink); font-size: 18px; line-height: 25px; }
+.namu-wallet .namu-service-section__head p { margin: 3px 0 0; color: var(--namu-secondary); font-size: 12px; line-height: 18px; word-break: keep-all; overflow-wrap: normal; text-wrap: wrap; }
+.namu-wallet .namu-service-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 17px; }
+.namu-wallet .namu-service-grid > button { display: flex; min-width: 0; min-height: 118px; flex-direction: column; align-items: flex-start; padding: 14px; border: 1px solid var(--namu-rule); border-radius: 12px; background: #fff; color: var(--namu-ink); text-align: left; cursor: pointer; }
+.namu-wallet .namu-service-grid > button img { display: block; width: 40px; height: 40px; border: 1px solid #f1f2f2; border-radius: 12px; object-fit: contain; }
+.namu-wallet .namu-service-grid > button span { display: grid; gap: 3px; margin-top: auto; }
+.namu-wallet .namu-service-grid > button strong { font-size: 15px; line-height: 20px; }
+.namu-wallet .namu-service-grid > button small { color: var(--namu-secondary); font-size: 11px; line-height: 16px; }
+.namu-wallet .namu-service-grid > button svg { align-self: flex-end; margin-top: -26px; color: #a4aaac; }
+.namu-wallet .namu-service-grid > button:focus-visible,
+.namu-wallet .namu-service-sheet button:focus-visible { outline: 2px solid #238b45; outline-offset: 2px; }
+.namu-wallet .namu-service-layer { position: absolute; z-index: 82; inset: 0; background: #fff; }
+.namu-wallet .namu-service-sheet { display: flex; width: 100%; height: 100%; min-height: 0; flex-direction: column; background: #fff; color: var(--namu-ink); }
+.namu-wallet .namu-service-sheet .kw-payment-sheet__header { display: grid; min-height: 58px; flex: 0 0 58px; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--namu-rule); text-align: center; }
+.namu-wallet .namu-service-sheet .kw-payment-sheet__header strong { grid-column: 2; font-size: 16px; }
+.namu-wallet .namu-service-sheet .kw-payment-sheet__header button { display: grid; width: 44px; height: 44px; grid-column: 3; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--namu-ink); cursor: pointer; }
+.namu-wallet .namu-service-sheet .kw-payment-sheet__header .kw-payment-sheet__leading { grid-column: 1; grid-row: 1; }
+.namu-wallet .namu-service-sheet__body { display: flex; flex-direction: column; gap: 0; padding: 20px 19px 24px; }
+.namu-wallet .namu-service-sheet .kw-payment-sheet__body { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+.namu-wallet .namu-service-hero { padding: 22px; border-radius: 19px; background: linear-gradient(145deg, color-mix(in srgb, var(--service-color) 12%, white), #f8faf7 72%); }
+.namu-wallet .namu-service-hero__brand { display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px 5px 5px; border: 1px solid color-mix(in srgb, var(--service-color) 18%, white); border-radius: 999px; background: #fff; color: var(--namu-ink); font-size: 12px; font-weight: 700; }
+.namu-wallet .namu-service-hero__brand img { width: 26px; height: 26px; border-radius: 50%; object-fit: contain; }
+.namu-wallet .namu-service-hero h2 { margin: 17px 0 0; color: var(--namu-ink); font-size: clamp(23px, 6.3vw, 27px); font-weight: 800; line-height: 1.34; letter-spacing: -.045em; }
+.namu-wallet .namu-service-hero p { margin: 8px 0 0; color: #5c6668; font-size: 12px; line-height: 1.6; word-break: keep-all; overflow-wrap: normal; text-wrap: wrap; }
+.namu-wallet .namu-service-wallet { display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 0 15px; border: 1px solid var(--namu-rule); border-radius: 11px; background: #fff; }
+.namu-wallet .namu-service-wallet span { flex: 0 0 auto; color: var(--namu-secondary); font-size: 12px; }
+.namu-wallet .namu-service-wallet strong { min-width: 0; overflow: hidden; color: var(--namu-ink); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.namu-wallet .namu-service-address { display: flex; width: 100%; align-items: center; justify-content: space-between; margin-top: 7px; padding: 9px 14px; border: 1px solid var(--namu-rule); border-radius: 10px; background: #fff; color: var(--namu-secondary); font-size: 12px; cursor: pointer; }
+.namu-wallet .namu-service-address:focus-visible { outline: 2px solid var(--namu-green); outline-offset: 2px; }
+.namu-wallet .namu-service-address-hint, .namu-wallet .namu-service-message { margin: 8px 0 0; color: #bd3333; font-size: 12px; line-height: 1.5; word-break: keep-all; }
+.namu-wallet .namu-service-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 26px; }
+.namu-wallet .namu-service-progress span { height: 4px; border-radius: 99px; background: #e9ece9; }
+.namu-wallet .namu-service-progress span.is-current { background: var(--namu-green); }
+.namu-wallet .namu-service-step { padding: 20px 3px 0; }
+.namu-wallet .namu-service-step__icon { display: grid; width: 52px; height: 52px; place-items: center; margin-bottom: 18px; border-radius: 16px; background: var(--namu-green-soft); color: #438b2b; }
+.namu-wallet .namu-service-step small { color: #549334; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+.namu-wallet .namu-service-step h3 { margin: 7px 0 0; color: var(--namu-ink); font-size: 21px; line-height: 1.4; }
+.namu-wallet .namu-service-step p { margin: 7px 0 0; color: #626b6d; font-size: 13px; line-height: 1.65; word-break: keep-all; overflow-wrap: normal; text-wrap: wrap; }
+.namu-wallet .namu-service-preview-note { margin: 24px 0 0; padding: 13px 14px; border-radius: 11px; background: #f4f6f4; color: #626b6d; font-size: 11px; line-height: 1.6; word-break: keep-all; overflow-wrap: normal; text-wrap: wrap; }
+.namu-wallet .namu-service-sheet__footer { flex: 0 0 auto; padding: 12px 19px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--namu-rule); background: #fff; }
+.namu-wallet .namu-service-sheet__footer button { display: flex; width: 100%; min-height: 52px; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 11px; background: var(--namu-green); color: #18270c; font-size: 15px; font-weight: 800; cursor: pointer; }
+@media (max-width: 350px) { .namu-wallet .namu-service-grid > button { min-height: 112px; padding: 12px; } .namu-wallet .namu-service-hero { padding: 19px; } }
+
+.namu-wallet-carousel { margin-bottom: 10px; }
+.namu-wallet-carousel__track { display: flex; gap: 10px; overflow-x: auto; padding: 0 10px; scroll-padding-left: 10px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.namu-wallet-carousel__track[data-multiple='true'] .namu-portfolio-card { flex-basis: calc(100% - 32px); }
+.namu-wallet-carousel__track[data-multiple='true'] .namu-portfolio-card:last-child { flex-basis: 100%; }
+.namu-wallet-carousel__track::-webkit-scrollbar { display: none; }
+.namu-wallet-carousel__track:focus-visible { outline: 2px solid #238b45; outline-offset: -2px; }
+.namu-wallet-carousel__dots { display: flex; min-height: 25px; align-items: center; justify-content: center; gap: 7px; }
+.namu-wallet-carousel__dots button { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%; background: #a5c8bf; cursor: pointer; }
+.namu-wallet-carousel__dots button[aria-current='true'] { background: var(--namu-green); }
+.namu-wallet-carousel__dots button:focus-visible { outline: 2px solid #238b45; outline-offset: 3px; }
+.namu-wallet-carousel__error { margin: 0 10px 8px; color: #bd3333; font-size: 12px; }
+.namu-portfolio-card { position: relative; box-sizing: border-box; min-width: 0; flex: 0 0 100%; margin: 0; padding: 20px 19px 18px; scroll-snap-align: start; border-radius: var(--namu-card-radius); background: var(--namu-surface); color: var(--namu-ink); }
+.namu-portfolio-card__loading { position: absolute; inset: 0; display: grid; place-items: center; border-radius: inherit; background: rgb(255 255 255 / 92%); color: var(--namu-ink); font-size: 13px; font-weight: 700; }
+.namu-portfolio-card__head, .namu-portfolio-card__tools { display: flex; min-width: 0; align-items: center; justify-content: space-between; }
+.namu-portfolio-card__head { gap: 4px; }
+.namu-portfolio-card__select { display: flex; min-width: 0; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: var(--namu-ink); text-align: left; }
+.namu-portfolio-card__select strong { overflow: hidden; font-size: 18px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
+.namu-portfolio-card__select svg { color: #9ba1a1; }
+.namu-portfolio-card__tools { flex: 0 0 auto; gap: 0; padding-right: 6px; color: #9ca2a2; white-space: nowrap; }
+.namu-portfolio-card__tools span { font-size: 11px; }
+.namu-portfolio-card__tools button, .namu-portfolio-card__inset button { display: grid; width: 36px; height: 40px; flex: 0 0 auto; place-items: center; padding: 0; border: 0; background: transparent; color: #9ca2a2; }
+.namu-portfolio-card__amount { display: block; margin-top: 6px; overflow-wrap: anywhere; font-size: clamp(28px, 7vw, 34px); font-weight: 750; line-height: 1.25; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.namu-portfolio-card__detail { margin: 5px 0 0; color: var(--namu-secondary); font-size: 12px; line-height: 18px; }
+.namu-portfolio-card__detail, .namu-portfolio-card__inset span { word-break: keep-all; overflow-wrap: normal; text-wrap: wrap; }
+.namu-portfolio-card__inset { display: grid; min-height: 50px; grid-template-columns: auto minmax(0, 1fr) 36px; align-items: center; gap: 8px; margin-top: 21px; padding: 0 8px 0 15px; border-radius: var(--namu-small-radius); background: var(--namu-soft); }
+.namu-portfolio-card__inset span { color: var(--namu-secondary); font-size: 12px; }
+.namu-portfolio-card__inset strong { overflow: hidden; font-size: 12px; font-weight: 500; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.namu-portfolio-card__actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 14px; }
+.namu-portfolio-card__actions button { min-height: 43px; border: 1px solid #e6e9e8; border-radius: 8px; background: #fff; color: #242a2b; font-size: 13px; font-weight: 700; }
+.namu-portfolio-card__actions button:first-child { border-color: var(--namu-green); background: var(--namu-green); color: #18270c; }
+.namu-portfolio-card button:disabled { opacity: .65; cursor: default; }
+.namu-portfolio-card button:focus-visible { outline: 2px solid #238b45; outline-offset: 2px; }
+@media (max-width: 359px) { .namu-portfolio-card { padding-inline: 14px; } .namu-portfolio-card__tools span { display: none; } .namu-portfolio-card__amount { font-size: 27px; } }

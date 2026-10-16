@@ -1,0 +1,15 @@
+{
+  "id": "/kiwoom/app",
+  "name": "키움 월렛",
+  "short_name": "키움 월렛",
+  "description": "금융사 앱 내 디지털자산 월렛 개발 미리보기",
+  "start_url": "/kiwoom/app",
+  "scope": "/kiwoom/",
+  "display": "standalone",
+  "background_color": "#F5F5F5",
+  "theme_color": "#7D3BDD",
+  "icons": [
+    { "src": "icons/kiwoom-wallet-v2-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/kiwoom-wallet-v2-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

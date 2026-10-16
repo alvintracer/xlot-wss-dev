@@ -50,10 +50,11 @@ export function createTransightClientFromEnv(env = process.env) {
   });
 }
 
-function gatewayError(response, error) {
+function gatewayError(response, error, traceId) {
   const known = error instanceof TransightError;
   const code = known ? error.code : "INTERNAL_ERROR";
   console.error("[kyt-gateway]", {
+    traceId,
     code,
     retryable: known ? error.retryable : false,
   });
@@ -118,6 +119,8 @@ export function createApp({ env = process.env, transightClient } = {}) {
   });
 
   app.post("/v1/address/screen", async (request, response) => {
+    const suppliedTrace = request.get('x-request-id');
+    const traceId = /^[0-9a-f-]{36}$/i.test(suppliedTrace ?? '') ? suppliedTrace : undefined;
     if (!secureEqual(request.get("x-api-key"), env.INTERNAL_GATEWAY_TOKEN)) {
       return response.status(401).json({ error: "Unauthorized" });
     }
@@ -138,7 +141,7 @@ export function createApp({ env = process.env, transightClient } = {}) {
     try {
       return response.json(await activeClient.screenAddress(address));
     } catch (error) {
-      return gatewayError(response, error);
+      return gatewayError(response, error, traceId);
     }
   });
 

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "namu",
+  "sources": { "roots": ["references"], "exclude": ["extracted/**", "qa/**", ".artifacts/**"], "readOnly": true },
+  "review": {
+    "mode": "draft-without-intermediate-approval",
+    "referenceViewport": { "widthCssPx": 430, "heightCssPx": 932, "status": "estimated" },
+    "robustnessWidthsCssPx": [320, 360, 390, 430],
+    "allowExternalUpload": false,
+    "url": "http://127.0.0.1:5174/namu-review.html",
+    "devCommand": ["npm", "run", "dev", "-w", "@took-wss/wallet-webview", "--", "--host", "127.0.0.1"]
+  },
+  "figma": { "enabled": false, "frames": [] },
+  "fontOverrides": { "heading": "Nanum Gothic", "body": "Nanum Gothic", "numeral": "Nanum Gothic", "control": "Nanum Gothic" },
+  "runtimeBindings": {
+    "profileId": "namu-investment-wallet-v1",
+    "manifestPath": null,
+    "presentationPath": "tenants/namu/presentation",
+    "hostChromePath": "tenants/namu/host-chrome"
+  }
+}

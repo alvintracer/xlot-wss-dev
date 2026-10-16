@@ -28,6 +28,9 @@ Every project selects a versioned recovery requirement at creation time: `sar-re
 - `tenants/kiwoom` — first institutional profile and screenshot-derived UI source of truth
 - `tenants/kiwoom/host-chrome` — Kiwoom-owned root header and five-tab app navigation for the Reference Host
 - `tenants/kiwoom/presentation` — lazily loaded Kiwoom wallet presentation package
+- `tenants/JB` — second institutional tenant, using the JB home/account UI references
+- `tenants/JB/host-chrome` — JB home tabs, account/card preview, and five-item host navigation
+- `tenants/JB/presentation` — JB wallet styling over the shared WSS wallet flows
 - `tenants/reference-bank` — generic bank reference profile
 - `docs/architecture/0004-host-shell-and-focused-wallet-flows.md` — host tab, focused-flow, and future menu policy
 
@@ -44,6 +47,8 @@ npm run dev
 - Institution BFF: `http://localhost:4100`
 
 The host starts with the Kiwoom tenant and can request took SAR, Thirdweb User Wallet, or FSL MPC. The browser-to-BFF session call is a local reference flow only. In production, a financial institution backend creates the session and gives the short-lived token to its native app.
+
+The JB tenant is available from the Reference Host tenant selector. The deployment preview opens directly at `/jb/app`; `내 지갑` sits beside `내 계좌` and `내 카드` in the JB home header. The PWA icon uses `tenants/JB/ui-kit/app-logo-jb.webp`.
 
 The Kiwoom manifest prefers Supabase Auth phone verification with the SOLAPI
 Send SMS Hook. The linked `xlot-wss-dev` project has that path activated;

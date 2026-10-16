@@ -4,6 +4,9 @@ import { ethers } from 'ethers';
 import postgres from 'postgres';
 
 const hostUrl = process.env.WSS_REFERENCE_HOST_URL || 'http://127.0.0.1:5173';
+const appOnlyPreview = process.env.WSS_IMPORT_APP_ONLY === 'true';
+const anonymousAppPreview = process.env.WSS_IMPORT_APP_ONLY_ANONYMOUS === 'true';
+const repeatMnemonicImport = process.env.WSS_IMPORT_REPEAT_MNEMONIC === 'true';
 const chromePath = process.env.WSS_CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const screenshotPath = process.env.WSS_SECURE_IMPORT_SCREENSHOT || '/tmp/took-wss-secure-wallet-import.png';
 const customerRef = process.env.WSS_IMPORT_TEST_CUSTOMER_REF || 'demo-customer-001';
@@ -29,7 +32,7 @@ page.on('console', (message) => {
   if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) browserErrors.push(message.text());
 });
 page.on('request', (request) => {
-  const pathname = new URL(request.url()).pathname;
+  const pathname = new URL(request.url()).pathname.replace(/^\/api(?=\/v1\/)/, '');
   if (pathname !== '/v1/development/sar-key-core-attestations' && pathname !== '/v1/wallets/provision') return;
   const body = request.postData() || '';
   if (body.includes(mnemonic)
@@ -39,7 +42,7 @@ page.on('request', (request) => {
   }
 });
 page.on('response', (response) => {
-  const pathname = new URL(response.url()).pathname;
+  const pathname = new URL(response.url()).pathname.replace(/^\/api(?=\/v1\/)/, '');
   if (pathname === '/v1/development/sar-key-core-attestations' || pathname === '/v1/wallets/provision') {
     apiResponses.push({ pathname, status: response.status() });
   }
@@ -114,22 +117,48 @@ async function openAddSarFlow(walletFrame) {
   await walletFrame.getByRole('heading', { name: /새로 만들거나 기존 지갑을/ }).waitFor();
 }
 
-async function finishSarSetup(walletFrame) {
+async function finishSarSetup(walletFrame, firstWallet = false) {
   await walletFrame.getByRole('heading', { name: /2개 조건으로 내가 직접/ }).waitFor();
   await walletFrame.getByRole('checkbox').check();
-  await walletFrame.getByRole('button', { name: '이 지갑 슬롯 추가하기' }).click();
+  await walletFrame.getByRole('button', { name: firstWallet ? '지갑 만들기' : '이 지갑 슬롯 추가하기' }).click();
   await walletFrame.getByRole('heading', { name: '보유 자산', exact: true }).waitFor();
+}
+
+async function assertWalletLogoLoaded(locator, assetDirectory) {
+  const image = locator.locator('img').first();
+  await image.waitFor();
+  const result = await image.evaluate(async (element) => {
+    if (!element.complete) await new Promise((resolve) => element.addEventListener('load', resolve, { once: true }));
+    return { src: element.getAttribute('src'), width: element.naturalWidth };
+  });
+  const expectedBase = appOnlyPreview ? `/kiwoom/wallet/assets/${assetDirectory}/` : `/assets/${assetDirectory}/`;
+  if (!result.src?.startsWith(expectedBase) || result.width === 0) {
+    throw new Error(`${assetDirectory} logo did not load from the wallet asset base: ${result.src}`);
+  }
 }
 
 try {
   const previewUrl = new URL(hostUrl);
-  previewUrl.searchParams.set('customerRef', customerRef);
+  if (appOnlyPreview && !anonymousAppPreview) {
+    const accessCode = process.env.WSS_PREVIEW_ACCESS_CODE;
+    if (!accessCode) throw new Error('WSS_PREVIEW_ACCESS_CODE is required for app-only import verification.');
+    await page.addInitScript(({ code, ref }) => {
+      sessionStorage.setItem('took-wss:preview-access-code', code);
+      localStorage.setItem('took-wss:kiwoom-preview-customer', ref);
+    }, { code: accessCode, ref: customerRef });
+  } else previewUrl.searchParams.set('customerRef', customerRef);
   await page.goto(previewUrl.toString(), { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: '은행앱에서 월렛 열기' }).click();
+  if (!appOnlyPreview) await page.getByRole('button', { name: '은행앱에서 월렛 열기' }).click();
   const walletFrame = page.frameLocator('iframe');
-  await walletFrame.getByRole('heading', { name: '보유 자산', exact: true }).waitFor();
-
-  await openAddSarFlow(walletFrame);
+  if (anonymousAppPreview) {
+    await walletFrame.getByRole('button', { name: '첫 지갑 추가하기' }).click();
+    await walletFrame.getByRole('button', { name: '키움 인증 요청' }).click();
+    await walletFrame.getByRole('heading', { name: /새로 만들거나 기존 지갑을/ }).waitFor();
+  } else {
+    await walletFrame.getByRole('heading', { name: '보유 자산', exact: true }).waitFor();
+    await assertWalletLogoLoaded(walletFrame.locator('.kw-wallet-address-row__icon').first(), 'chains');
+    await openAddSarFlow(walletFrame);
+  }
   await walletFrame.getByRole('button', { name: /니모닉으로 가져오기/ }).click();
   await walletFrame.getByRole('button', { name: '키움 보안 입력 열기' }).click();
   let overlay = page.locator('.host-security-layer');
@@ -137,7 +166,8 @@ try {
   await overlay.getByLabel('복구 구문').fill(mnemonic);
   await overlay.getByRole('button', { name: '안전하게 가져오기' }).click();
   await overlay.waitFor({ state: 'detached' });
-  await finishSarSetup(walletFrame);
+  await finishSarSetup(walletFrame, anonymousAppPreview);
+  if (anonymousAppPreview) await assertWalletLogoLoaded(walletFrame.locator('.kw-wallet-address-row__icon').first(), 'chains');
   await walletFrame.getByText(/지원 네트워크 9개/).waitFor();
   if (await walletFrame.locator(`code[title="${expectedMnemonicEvmAddress}"]`).count() !== 1) {
     throw new Error('Mnemonic import did not register the expected EVM address.');
@@ -147,8 +177,10 @@ try {
   }
   await walletFrame.getByRole('button', { name: '채우기' }).click();
   let receiveDialog = walletFrame.getByRole('dialog', { name: /어떤 자산을.*채울까요/ });
+  await assertWalletLogoLoaded(receiveDialog.locator('.kw-transfer-asset-mark').first(), 'coins');
   await receiveDialog.getByRole('button', { name: /이더리움.*ETH/ }).click();
   receiveDialog = walletFrame.getByRole('dialog', { name: /어떤 네트워크로.*채울까요/ });
+  await assertWalletLogoLoaded(receiveDialog.locator('.kw-transfer-asset-mark').first(), 'chains');
   await receiveDialog.getByRole('button', { name: /Ethereum/ }).click();
   receiveDialog = walletFrame.getByRole('dialog', { name: /이 주소로.*자산을 보내주세요/ });
   await receiveDialog.getByRole('img', { name: 'ETH 받기 주소 QR' }).waitFor();
@@ -156,6 +188,23 @@ try {
     throw new Error('Imported mnemonic receive address is not copyable.');
   }
   await receiveDialog.getByRole('button', { name: '닫기' }).click();
+
+  if (repeatMnemonicImport) {
+    await Promise.all(responseTasks);
+    const walletCountBeforeRepeat = createdWalletIds.size;
+    await openAddSarFlow(walletFrame);
+    await walletFrame.getByRole('button', { name: /니모닉으로 가져오기/ }).click();
+    await walletFrame.getByRole('button', { name: '키움 보안 입력 열기' }).click();
+    overlay = page.locator('.host-security-layer');
+    await overlay.getByLabel('복구 구문').fill(mnemonic);
+    await overlay.getByRole('button', { name: '안전하게 가져오기' }).click();
+    await overlay.waitFor({ state: 'detached' });
+    await finishSarSetup(walletFrame);
+    await Promise.all(responseTasks);
+    if (createdWalletIds.size !== walletCountBeforeRepeat) {
+      throw new Error('Reimporting an existing mnemonic created a duplicate wallet slot.');
+    }
+  }
 
   await openAddSarFlow(walletFrame);
   await walletFrame.getByRole('button', { name: /개인키로 가져오기/ }).click();
@@ -174,7 +223,8 @@ try {
     throw new Error('Private-key import must expose exactly one ready EVM address group.');
   }
   if (secretLeakDetected) throw new Error('Imported secret material crossed the host/BFF boundary.');
-  if (apiResponses.length !== 4 || apiResponses.some(({ status }) => status !== 201)) {
+  if (apiResponses.length !== (repeatMnemonicImport ? 6 : 4)
+    || apiResponses.some(({ status }) => status !== 201)) {
     throw new Error(`Unexpected secure-import API responses: ${JSON.stringify(apiResponses)}`);
   }
   if (browserErrors.length > 0) throw new Error(`Browser errors: ${browserErrors.join(' | ')}`);
@@ -184,6 +234,7 @@ try {
     status: 'ok',
     mnemonicImport: 'five-address-groups',
     privateKeyImport: 'evm-only',
+    ...(repeatMnemonicImport ? { repeatMnemonicImport: 'existing-slot-reused' } : {}),
     receive: 'imported-ethereum-address-qr-and-copy-ready',
     bffSecretBoundary: 'no-imported-secret-fields-or-values',
     fixtureCleanup: 'exact-created-wallet-ids',

@@ -1,8 +1,10 @@
 import {
+  consumeSmsBrand,
   domesticPhone,
   safeSmsFailureCode,
   senderNumber,
   sendSolapiOtp,
+  smsPhoneKey,
   solapiAuthorization,
 } from "./index.ts";
 
@@ -43,34 +45,96 @@ Deno.test("creates the documented SOLAPI HMAC authorization", async () => {
   if (authorization !== expected) throw new Error("authorization mismatch");
 });
 
-Deno.test("sends the Supabase Auth OTP without extra identifiers", async () => {
+Deno.test("sends the requested tenant name without extra identifiers", async () => {
+  for (
+    const brandName of [
+      "키움 디지털 월렛",
+      "JB 디지털 지갑",
+      "나무 내 지갑",
+    ]
+  ) {
+    let captured: Request | null = null;
+    await sendSolapiOtp(
+      {
+        apiKey: "test-key",
+        apiSecret: "test-secret",
+        senderNumber: "0212345678",
+      },
+      "+821012345678",
+      "123456",
+      brandName,
+      (input, init) => {
+        captured = new Request(input, init);
+        return Promise.resolve(Response.json({
+          messageList: [{ messageId: "message-1", statusCode: "2000" }],
+        }));
+      },
+    );
+    if (!captured) throw new Error("request not captured");
+    const body = await (captured as Request).json();
+    if (body.messages?.[0]?.to !== "01012345678") {
+      throw new Error("recipient mismatch");
+    }
+    if (
+      body.messages?.[0]?.text !==
+        `[${brandName}] 인증번호는 123456입니다. 타인에게 알려주지 마세요.`
+    ) {
+      throw new Error("incorrect tenant SMS copy");
+    }
+    if (JSON.stringify(body).includes("registrationIntent")) {
+      throw new Error("internal identifier leaked");
+    }
+  }
+});
+
+Deno.test("consumes only the matching one-use SMS context", async () => {
+  const firstKey = await smsPhoneKey("+82 10-1234-5678", "lookup-secret");
+  const secondKey = await smsPhoneKey("01012345678", "lookup-secret");
+  if (firstKey !== secondKey || !/^[0-9a-f]{64}$/.test(firstKey)) {
+    throw new Error("phone context keys differ by format");
+  }
   let captured: Request | null = null;
-  await sendSolapiOtp(
-    {
-      apiKey: "test-key",
-      apiSecret: "test-secret",
-      senderNumber: "0212345678",
-    },
+  const brand = await consumeSmsBrand(
     "+821012345678",
-    "123456",
+    {
+      supabaseUrl: "https://example.supabase.co",
+      serviceRoleKey: "server-only-key",
+      phoneLookupSecret: "lookup-secret",
+    },
     (input, init) => {
       captured = new Request(input, init);
-      return Promise.resolve(Response.json({
-        messageList: [{ messageId: "message-1", statusCode: "2000" }],
-      }));
+      return Promise.resolve(Response.json([{ brand_name: "나무 내 지갑" }]));
     },
   );
-  if (!captured) throw new Error("request not captured");
-  const body = await (captured as Request).json();
-  if (body.messages?.[0]?.to !== "01012345678") {
-    throw new Error("recipient mismatch");
+  if (brand !== "나무 내 지갑" || !captured) {
+    throw new Error("context brand mismatch");
   }
-  if (!body.messages?.[0]?.text.includes("123456")) {
-    throw new Error("OTP missing");
+  const request = captured as Request;
+  if (
+    request.method !== "DELETE" ||
+    new URL(request.url).searchParams.get("phone_key") !== `eq.${firstKey}` ||
+    request.headers.get("prefer") !== "return=representation"
+  ) {
+    throw new Error("context is not consumed atomically");
   }
-  if (JSON.stringify(body).includes("registrationIntent")) {
-    throw new Error("internal identifier leaked");
+});
+
+Deno.test("rejects an OTP without an active delivery context", async () => {
+  let rejected = false;
+  try {
+    await consumeSmsBrand(
+      "+821012345678",
+      {
+        supabaseUrl: "https://example.supabase.co",
+        serviceRoleKey: "server-only-key",
+        phoneLookupSecret: "lookup-secret",
+      },
+      () => Promise.resolve(Response.json([])),
+    );
+  } catch (error) {
+    rejected = safeSmsFailureCode(error) === "sms_context_missing";
   }
+  if (!rejected) throw new Error("missing delivery context accepted");
 });
 
 Deno.test("keeps SOLAPI rejection diagnostics free of provider payloads", async () => {
@@ -84,6 +148,7 @@ Deno.test("keeps SOLAPI rejection diagnostics free of provider payloads", async 
       },
       "+821012345678",
       "123456",
+      "키움 디지털 월렛",
       () =>
         Promise.resolve(Response.json({
           failedMessageList: [{

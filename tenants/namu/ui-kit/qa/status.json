@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "namu",
+  "workflowVersion": "1.0",
+  "stage": "wallet",
+  "reviewMode": "draft-without-intermediate-approval",
+  "approval": {
+    "state": "not-requested",
+    "approvedBy": null,
+    "approvedAt": null,
+    "evidenceRunId": null,
+    "scope": []
+  },
+  "coverage": {
+    "sourcesDiscovered": 42,
+    "sourcesClassified": 42,
+    "casesImplemented": 5,
+    "casesCaptured": 5,
+    "casesCompared": 5,
+    "casesApproved": 0
+  },
+  "blocked": [
+    "production font",
+    "official bottom tab artwork",
+    "institution approved manifest and secure input SDK"
+  ],
+  "nextAction": "Review five captured cases on the intended device and confirm official font and icon assets"
+}

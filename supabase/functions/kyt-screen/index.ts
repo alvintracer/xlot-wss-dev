@@ -1,17 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { normalizeKytProviderResult } from "./policy.ts";
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, apikey, content-type, x-client-info",
+    "authorization, apikey, content-type, x-client-info, x-wss-kyt-trace",
   "Content-Type": "application/json",
 };
 const providerUrl = Deno.env.get("WSS_TRANSIGHT_API_URL") ||
   Deno.env.get("TRANSIGHT_API_URL");
 const providerKey = Deno.env.get("WSS_TRANSIGHT_API_KEY") ||
   Deno.env.get("TRANSIGHT_API_KEY");
-
-type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
 interface ScreenRequest {
   address: string;
@@ -40,13 +39,6 @@ function failClosed() {
   };
 }
 
-function riskLevel(score: number, sanctioned: boolean): RiskLevel {
-  if (sanctioned || score >= 75) return "CRITICAL";
-  if (score >= 50) return "HIGH";
-  if (score >= 25) return "MEDIUM";
-  return "LOW";
-}
-
 function providerAsset(network: string): string {
   const mapped: Readonly<Record<string, string>> = {
     ethereum: "ETH",
@@ -62,32 +54,11 @@ function providerAsset(network: string): string {
   return mapped[network.toLowerCase()] ?? network.toUpperCase();
 }
 
-function normalize(payload: Record<string, unknown>) {
-  const score = Number(payload.risk_score ?? 0);
-  const sanctioned = payload.is_sanctioned === true;
-  const level = riskLevel(Number.isFinite(score) ? score : 0, sanctioned);
-  return {
-    riskScore: Number.isFinite(score) ? score : 0,
-    riskLevel: level,
-    flags: Array.isArray(payload.flags)
-      ? payload.flags.flatMap((item) => {
-        if (!item || typeof item !== "object") return [];
-        const flag = item as Record<string, unknown>;
-        return [{
-          category: String(flag.category ?? "UNKNOWN"),
-          severity: String(flag.severity ?? "LOW"),
-          description: String(flag.description ?? ""),
-        }];
-      })
-      : [],
-    isSanctioned: sanctioned,
-    isBlocked: sanctioned || level === "CRITICAL",
-    kytAvailable: true,
-    screenedAt: Date.now(),
-  };
-}
-
 serve(async (request) => {
+  const suppliedTrace = request.headers.get("x-wss-kyt-trace");
+  const traceId = suppliedTrace && /^[0-9a-f-]{36}$/i.test(suppliedTrace)
+    ? suppliedTrace
+    : crypto.randomUUID();
   if (request.method === "OPTIONS") return new Response("ok", { headers });
   if (request.method !== "POST") {
     return json({ error: "method_not_allowed" }, 405);
@@ -106,7 +77,7 @@ serve(async (request) => {
     (body.direction !== "in" && body.direction !== "out")
   ) return json({ error: "invalid_request" }, 400);
   if (!providerUrl || !providerKey) {
-    console.warn("wss_kyt_provider_unconfigured");
+    console.warn("wss_kyt_provider_unconfigured", { traceId });
     return json({
       address: body.address,
       network: body.network,
@@ -123,7 +94,7 @@ serve(async (request) => {
         headers: {
           "Content-Type": "application/json",
           "X-API-Key": providerKey,
-          "X-Request-ID": crypto.randomUUID(),
+          "X-Request-ID": traceId,
         },
         body: JSON.stringify({
           address: body.address.trim(),
@@ -138,15 +109,39 @@ serve(async (request) => {
       },
     );
     if (!response.ok) {
+      let providerCode = "unknown";
+      try {
+        const failure = await response.json() as { code?: unknown };
+        if (
+          typeof failure.code === "string" &&
+          /^[A-Z0-9_]{1,40}$/.test(failure.code)
+        ) providerCode = failure.code;
+      } catch { /* Do not log upstream response bodies. */ }
+      console.warn("wss_kyt_gateway_failure", {
+        traceId,
+        status: response.status,
+        providerCode,
+      });
       return json({
         address: body.address,
         network: body.network,
         ...failClosed(),
       });
     }
-    const result = normalize(await response.json() as Record<string, unknown>);
-    return json({ address: body.address, network: body.network, ...result });
-  } catch {
+    const result = normalizeKytProviderResult(await response.json());
+    if (!result) console.warn("wss_kyt_gateway_invalid_response", { traceId });
+    return json({
+      address: body.address,
+      network: body.network,
+      ...(result ?? failClosed()),
+    });
+  } catch (error) {
+    console.warn("wss_kyt_gateway_request_failed", {
+      traceId,
+      failure: error instanceof DOMException && error.name === "AbortError"
+        ? "timeout"
+        : "request_or_parse_error",
+    });
     return json({
       address: body.address,
       network: body.network,

@@ -7,6 +7,19 @@ dist-*/
 *.log
 .DS_Store
 .vite/
+.vercel/
+.vercel-preview/
 coverage/
 *.tsbuildinfo
+tenants/*/ui-kit/.artifacts/
+tenants/*/ui-kit/qa/captures.json
 supabase/.temp/
+.vercel
+.env*
+.artifacts/
+# Supplied UI screenshots and photo-derived review fixtures stay out of the public source mirror.
+tenants/namu/ui-kit/references/
+tenants/JB/ui-kit/references/
+tenants/JB/ui-kit/tapbar/
+tenants/JB/ui-kit/*.svg
+tenants/JB/ui-kit/jb-ui-extractor/representative.html

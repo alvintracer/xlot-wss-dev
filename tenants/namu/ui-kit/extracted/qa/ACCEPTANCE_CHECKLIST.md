@@ -1,0 +1,24 @@
+# Namu UI acceptance checklist
+
+- [x] All 42 screenshots visually categorized and renamed with original-name/hash provenance.
+- [x] `R033`, `R032`, `R035`, `R037`, `R041`, and black navigation references identified as distinct cases.
+- [x] Local draft reviewed for overflow at 320, 360, 390, and 430 CSS px; the 320px bottom bar overflow was corrected.
+- [x] Development review sheet Escape close, Tab wrap, and focus return checked in Chrome.
+- [x] Public development preview: Namu app session 201, runtime bootstrap 200, empty-wallet render, mint/green/black computed colors, seven-button bottom bar, focused first-wallet flow, and carrier sheet opened at 390×844.
+- [x] Empty-wallet Korean copy uses semantic line breaks; deployed Chrome at 320/360/390/430 CSS px renders both short descriptions in two lines without mid-word breaks or horizontal overflow. Kiwoom and JB were checked at 390 CSS px.
+- [x] User-directed PWA preview refinement: deployed Chrome at 320/360/390/430 CSS px shows a 64 px six-control bottom bar with 7 px top/bottom padding, larger labels, original two-line labels, and no horizontal overflow. Manifest v2 and its 180/192/512 px icon files return 200; all four icon corners are opaque `#AFF34D`.
+- [x] User-corrected PWA splash icon: production manifest v3 serves the inset rounded mark at 192/512 px and the Apple touch icon at 180 px. All four corners have alpha 0 in each generated file; the deployed 512 px file matches the verified local SHA-256.
+- [ ] Confirm the installed PWA splash on the target device after removing the cached installation and reinstalling; desktop asset checks cannot verify OS rendering.
+- [x] Namu install entry: Chrome browser emulation at 320/360/390/430 CSS px shows side-by-side install and web buttons without horizontal overflow; a captured `beforeinstallprompt` event is invoked once by the install button, Android non-Chrome has a Chrome intent link, iPhone has Share → Add to Home Screen steps, web choice enters the host, and standalone mode bypasses the gate.
+- [x] Revised install copy: browser emulation at 320/390/430 px shows 나무 월렛 / 나무, 월렛을 품다 / 편리한 송금과 환전을 경험하세요.; the heading fits one line at 320 px. The app-only host keeps a single 안전한 지갑을 준비하고 있어요 loading layer while the session is pending; the previous 디지털 자산을 준비하고 있어요 text is absent.
+- [ ] Verify Chrome installation prompt and iPhone Share → Add to Home Screen on physical devices. Browser emulation cannot trigger or validate the OS installation ceremony.
+- [x] User-directed Nanum Gothic preview font: local Chrome loaded bundled font files at 320/360/390/430 CSS px; Namu header, bottom tabs, and wallet card use the requested family without horizontal overflow, and the recovery heading retains word-level wraps.
+- [x] User-directed Tossface emoji: local Chrome loaded the unchanged v1.6.1 money font at 320/360/390/430 CSS px, `내 투자` now shows the `💸` glyph, and the header has no horizontal overflow. Source mismatch with R033 is documented; visual approval remains pending.
+- [x] User-directed wallet slots: Chrome at 320/360/390/430 CSS px shows a peek of the next card; horizontal scroll selects the second synthetic wallet and its asset list; ArrowLeft returns to the first wallet without page overflow.
+- [x] Host PIN interaction: Chrome at 320/360/390/430 CSS px starts with six dots and the footer, opens the keypad from the bottom on dot tap, closes after six digits, and supports reopen, erase, and Escape. The test used synthetic digits in a temporary local harness.
+- [ ] Confirm official font, target device viewport, and real host insets with NH Namu.
+- [ ] Compare root header, bottom nav, wallet card, holdings rows, sheet, and numeric keypad at 430 CSS px against approved references.
+- [ ] Check 320, 360, 390, and 430 CSS px for overflow, tap areas, focus, and long values.
+- [ ] Check action sheet Escape/backdrop close, focus return, and reduced motion.
+- [ ] Verify root/focus ownership and live WSS balance/action state after an approved Namu manifest is available.
+- [ ] Obtain human visual approval; automated checks do not grant it.

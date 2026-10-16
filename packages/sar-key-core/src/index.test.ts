@@ -3,6 +3,7 @@ import { verifyAsync } from '@noble/ed25519';
 import { Transaction as BitcoinTransaction } from '@scure/btc-signer';
 import { PublicKey, SystemProgram, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
 import { ethers } from 'ethers';
+import { combine } from 'shamir-secret-sharing';
 import { decode } from 'xrpl';
 import { ReferenceHostSarKeyCore } from './index';
 
@@ -32,6 +33,97 @@ describe('reference host SAR key core', () => {
     await expect(core.verifyRecovery(wallet.keyHandle, [0, 2])).resolves.toBe(true);
     await expect(core.verifyRecovery(wallet.keyHandle, [1, 2])).resolves.toBe(true);
     await expect(core.verifyRecovery(wallet.keyHandle, [1, 1])).resolves.toBe(false);
+  });
+
+  it('restores an EVM signer from only the B and C vault shares after a reload', async () => {
+    const original = new ReferenceHostSarKeyCore();
+    const wallet = await original.prepareImportedEvmPrivateKey(ethers.Wallet.createRandom().privateKey);
+    const address = wallet.addresses[0]!.address;
+    const material = await original.exportVaultSharesForAddress('evm', address);
+    const restored = new ReferenceHostSarKeyCore();
+    await restored.restoreVaultSharesForAddress(
+      [material.shares[1], material.shares[2]],
+      material.kind,
+      'evm',
+      address,
+    );
+    for (const share of material.shares) share.fill(0);
+    expect(restored.hasSignerForAddress('evm', address)).toBe(true);
+    const signed = await restored.signEvmTransactionForAddress(address, {
+      chainId: 1,
+      nonce: 0,
+      to: '0x0000000000000000000000000000000000000001',
+      value: '1',
+      gasLimit: '21000',
+      gasPrice: '1',
+    });
+    expect(ethers.Transaction.from(signed).from).toBe(address);
+  });
+
+  it('signs raw Coinone challenge bytes instead of the hex characters', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    const wallet = await core.prepareImportedEvmPrivateKey(ethers.Wallet.createRandom().privateKey);
+    const address = wallet.addresses[0]!.address;
+    const challenge = ethers.toUtf8Bytes('Coinone wallet ownership');
+    const signature = await core.signEvmMessageForAddress(address, challenge);
+    expect(ethers.verifyMessage(challenge, signature)).toBe(address);
+    expect(ethers.verifyMessage(ethers.hexlify(challenge), signature)).not.toBe(address);
+    challenge.fill(0);
+    await core.discardWallet(wallet.keyHandle);
+  });
+
+  it('reconstructs the third share from a saved local pair after enrollment was interrupted', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    const wallet = await core.prepareImportedMnemonic('test test test test test test test test test test test junk');
+    const address = wallet.addresses.find((item) => item.addressGroupId === 'evm')!.address;
+    const original = await core.exportVaultSharesForKeyHandle(wallet.keyHandle);
+    await core.discardWallet(wallet.keyHandle);
+    expect(ethers.hexlify(await combine([original.shares[0], original.shares[1]])))
+      .toBe(ethers.Mnemonic.fromPhrase('test test test test test test test test test test test junk').entropy);
+    await expect(core.resumeWalletFromVaultShares(
+      [original.shares[0], original.shares[1]], original.kind, 'evm',
+      '0x0000000000000000000000000000000000000001',
+    )).rejects.toThrow('recovery_address_mismatch');
+    const resumedHandle = await core.resumeWalletFromVaultShares(
+      [original.shares[0], original.shares[1]], original.kind, 'evm', address,
+    );
+    expect(await core.verifyRecovery(resumedHandle, [0, 1])).toBe(true);
+    expect(await core.verifyRecovery(resumedHandle, [0, 2])).toBe(true);
+    expect(await core.verifyRecovery(resumedHandle, [1, 2])).toBe(true);
+    const resumedShares = await core.exportVaultSharesForKeyHandle(resumedHandle);
+    expect(resumedShares.shares[0]).toEqual(original.shares[0]);
+    expect(resumedShares.shares[1]).toEqual(original.shares[1]);
+    for (const share of [...original.shares, ...resumedShares.shares]) share.fill(0);
+    await core.discardWallet(resumedHandle);
+  });
+
+  it('preserves recovery across randomized share coordinates when resuming', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    for (let index = 0; index < 8; index += 1) {
+      const privateKey = ethers.Wallet.createRandom().privateKey;
+      const wallet = await core.prepareImportedEvmPrivateKey(privateKey);
+      const address = wallet.addresses[0]!.address;
+      const original = await core.exportVaultSharesForKeyHandle(wallet.keyHandle);
+      await core.discardWallet(wallet.keyHandle);
+      const handle = await core.resumeWalletFromVaultShares(
+        [original.shares[1], original.shares[0]], original.kind, 'evm', address,
+      );
+      const resumed = await core.exportVaultSharesForKeyHandle(handle);
+      for (const pair of [[0, 1], [0, 2], [1, 2]] as const) {
+        const secret = await combine([resumed.shares[pair[0]], resumed.shares[pair[1]]]);
+        expect(ethers.hexlify(secret)).toBe(privateKey);
+        secret.fill(0);
+      }
+      if (original.shares[2].at(-1) === resumed.shares[2].at(-1)) {
+        expect(resumed.shares[2]).toEqual(original.shares[2]);
+      } else {
+        const oldAndNew = await combine([original.shares[2], resumed.shares[2]]);
+        expect(ethers.hexlify(oldAndNew)).toBe(privateKey);
+        oldAndNew.fill(0);
+      }
+      for (const share of [...original.shares, ...resumed.shares]) share.fill(0);
+      await core.discardWallet(handle);
+    }
   });
 
   it('prepares a real 12-word BIP-39 backup and can discard the uncommitted wallet', async () => {
@@ -68,6 +160,17 @@ describe('reference host SAR key core', () => {
       gasPrice: '1',
     });
     expect(ethers.Transaction.from(signed).from).toBe(from);
+  });
+
+  it('accepts numbered or comma-separated recovery words copied from another wallet', async () => {
+    const core = new ReferenceHostSarKeyCore();
+    const phrase = ethers.Wallet.createRandom().mnemonic!.phrase;
+    const numbered = phrase.split(' ').map((word, index) => `${index + 1}. ${word}`).join('\n');
+    const wallet = await core.prepareImportedMnemonic(numbered);
+    expect(wallet.addresses.find(({ addressGroupId }) => addressGroupId === 'evm')?.address)
+      .toBe(ethers.HDNodeWallet.fromPhrase(phrase, undefined, "m/44'/60'/0'/0/0").address);
+    const commaSeparated = await core.prepareImportedMnemonic(phrase.replaceAll(' ', ', '));
+    expect(commaSeparated.addresses).toEqual(wallet.addresses);
   });
 
   it('imports an EVM private key as an EVM-only SAR wallet and signs from it', async () => {

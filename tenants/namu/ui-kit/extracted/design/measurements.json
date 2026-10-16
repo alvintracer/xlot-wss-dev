@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "namu",
+  "calibration": { "sourceWidthPx": 1290, "proposedCssWidth": 430, "scale": 3, "status": "estimated", "referenceIds": ["R032", "R033"] },
+  "regions": [
+    { "name": "canvas", "value": "#D3E9EA", "kind": "measured", "source": "R033 flat region at (500,300) physical pixels" },
+    { "name": "bottom-bar", "value": "#222222", "kind": "measured", "source": "R032 flat region at (700,2500) physical pixels" },
+    { "name": "card-radius", "value": 18, "unit": "CSS px", "kind": "estimated", "source": "R033 white summary card at proposed 430 CSS px" },
+    { "name": "root-card-inset", "value": 10, "unit": "CSS px", "kind": "estimated", "source": "R033 card left edge" },
+    { "name": "holdings-row-height", "value": 74, "unit": "CSS px", "kind": "estimated", "source": "R032 dense list rows" },
+    { "name": "bottom-bar-total-height", "value": 96, "unit": "CSS px", "kind": "estimated", "source": "R032 black bar includes bottom inset" },
+    { "name": "order-pad-columns", "value": 4, "kind": "observed", "source": "R035" },
+    { "name": "secure-pad-columns", "value": 4, "kind": "observed", "source": "R041" }
+  ]
+}

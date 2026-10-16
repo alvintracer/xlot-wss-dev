@@ -15,7 +15,11 @@
     "https://deno.land/std@0.168.0/async/pool.ts": "6854d8cd675a74c73391c82005cbbe4cc58183bddcd1fbbd7c2bcda42b61cf69",
     "https://deno.land/std@0.168.0/async/retry.ts": "e8e5173623915bbc0ddc537698fa418cf875456c347eda1ed453528645b42e67",
     "https://deno.land/std@0.168.0/async/tee.ts": "3a47cc4e9a940904fd4341f0224907e199121c80b831faa5ec2b054c6d2eff5e",
+    "https://deno.land/std@0.168.0/fmt/colors.ts": "03ad95e543d2808bc43c17a3dd29d25b43d0f16287fe562a0be89bf632454a12",
     "https://deno.land/std@0.168.0/http/server.ts": "e99c1bee8a3f6571ee4cdeb2966efad465b8f6fe62bec1bdb59c1f007cc4d155",
+    "https://deno.land/std@0.168.0/testing/_diff.ts": "a23e7fc2b4d8daa3e158fa06856bedf5334ce2a2831e8bf9e509717f455adb2c",
+    "https://deno.land/std@0.168.0/testing/_format.ts": "cd11136e1797791045e639e9f0f4640d5b4166148796cad37e6ef75f7d7f3832",
+    "https://deno.land/std@0.168.0/testing/asserts.ts": "51353e79437361d4b02d8e32f3fc83b22231bc8f8d4c841d86fd32b0b0afe940",
     "https://deno.land/std@0.224.0/assert/_constants.ts": "a271e8ef5a573f1df8e822a6eb9d09df064ad66a4390f21b3e31f820a38e0975",
     "https://deno.land/std@0.224.0/assert/assert.ts": "09d30564c09de846855b7b071e62b5974b001bb72a4b797958fe0660e7849834",
     "https://deno.land/std@0.224.0/assert/assert_almost_equals.ts": "9e416114322012c9a21fa68e187637ce2d7df25bcbdbfd957cd639e65d3cf293",
@@ -67,6 +71,7 @@
         "npm:esbuild@~0.28.2",
         "npm:pgsql-ast-parser@^12.0.2",
         "npm:playwright-core@^1.63.0",
+        "npm:sharp@~0.35.5",
         "npm:tsx@^4.20.6",
         "npm:typescript@~5.9.3",
         "npm:vite@^7.2.4",
@@ -74,20 +79,48 @@
       ]
     },
     "members": {
+      "apps/namu-android": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@capacitor/android@^8.3.0",
+            "npm:@capacitor/app@^8.1.2",
+            "npm:@capacitor/cli@^8.3.0",
+            "npm:@capacitor/core@^8.3.0",
+            "npm:@capacitor/filesystem@^8.1.4",
+            "npm:@capacitor/share@^8.0.3",
+            "npm:@capgo/capacitor-native-biometric@^8.8.1",
+            "npm:@capgo/inappbrowser@^8.5.4"
+          ]
+        }
+      },
       "apps/reference-bank-host": {
         "packageJson": {
           "dependencies": [
+            "npm:@capacitor/core@^8.3.0",
+            "npm:@capacitor/filesystem@^8.1.4",
+            "npm:@capacitor/share@^8.0.3",
+            "npm:@capgo/capacitor-native-biometric@^8.8.1",
+            "npm:@capgo/inappbrowser@^8.5.4",
             "npm:@phosphor-icons/react@^2.1.10",
+            "npm:@reown/walletkit@^1.6.0",
             "npm:@took-wss/contracts@0.1.0",
             "npm:@took-wss/host-sdk@0.1.0",
             "npm:@took-wss/key-adapters@0.1.0",
             "npm:@took-wss/ops-ui@0.1.0",
             "npm:@took-wss/sar-key-core@0.1.0",
+            "npm:@took-wss/tenant-jb-host-chrome@0.1.0",
+            "npm:@took-wss/tenant-jb@0.1.0",
             "npm:@took-wss/tenant-kiwoom-host-chrome@0.1.0",
             "npm:@took-wss/tenant-kiwoom@0.1.0",
+            "npm:@took-wss/tenant-namu-host-chrome@0.1.0",
+            "npm:@took-wss/tenant-namu@0.1.0",
             "npm:@took-wss/tenant-reference-bank@0.1.0",
+            "npm:@walletconnect/core@^2.25.0",
+            "npm:@walletconnect/utils@^2.25.0",
+            "npm:jsqr@^1.4.0",
             "npm:react-dom@^19.2.0",
-            "npm:react@^19.2.0"
+            "npm:react@^19.2.0",
+            "npm:thirdweb@^5.121.6"
           ]
         }
       },
@@ -99,7 +132,9 @@
             "npm:@took-wss/key-adapters@0.1.0",
             "npm:@took-wss/module-registry@0.1.0",
             "npm:@took-wss/ops-ui@0.1.0",
+            "npm:@took-wss/tenant-jb@0.1.0",
             "npm:@took-wss/tenant-kiwoom@0.1.0",
+            "npm:@took-wss/tenant-namu@0.1.0",
             "npm:@took-wss/tenant-reference-bank@0.1.0",
             "npm:react-dom@^19.2.0",
             "npm:react@^19.2.0"
@@ -111,9 +146,12 @@
           "dependencies": [
             "npm:@phosphor-icons/react@^2.1.10",
             "npm:@took-wss/contracts@0.1.0",
+            "npm:@took-wss/tenant-jb-presentation@0.1.0",
             "npm:@took-wss/tenant-kiwoom-presentation@0.1.0",
+            "npm:@took-wss/tenant-namu-presentation@0.1.0",
             "npm:react-dom@^19.2.0",
-            "npm:react@^19.2.0"
+            "npm:react@^19.2.0",
+            "npm:thirdweb@^5.121.6"
           ]
         }
       },
@@ -168,7 +206,9 @@
             "npm:@solana/web3.js@^1.99.0",
             "npm:@took-wss/contracts@0.1.0",
             "npm:@took-wss/provider-adapters@0.1.0",
+            "npm:@took-wss/tenant-jb@0.1.0",
             "npm:@took-wss/tenant-kiwoom@0.1.0",
+            "npm:@took-wss/tenant-namu@0.1.0",
             "npm:@took-wss/tenant-reference-bank@0.1.0",
             "npm:ethers@^6.17.0",
             "npm:postgres@3.4.9",
@@ -184,6 +224,33 @@
             "npm:express-rate-limit@^8.2.1",
             "npm:express@^5.1.0",
             "npm:helmet@^8.1.0"
+          ]
+        }
+      },
+      "tenants/JB": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@took-wss/contracts@0.1.0",
+            "npm:@took-wss/module-registry@0.1.0",
+            "npm:@took-wss/tenant-kiwoom@0.1.0"
+          ]
+        }
+      },
+      "tenants/JB/host-chrome": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@phosphor-icons/react@^2.1.10",
+            "npm:react@^19.2.0"
+          ]
+        }
+      },
+      "tenants/JB/presentation": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@phosphor-icons/react@^2.1.10",
+            "npm:@took-wss/contracts@0.1.0",
+            "npm:@took-wss/tenant-kiwoom-presentation@0.1.0",
+            "npm:react@^19.2.0"
           ]
         }
       },
@@ -209,6 +276,35 @@
             "npm:@phosphor-icons/react@^2.1.10",
             "npm:@took-wss/contracts@0.1.0",
             "npm:qrcode.react@^4.2.0",
+            "npm:react@^19.2.0"
+          ]
+        }
+      },
+      "tenants/namu": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@took-wss/contracts@0.1.0",
+            "npm:@took-wss/module-registry@0.1.0",
+            "npm:@took-wss/tenant-kiwoom@0.1.0"
+          ]
+        }
+      },
+      "tenants/namu/host-chrome": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@fontsource/nanum-gothic@^5.3.0",
+            "npm:@phosphor-icons/react@^2.1.10",
+            "npm:react@^19.2.0"
+          ]
+        }
+      },
+      "tenants/namu/presentation": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@fontsource/nanum-gothic@^5.3.0",
+            "npm:@phosphor-icons/react@^2.1.10",
+            "npm:@took-wss/contracts@0.1.0",
+            "npm:@took-wss/tenant-kiwoom-presentation@0.1.0",
             "npm:react@^19.2.0"
           ]
         }

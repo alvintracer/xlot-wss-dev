@@ -29,6 +29,7 @@ This repository is the independent took Institutional Wallet Service Layer.
 - Do not expose implementation jargon such as MPC, gas sponsorship, provider names, or internal policy codes as primary customer copy unless the tenant guide explicitly requires it.
 - Use `@phosphor-icons/react`; do not add `lucide-react`.
 - Preserve keyboard access, visible focus, semantic controls, and reduced-motion behavior.
+- Follow `guide.md` §8.3.1, “모바일 한글 카피 줄바꿈,” for Korean wallet copy on existing and new tenant pages; verify actual wraps at mobile widths.
 - Every workspace must typecheck independently.
 - Run `npm run check` before handoff.
 
@@ -51,3 +52,12 @@ tenants/<tenant>/
 ```
 
 If a tenant UI-kit is missing or its source hierarchy is unclear, do not invent a bank design. Continue only with headless/platform work or ask for the missing reference package.
+
+<!-- BEGIN TENANT_UI_WORKFLOW -->
+## Tenant UI workflow
+
+- Before tenant UI work, read `guide.md`, `docs/DESIGN_GOVERNANCE.md`, the target tenant's `AGENTS.md`, and `ui-kit/README.md`.
+- Follow the target brief's reading order. If only screenshots exist, run the intake workflow in `guide.md` first.
+- Keep source evidence and generated review artifacts separate. Record visual approval separately from implementation and automated verification.
+- Preserve runtime manifest, host chrome, secure input, and tenant isolation boundaries.
+<!-- END TENANT_UI_WORKFLOW -->

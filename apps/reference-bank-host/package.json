@@ -9,16 +9,30 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/filesystem": "^8.1.4",
+    "@capacitor/share": "^8.0.3",
+    "@capgo/capacitor-native-biometric": "^8.8.1",
+    "@capgo/inappbrowser": "^8.5.4",
     "@phosphor-icons/react": "^2.1.10",
+    "@reown/walletkit": "^1.6.0",
     "@took-wss/contracts": "0.1.0",
     "@took-wss/host-sdk": "0.1.0",
     "@took-wss/key-adapters": "0.1.0",
     "@took-wss/ops-ui": "0.1.0",
     "@took-wss/sar-key-core": "0.1.0",
+    "@took-wss/tenant-jb": "0.1.0",
+    "@took-wss/tenant-jb-host-chrome": "0.1.0",
     "@took-wss/tenant-kiwoom": "0.1.0",
     "@took-wss/tenant-kiwoom-host-chrome": "0.1.0",
+    "@took-wss/tenant-namu": "0.1.0",
+    "@took-wss/tenant-namu-host-chrome": "0.1.0",
     "@took-wss/tenant-reference-bank": "0.1.0",
+    "@walletconnect/core": "^2.25.0",
+    "@walletconnect/utils": "^2.25.0",
+    "jsqr": "^1.4.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "thirdweb": "^5.121.6"
   }
 }

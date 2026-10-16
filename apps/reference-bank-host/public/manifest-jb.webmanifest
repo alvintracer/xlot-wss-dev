@@ -1,0 +1,15 @@
+{
+  "id": "/jb/app",
+  "name": "JB 월렛",
+  "short_name": "JB 월렛",
+  "description": "JB 앱 내 디지털 지갑 개발 미리보기",
+  "start_url": "/jb/app",
+  "scope": "/jb/",
+  "display": "standalone",
+  "background_color": "#F0F3F8",
+  "theme_color": "#0874E8",
+  "icons": [
+    { "src": "icons/jb-wallet-v3-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/jb-wallet-v3-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

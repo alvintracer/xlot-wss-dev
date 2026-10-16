@@ -31,6 +31,7 @@ describe('Kiwoom tenant profile', () => {
       rootHeaderOwner: 'host',
       rootNavigationOwner: 'host',
       safeAreaOwner: 'host',
+      secureKeypadLayout: 'four-column',
       navigation: {
         rootEntry: 'host-tabs',
         focusedFlow: 'hide-host-chrome',

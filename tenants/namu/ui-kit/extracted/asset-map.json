@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "namu",
+  "assets": [
+    { "role": "app-icon", "path": "tenants/namu/namu-app-logo.png", "status": "supplied" },
+    { "role": "mark", "path": "tenants/namu/namu-logo-full.png", "status": "supplied" },
+    { "role": "wordmark", "path": "tenants/namu/namu-logo-square.webp", "status": "supplied" },
+    { "role": "logotype", "path": "tenants/namu/namu-logo-typo.png", "status": "supplied" },
+    { "role": "bottom-layered-icon", "path": null, "status": "omitted-by-user-for-wallet-preview", "source": "R003, R032" },
+    { "role": "header-money-emoji", "path": "tenants/namu/assets/tossface/TossFaceFontMac-09.woff2", "status": "user-selected-preview", "source": "Tossface v1.6.1, U+1F4B8; closest available green money glyph to R033", "sha256": "edd63102886c65e1a0c7a81c340dd544b22a63d6fa1fde0817f35344bd72df54" },
+    { "role": "production-font", "path": null, "status": "missing" },
+    { "role": "service-bithumb-logo", "path": "tenants/namu/presentation/assets/bithumb.png", "status": "user-requested-preview-copy", "source": "original took! app exchange icon" },
+    { "role": "service-coinone-logo", "path": "tenants/namu/presentation/assets/coinone.jpg", "status": "user-requested-preview-copy", "source": "original took! app exchange icon (JPEG content)" }
+  ]
+}

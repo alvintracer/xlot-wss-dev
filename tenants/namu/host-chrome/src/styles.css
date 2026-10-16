@@ -1,0 +1,82 @@
+@import "../../ui-kit/extracted/design/tokens.css";
+
+/* The original Tossface v1.6.1 font subset is bundled unchanged for Namu only. */
+@font-face {
+  font-family: Tossface;
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../../assets/tossface/TossFaceFontMac-09.woff2') format('woff2');
+  unicode-range: U+1F4B8;
+}
+
+.phone[data-host-chrome='namu-investment-wallet-v1'] { --host-root-header-height: 112px; --host-root-nav-height: calc(64px + max(0px, env(safe-area-inset-bottom) - 7px)); background: var(--namu-canvas); font-family: var(--namu-body-font); }
+.host-page[data-tenant='namu'].host-page--app-only,
+.host-page[data-tenant='namu'].host-page--app-only .device-stage { background: var(--namu-canvas); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .phone-status { background: var(--namu-canvas); }
+.namu-host-header { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding: 6px 10px 0; background: var(--namu-canvas); color: var(--namu-ink); }
+.namu-host-header__top { display: flex; height: 51px; align-items: center; justify-content: space-between; padding: 0 5px; }
+.namu-host-header__top img { width: 24px; height: 28px; object-fit: contain; filter: brightness(0) saturate(100%) invert(14%) sepia(19%) saturate(1290%) hue-rotate(129deg) brightness(90%); }
+.namu-host-header__tools { display: flex; gap: 1px; }
+.namu-host-header button, .namu-host-nav button { cursor: pointer; }
+.namu-host-header__tools button { position: relative; display: grid; width: 42px; height: 42px; place-items: center; padding: 0; border: 0; background: transparent; color: #2b4244; }
+.namu-host-header__alert-dot { position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; border-radius: 50%; background: #ef3b42; }
+.namu-host-header__tabs { display: flex; min-height: 55px; align-items: center; gap: 22px; padding: 0 8px; }
+.namu-host-header__tabs button { display: flex; min-height: 48px; align-items: center; gap: 4px; padding: 0; border: 0; background: transparent; color: #777f80; font-size: clamp(19px, 5.3vw, 22px); font-weight: 600; letter-spacing: -.045em; white-space: nowrap; }
+.namu-host-header__tabs button[aria-current='page'] { color: #111619; font-weight: 750; }
+.namu-host-header__money { display: inline-grid; width: 28px; height: 30px; flex: 0 0 auto; place-items: center; font-family: Tossface, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; font-size: 26px; font-weight: 400; letter-spacing: 0; line-height: 1; }
+.namu-host-nav { display: grid; height: 100%; grid-template-columns: 44px minmax(0, .8fr) minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.35fr); align-content: center; align-items: stretch; padding: 7px 0 max(7px, env(safe-area-inset-bottom)); background: var(--namu-bottom); color: #dfdfdf; }
+.namu-host-nav button { min-width: 0; min-height: 50px; padding: 0 2px; border: 0; background: transparent; color: inherit; }
+.namu-host-nav__menu { display: grid; place-items: center; }
+.namu-host-nav__item { position: relative; overflow: hidden; font-size: clamp(12px, 3.6vw, 14.3px); font-weight: 400; line-height: 1.2; text-align: center; white-space: nowrap; }
+.namu-host-nav__item::before { position: absolute; top: 11px; bottom: 10px; left: 0; width: 1px; background: #343434; content: ''; }
+.namu-host-header button:focus-visible, .namu-host-nav button:focus-visible { outline: 2px solid #85cf47; outline-offset: -2px; }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-primary,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .app-entry button { border-radius: 2px; background: var(--namu-green); color: #12230b; }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-symbol { background: var(--namu-green-soft); color: #407f2e; }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .app-entry-mark { background: transparent; color: var(--app-loading-primary); }
+.host-page[data-tenant='namu'] .host-recipient-file { background: var(--namu-green); color: #12230b; }
+.host-page[data-tenant='namu'] .host-recipient-file:focus-within { outline-color: var(--namu-green); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-placeholder svg,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .app-entry > svg,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-notice svg,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-warning svg,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-pin-erase { color: #3a6f24; }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-kicker { color: #3a6f24 !important; }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-notice,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-warning,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-vault-panel .host-vault-contact,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-recovery-secret,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-seed-word { border-color: var(--namu-rule); background: var(--namu-soft); color: var(--namu-ink); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-transfer-summary,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-vault-factor-pairs label { border-color: var(--namu-rule); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-secondary,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-recipient-head button { background: var(--namu-soft); color: var(--namu-ink); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-check input,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-vault-factor-pairs input { accent-color: var(--namu-green); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-seed-confirmation input:focus,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-secure-import-field input:focus,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-secure-import-field textarea:focus { border-bottom-color: var(--namu-green); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-pin-dots span.is-filled { border-color: var(--namu-green); background: var(--namu-green); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-recovery-secret:focus-visible,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-vault-recovery-options button:focus-visible,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-vault-skip-local:focus-visible,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-vault-factor-pairs input:focus-visible,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-header button:focus-visible,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-footer button:focus-visible,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-security-check input:focus-visible,
+.phone[data-host-chrome='namu-investment-wallet-v1'] .app-entry button:focus-visible { outline-color: rgb(132 196 61 / 45%); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-pin-keypad { gap: 2px; background: #1f2229; }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-pin-keypad button { min-height: 60px; background: #292c32; color: #fff; }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-pin-keypad button:focus-visible { outline-color: var(--namu-green); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-pin-dots:focus-visible { outline-color: var(--namu-green); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-pin-sheet { background: #1f2229; }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-pin-sheet__head { color: #fff; }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-pin-sheet__head button:focus-visible { outline-color: var(--namu-green); }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-pin-erase { width: 100%; min-height: 44px; justify-content: center; margin: 2px 0 0; background: #292c32; color: #fff; }
+@media (max-height: 620px) {
+  .phone[data-host-chrome='namu-investment-wallet-v1'] .host-vault-panel--pin-setup { padding-top: 16px; }
+  .phone[data-host-chrome='namu-investment-wallet-v1'] .host-vault-panel--pin-setup .host-security-symbol { display: none; }
+}
+@media (max-width: 365px) { .namu-host-header__tabs { gap: 16px; } }
+.phone[data-host-chrome='namu-investment-wallet-v1'] .host-password-strength { --host-password-safe: var(--namu-green); }

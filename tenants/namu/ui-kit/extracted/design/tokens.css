@@ -1,0 +1,23 @@
+@import './fonts.css';
+
+.namu-ui,
+.phone[data-host-chrome='namu-investment-wallet-v1'],
+.host-page[data-tenant='namu'] {
+  --namu-canvas: #d3e9ea;
+  --namu-surface: #fff;
+  --namu-ink: #111619;
+  --namu-secondary: #747a7c;
+  --namu-rule: #eceeef;
+  --namu-soft: #f8f8f8;
+  --namu-green: #84c43d;
+  --namu-green-soft: #eef7e7;
+  --namu-positive: #ee343d;
+  --namu-negative: #1671ed;
+  --namu-bottom: #222;
+  --namu-card-radius: 18px;
+  --namu-small-radius: 9px;
+  --namu-page-inset: 10px;
+  --namu-body-font: 'Nanum Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+}
+
+.namu-ui { font-family: var(--namu-body-font); }

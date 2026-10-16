@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { smsBrandForTenant } from './smsTenantBrand.js';
 import { ethers, type TransactionReceipt } from 'ethers';
 import postgres from 'postgres';
 import type {
@@ -8,6 +9,7 @@ import type {
   WalletReceiveAssetView,
   WssSessionClaims,
 } from '@took-wss/contracts';
+import { stablecoinByAssetId } from './stablecoinRegistry.js';
 import {
   decryptPrivateAttribute,
   encryptPrivateAttribute,
@@ -58,13 +60,10 @@ const sql = databaseUrl && !process.env.VITEST
 interface PhoneEscrowDatabaseRow {
   claim_code: string;
   recipient_ciphertext: Buffer | null;
-  chain_id: string;
   commitment: string;
-  escrow_contract_address: string;
-  recipient_amount_atomic: string;
-  escrow_amount_atomic: string;
-  claim_fee_atomic: string;
+  status: string;
   sms_status: string;
+  deposit_transaction_hash: string | null;
 }
 
 export interface PhoneEscrowPreparation {
@@ -84,11 +83,15 @@ export interface PhoneEscrowPreparation {
 export interface PhoneEscrowIntentReference {
   commitment: string;
   escrowAddress: string;
+  senderAddress: string;
+  tokenAddress: string;
+  amountAtomic: string;
 }
 
 export interface PhoneEscrowDeliveryResult {
   status: 'pending' | 'sent' | 'failed';
   recipientDisplay: string;
+  claimUrl?: string;
 }
 
 function environment(name: string): string | undefined {
@@ -120,17 +123,54 @@ export function phoneEscrowAddress(chainId: string): string | undefined {
   return resolved && ethers.isAddress(resolved) ? ethers.getAddress(resolved) : undefined;
 }
 
-export function supportsPhoneEscrow(chainId: string): boolean {
+const phoneUsdcChains = new Set(['ethereum', 'polygon', 'arbitrum', 'base']);
+const phoneNativeAssets: Record<string, { symbol: string; limit: bigint }> = {
+  ethereum: { symbol: 'ETH', limit: 100_000_000_000_000_000n }, // 0.1 ETH
+  arbitrum: { symbol: 'ETH', limit: 100_000_000_000_000_000n },
+  base: { symbol: 'ETH', limit: 100_000_000_000_000_000n },
+  polygon: { symbol: 'POL', limit: 100_000_000_000_000_000_000n }, // 100 POL
+};
+
+/** Customer payout cap, in the selected asset's smallest unit. */
+export function phoneEscrowAssetLimit(chainId: string, assetId: string): bigint | undefined {
+  if (assetId === `${chainId}:native`) return phoneNativeAssets[chainId]?.limit;
+  if (!phoneUsdcChains.has(chainId)) return undefined;
+  const coin = stablecoinByAssetId(assetId);
+  return coin?.chainId === chainId && coin.symbol === 'USDC' && coin.canonical
+    && coin.transport === 'evm-erc20' && coin.decimals === 6 ? 100_000_000n : undefined; // 100 USDC
+}
+
+function expectedPhoneEscrowAsset(asset: WalletReceiveAssetView): boolean {
+  if (!phoneEscrowAssetLimit(asset.chainId, asset.assetId)) return false;
+  if (asset.assetId === `${asset.chainId}:native`) {
+    return !asset.tokenAddress && asset.symbol === phoneNativeAssets[asset.chainId]?.symbol && asset.decimals === 18;
+  }
+  const coin = stablecoinByAssetId(asset.assetId);
+  return Boolean(coin && asset.tokenAddress?.toLowerCase() === coin.tokenAddress.toLowerCase()
+    && asset.symbol === coin.symbol && asset.decimals === coin.decimals);
+}
+
+function allowedPilotAsset(chainId: string, assetId?: string): boolean {
+  if (!assetId || !phoneEscrowAssetLimit(chainId, assetId)) return false;
+  const allowed = environment('WSS_PHONE_ESCROW_ALLOWED_ASSET_IDS');
+  // Production requires an explicit deployment allowlist in addition to the code policy.
+  if (!allowed) return process.env.NODE_ENV !== 'production';
+  return allowed.split(',').map((item) => item.trim().toLowerCase()).includes(assetId.toLowerCase());
+}
+
+export function supportsPhoneEscrow(chainId: string, assetId?: string): boolean {
   const expectedSigner = environment('WSS_PHONE_ESCROW_CLAIM_SIGNER_ADDRESS');
   return environment('WSS_PHONE_ESCROW_EXECUTION_ENABLED') === 'true'
+    && allowedPilotAsset(chainId, assetId)
     && Boolean(configuredClaimBaseUrl())
     && Boolean(expectedSigner && ethers.isAddress(expectedSigner) && expectedSigner !== ZERO_ADDRESS)
     && Boolean(phoneEscrowAddress(chainId));
 }
 
-export function phoneEscrowUnavailableReason(chainId: string): string | undefined {
-  if (supportsPhoneEscrow(chainId)) return undefined;
+export function phoneEscrowUnavailableReason(chainId: string, assetId?: string): string | undefined {
+  if (supportsPhoneEscrow(chainId, assetId)) return undefined;
   if (!phoneEscrowAddress(chainId)) return '이 네트워크에서는 아직 휴대폰 번호로 보낼 수 없어요.';
+  if (!allowedPilotAsset(chainId, assetId)) return '현재 이 자산은 휴대폰 번호 송금 대상이 아니에요.';
   return '휴대폰 번호로 보내기는 준비 중이에요.';
 }
 
@@ -160,6 +200,66 @@ export function senderPaysEscrowDeposit(
     escrowAmount = next;
   }
   throw new Error('phone_escrow_quote_unavailable');
+}
+
+export function maximumPhoneEscrowRecipient(
+  available: bigint,
+  feeRate: bigint,
+  minFee: bigint,
+  fixedFee: bigint,
+  cap?: bigint,
+): bigint {
+  if (available <= 0n) return 0n;
+  let low = 0n;
+  let high = cap && cap < available ? cap : available;
+  while (low < high) {
+    const candidate = (low + high + 1n) / 2n;
+    const { escrowAmount } = senderPaysEscrowDeposit(candidate, feeRate, minFee, fixedFee);
+    if (escrowAmount <= available) low = candidate;
+    else high = candidate - 1n;
+  }
+  return low;
+}
+
+export async function quotePhoneEscrow(input: {
+  asset: WalletReceiveAssetView;
+  recipientAmount: bigint;
+  available: bigint;
+  rpcUrl: string;
+  evmChainId: number;
+}): Promise<{
+  recipientAmountAtomic: string;
+  escrowAmountAtomic: string;
+  claimFeeAtomic: string;
+  maximumRecipientAtomic: string;
+}> {
+  const { asset } = input;
+  if (!supportsPhoneEscrow(asset.chainId, asset.assetId)) throw new Error('phone_escrow_not_configured');
+  if (!expectedPhoneEscrowAsset(asset)) throw new Error('phone_escrow_asset_mismatch');
+  if (input.recipientAmount <= 0n || input.available < 0n) throw new Error('invalid_transfer_amount');
+  const address = phoneEscrowAddress(asset.chainId);
+  if (!address) throw new Error('phone_escrow_network_not_supported');
+  const provider = new ethers.JsonRpcProvider(input.rpcUrl, input.evmChainId, { staticNetwork: true });
+  const [feeRate, minFee, fixedFee, signer] = await Promise.all([
+    readContractUint(provider, address, escrowInterface, 'feeRate'),
+    readContractUint(provider, address, escrowInterface, 'minFee'),
+    readContractUint(provider, address, escrowInterface, 'fixedFee'),
+    readContractAddress(provider, address, escrowInterface, 'serverSigner'),
+  ]);
+  const expectedSigner = environment('WSS_PHONE_ESCROW_CLAIM_SIGNER_ADDRESS');
+  if (!expectedSigner || signer !== ethers.getAddress(expectedSigner)) throw new Error('phone_escrow_claim_signer_mismatch');
+  const maximumByPolicy = phoneEscrowAssetLimit(asset.chainId, asset.assetId)!;
+  const maximumRecipient = maximumPhoneEscrowRecipient(
+    input.available, feeRate, minFee, fixedFee,
+    maximumByPolicy,
+  );
+  const { escrowAmount, claimFee } = senderPaysEscrowDeposit(input.recipientAmount, feeRate, minFee, fixedFee);
+  return {
+    recipientAmountAtomic: input.recipientAmount.toString(),
+    escrowAmountAtomic: escrowAmount.toString(),
+    claimFeeAtomic: claimFee.toString(),
+    maximumRecipientAtomic: maximumRecipient.toString(),
+  };
 }
 
 function gasWithMargin(value: bigint, fallback: bigint): bigint {
@@ -240,7 +340,9 @@ export async function preparePhoneEscrow(input: {
 }): Promise<PhoneEscrowPreparation> {
   const { network, asset } = input;
   if (!network.address || network.addressStatus !== 'ready') throw new Error('asset_not_available');
-  if (!supportsPhoneEscrow(asset.chainId)) throw new Error('phone_escrow_not_configured');
+  if (!supportsPhoneEscrow(asset.chainId, asset.assetId)) throw new Error('phone_escrow_not_configured');
+  if (!expectedPhoneEscrowAsset(asset)) throw new Error('phone_escrow_asset_mismatch');
+  if (input.recipientAmount > phoneEscrowAssetLimit(asset.chainId, asset.assetId)!) throw new Error('phone_escrow_pilot_limit');
   const escrowAddress = phoneEscrowAddress(asset.chainId);
   if (!escrowAddress) throw new Error('phone_escrow_network_not_supported');
   const normalizedPhone = normalizePhoneEscrowRecipient(input.recipient);
@@ -420,6 +522,10 @@ function claimUrl(code: string): string | undefined {
   return `${base}/${encodeURIComponent(code)}`;
 }
 
+export function phoneEscrowClaimUrl(code: string): string | undefined {
+  return /^[A-Za-z0-9_-]{12}$/.test(code) ? claimUrl(code) : undefined;
+}
+
 function solapiAuthorization(apiKey: string, apiSecret: string): string {
   const date = new Date().toISOString();
   const salt = randomUUID().replaceAll('-', '');
@@ -474,10 +580,14 @@ export function isMatchingPhoneEscrowReceipt(
 ): boolean {
   if (receipt.status !== 1 || receipt.to?.toLowerCase() !== reference.escrowAddress.toLowerCase()) return false;
   return receipt.logs.some((log) => {
+    if (log.address.toLowerCase() !== reference.escrowAddress.toLowerCase()) return false;
     try {
       const parsed = escrowInterface.parseLog(log);
       return parsed?.name === 'Deposited'
-        && String(parsed.args.commitment).toLowerCase() === reference.commitment.toLowerCase();
+        && String(parsed.args.commitment).toLowerCase() === reference.commitment.toLowerCase()
+        && String(parsed.args.sender).toLowerCase() === reference.senderAddress.toLowerCase()
+        && String(parsed.args.token).toLowerCase() === reference.tokenAddress.toLowerCase()
+        && BigInt(parsed.args.amount) === BigInt(reference.amountAtomic);
     } catch {
       return false;
     }
@@ -499,61 +609,120 @@ export async function notifyFundedPhoneEscrow(input: {
   recipientAmountDisplay: string;
 }): Promise<PhoneEscrowDeliveryResult> {
   if (!sql) return { status: 'pending', recipientDisplay: '휴대폰 수신자' };
-  const rows = await sql<PhoneEscrowDatabaseRow[]>`
-    SELECT claim_code, recipient_ciphertext, chain_id, commitment, escrow_contract_address,
-      recipient_amount_atomic, escrow_amount_atomic, claim_fee_atomic, sms_status
-    FROM wss_phone_escrows
-    WHERE tenant_id = ${input.session.tenantId}
-      AND transfer_intent_id = ${input.transferIntentId}
-    FOR UPDATE
+  const db = sql;
+  const depositHash = input.depositTransactionHash.toLowerCase();
+  const funded = await db<PhoneEscrowDatabaseRow[]>`
+    UPDATE wss_phone_escrows escrow
+    SET status = CASE WHEN escrow.status IN ('prepared', 'submitted') THEN 'funded' ELSE escrow.status END,
+      deposit_transaction_hash = COALESCE(escrow.deposit_transaction_hash, ${depositHash}),
+      funded_at = COALESCE(escrow.funded_at, now()), updated_at = now()
+    FROM wss_transfer_intents intent
+    WHERE escrow.tenant_id = ${input.session.tenantId}
+      AND escrow.transfer_intent_id = ${input.transferIntentId}
+      AND intent.tenant_id = escrow.tenant_id AND intent.id = escrow.transfer_intent_id
+      AND intent.subject_hash = ${input.session.subject}
+      AND escrow.status IN ('prepared', 'submitted', 'funded', 'notified')
+      AND (escrow.deposit_transaction_hash IS NULL OR escrow.deposit_transaction_hash = ${depositHash})
+    RETURNING escrow.claim_code, escrow.recipient_ciphertext, escrow.commitment,
+      escrow.status, escrow.sms_status, escrow.deposit_transaction_hash
   `;
-  const row = rows[0];
+  const row = funded[0];
   if (!row) throw new Error('phone_escrow_not_found');
-  const { piiKey } = requiredPhoneSecurity();
-  const aad = `${input.session.tenantId}:${input.transferIntentId}:phone-escrow-recipient`;
-  if (!row.recipient_ciphertext) {
-    return { status: row.sms_status === 'sent' ? 'sent' : 'pending', recipientDisplay: '휴대폰 수신자' };
-  }
-  const phone = decryptPrivateAttribute(row.recipient_ciphertext, piiKey, aad);
-  const recipientDisplay = maskPhoneRecipient(phone);
   const url = claimUrl(row.claim_code);
-  await sql`
-    UPDATE wss_phone_escrows
-    SET status = 'funded', deposit_transaction_hash = ${input.depositTransactionHash.toLowerCase()},
-      funded_at = now(), updated_at = now()
-    WHERE tenant_id = ${input.session.tenantId} AND transfer_intent_id = ${input.transferIntentId}
-  `;
   if (!url) {
-    await sql`
+    await db`
       UPDATE wss_phone_escrows SET sms_status = 'not-configured', updated_at = now()
       WHERE tenant_id = ${input.session.tenantId} AND transfer_intent_id = ${input.transferIntentId}
+        AND sms_status = 'pending'
     `;
-    return { status: 'pending', recipientDisplay };
+    return { status: 'pending', recipientDisplay: '휴대폰 수신자' };
   }
+  if (row.sms_status === 'sent') return { status: 'sent', recipientDisplay: '휴대폰 수신자', claimUrl: url };
+  const claimed = await db<PhoneEscrowDatabaseRow[]>`
+    UPDATE wss_phone_escrows escrow
+    SET sms_status = 'sending', sms_attempts = escrow.sms_attempts + 1,
+      sms_last_attempt_at = now(), sms_last_error_code = NULL, updated_at = now()
+    WHERE escrow.tenant_id = ${input.session.tenantId}
+      AND escrow.transfer_intent_id = ${input.transferIntentId}
+      AND escrow.status IN ('funded', 'notified') AND escrow.expires_at > now()
+      AND escrow.recipient_ciphertext IS NOT NULL
+      AND escrow.sms_attempts < 5
+      AND (escrow.sms_status IN ('pending', 'failed', 'not-configured')
+        OR (escrow.sms_status = 'sending' AND escrow.sms_last_attempt_at < now() - interval '2 minutes'))
+      AND (escrow.sms_last_attempt_at IS NULL OR escrow.sms_last_attempt_at < now() - interval '60 seconds')
+    RETURNING escrow.claim_code, escrow.recipient_ciphertext, escrow.commitment,
+      escrow.status, escrow.sms_status, escrow.deposit_transaction_hash
+  `;
+  const sending = claimed[0];
+  if (!sending?.recipient_ciphertext) {
+    return { status: row.sms_status === 'failed' ? 'failed' : 'pending', recipientDisplay: '휴대폰 수신자', claimUrl: url };
+  }
+  const { piiKey } = requiredPhoneSecurity();
+  const aad = `${input.session.tenantId}:${input.transferIntentId}:phone-escrow-recipient`;
+  const phone = decryptPrivateAttribute(sending.recipient_ciphertext, piiKey, aad);
+  const recipientDisplay = maskPhoneRecipient(phone);
   try {
-    await sql`
-      UPDATE wss_phone_escrows SET sms_status = 'sending', sms_last_error_code = NULL, updated_at = now()
-      WHERE tenant_id = ${input.session.tenantId} AND transfer_intent_id = ${input.transferIntentId}
-    `;
     const providerId = await sendSolapiClaimSms({
       phone,
-      commitment: row.commitment,
-      text: `[키움 디지털 월렛] ${input.recipientAmountDisplay} ${input.assetSymbol} 수령 안내\n${url}\n본인 확인 후 7일 안에 받아주세요.`,
+      commitment: sending.commitment,
+      text: `[${smsBrandForTenant(input.session.tenantId)}] ${input.recipientAmountDisplay} ${input.assetSymbol} 수령 안내\n${url}\n본인 확인 후 7일 안에 받아주세요.`,
     });
-    await sql`
+    await db`
       UPDATE wss_phone_escrows
-      SET status = 'notified', sms_status = 'sent', sms_provider = 'solapi',
+      SET status = CASE WHEN status = 'funded' THEN 'notified' ELSE status END,
+        sms_status = 'sent', sms_provider = 'solapi',
         sms_provider_id = ${providerId}, notified_at = now(), recipient_ciphertext = NULL,
         recipient_purged_at = now(), updated_at = now()
       WHERE tenant_id = ${input.session.tenantId} AND transfer_intent_id = ${input.transferIntentId}
+        AND sms_status = 'sending'
     `;
-    return { status: 'sent', recipientDisplay };
+    return { status: 'sent', recipientDisplay, claimUrl: url };
   } catch (error) {
-    await sql`
+    await db`
       UPDATE wss_phone_escrows
       SET sms_status = 'failed', sms_last_error_code = ${safeDeliveryError(error)}, updated_at = now()
       WHERE tenant_id = ${input.session.tenantId} AND transfer_intent_id = ${input.transferIntentId}
+        AND sms_status = 'sending'
     `;
-    return { status: 'failed', recipientDisplay };
+    return { status: 'failed', recipientDisplay, claimUrl: url };
   }
+}
+
+export async function retryPhoneEscrowNotification(input: { session: Session; transferIntentId: string }): Promise<PhoneEscrowDeliveryResult> {
+  if (!sql) throw new Error('phone_escrow_store_required');
+  const rows = await sql<{
+    deposit_transaction_hash: string | null;
+    status: string;
+    sms_status: string;
+    sms_attempts: number;
+    sms_last_attempt_at: Date | null;
+    expires_at: Date;
+    asset_symbol: string;
+    prepared_payload: { phoneEscrow?: { recipientAmountDisplay?: string }; recipient?: string } | null;
+  }[]>`
+    SELECT escrow.deposit_transaction_hash, escrow.status, escrow.sms_status,
+      escrow.sms_attempts, escrow.sms_last_attempt_at, escrow.expires_at,
+      intent.asset_symbol, intent.prepared_payload
+    FROM wss_phone_escrows escrow
+    JOIN wss_transfer_intents intent ON intent.tenant_id = escrow.tenant_id
+      AND intent.id = escrow.transfer_intent_id
+    WHERE escrow.tenant_id = ${input.session.tenantId}
+      AND escrow.transfer_intent_id = ${input.transferIntentId}
+      AND intent.subject_hash = ${input.session.subject}
+    LIMIT 1
+  `;
+  const row = rows[0];
+  if (!row?.deposit_transaction_hash || !['funded', 'notified'].includes(row.status)
+    || row.expires_at.getTime() <= Date.now()) throw new Error('phone_escrow_not_ready');
+  if (row.sms_status === 'sent') throw new Error('phone_escrow_sms_already_sent');
+  if (row.sms_attempts >= 5) throw new Error('phone_escrow_sms_limit_reached');
+  if (row.sms_last_attempt_at && Date.now() - row.sms_last_attempt_at.getTime() < 60_000) throw new Error('phone_escrow_sms_rate_limited');
+  const recipientAmountDisplay = row.prepared_payload?.phoneEscrow?.recipientAmountDisplay;
+  if (!recipientAmountDisplay) throw new Error('phone_escrow_intent_mismatch');
+  const delivery = await notifyFundedPhoneEscrow({
+    session: input.session, transferIntentId: input.transferIntentId,
+    depositTransactionHash: row.deposit_transaction_hash,
+    assetSymbol: row.asset_symbol, recipientAmountDisplay,
+  });
+  return { ...delivery, recipientDisplay: row.prepared_payload?.recipient ?? delivery.recipientDisplay };
 }

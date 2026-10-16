@@ -140,29 +140,54 @@ function severityFor(score, directDenylist, sanctioned) {
 }
 
 function directCategory(payload) {
-  const detail = payload?.denylistDetail;
+  const detail = payload?.denylistDetail ?? payload?.denylist_detail;
   if (!detail || typeof detail !== "object") return null;
   return String(
-    detail.raCode2 ?? detail.dataType ?? payload.dataType ?? "DENYLIST",
+    detail.raCode2 ?? detail.ra_code2 ?? detail.dataType ?? detail.data_type ?? payload.dataType ?? payload.data_type ?? "DENYLIST",
   ).trim().toUpperCase();
 }
 
+function providerAddedDate(value) {
+  if (typeof value !== "string") return null;
+  const match = value.trim().match(/^(\d{4})[-.]?(\d{2})[-.]?(\d{2})(?:[ T].*|\d{6})?$/);
+  if (!match) return null;
+  const [, year, month, day] = match;
+  const date = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime())
+    && date.toISOString().slice(0, 10) === `${year}-${month}-${day}`
+    ? `${year}-${month}-${day}`
+    : null;
+}
+
+function providerCategoryLabel(value) {
+  if (typeof value !== "string") return null;
+  const label = value.replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+  return label && label.length <= 80 ? label : null;
+}
+
 export function normalizeTransightResult(payload) {
-  const directDenylist = String(payload?.isDenylist ?? "N").toUpperCase() === "Y";
-  const trackedDenylist = String(payload?.isTrackedDenylist ?? "N").toUpperCase() === "Y";
-  const detail = payload?.denylistDetail && typeof payload.denylistDetail === "object"
-    ? payload.denylistDetail
+  const directDenylist = String(payload?.isDenylist ?? payload?.is_denylist ?? "N").toUpperCase() === "Y";
+  const trackedDenylist = String(payload?.isTrackedDenylist ?? payload?.is_tracked_denylist ?? "N").toUpperCase() === "Y";
+  const rawDetail = payload?.denylistDetail ?? payload?.denylist_detail;
+  const detail = rawDetail && typeof rawDetail === "object" && !Array.isArray(rawDetail)
+    ? rawDetail
     : {};
   const category = directCategory(payload);
-  const dataType = String(payload?.dataType ?? detail.dataType ?? "").toUpperCase();
+  const dataType = String(payload?.dataType ?? payload?.data_type ?? detail.dataType ?? detail.data_type ?? "").toUpperCase();
+  const addedDate = directDenylist ? providerAddedDate(
+    detail.added_date ?? detail.addedDate ?? payload?.added_date ?? payload?.addedDate,
+  ) : null;
+  const categoryLabel = directDenylist ? providerCategoryLabel(
+    detail.ra_code2_kor ?? detail.raCode2Kor ?? payload?.ra_code2_kor ?? payload?.raCode2Kor,
+  ) : null;
   const sanctioned = directDenylist && (
     dataType === "RDL" || ["OIS", "SRA", "DIS"].includes(category)
   );
-  const directScore = numberOrNull(payload?.riskScore);
-  const trackedScore = numberOrNull(payload?.trackedRiskScore);
+  const directScore = numberOrNull(payload?.riskScore ?? payload?.risk_score);
+  const trackedScore = numberOrNull(payload?.trackedRiskScore ?? payload?.tracked_risk_score);
   let riskScore = Math.max(
-    directScore ?? levelScore(payload?.riskLevel),
-    trackedScore ?? levelScore(payload?.trackedRiskLevel),
+    directScore ?? levelScore(payload?.riskLevel ?? payload?.risk_level),
+    trackedScore ?? levelScore(payload?.trackedRiskLevel ?? payload?.tracked_risk_level),
   );
   if (directDenylist) riskScore = Math.max(riskScore, 100);
   if (trackedDenylist && riskScore === 0) riskScore = 50;
@@ -171,7 +196,7 @@ export function normalizeTransightResult(payload) {
   const flags = [];
   if (directDenylist) {
     const label = String(
-      detail.raCode2Kor ?? detail.raCode2Eng ?? detail.raDetail ?? dataType ?? "고위험 지갑주소",
+      categoryLabel ?? detail.raCode2Eng ?? detail.ra_code2_eng ?? detail.raDetail ?? dataType ?? "고위험 지갑주소",
     ).trim();
     flags.push({
       category: category || "DENYLIST",
@@ -200,6 +225,8 @@ export function normalizeTransightResult(payload) {
     provider_code: String(payload?.rspCode ?? ""),
     direct_denylist: directDenylist,
     tracked_denylist: trackedDenylist,
+    ...(addedDate ? { added_date: addedDate } : {}),
+    ...(categoryLabel ? { ra_code2_kor: categoryLabel } : {}),
   };
 }
 
@@ -300,6 +327,11 @@ export class TransightClient {
     });
     if (response.status === 401 && !retried) {
       this.token = null;
+      return this.#authorizedRequest(body, true);
+    }
+    if (response.status === 403 && !retried) {
+      this.token = null;
+      await new Promise((resolve) => setTimeout(resolve, 250));
       return this.#authorizedRequest(body, true);
     }
     if (!response.ok) {

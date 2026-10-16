@@ -1,0 +1,24 @@
+:root {
+  color-scheme: light;
+  --background: #f2f5f8;
+  --surface: #ffffff;
+  --ink: #202428;
+  --muted: #747c83;
+  --line: #e1e5e9;
+  --primary: #0874e8;
+  --radius: 18px;
+  --font-display: "Paperlogy", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); background: var(--background); }
+.page-header { max-width: 1600px; margin: 0 auto; padding: 56px 32px 28px; }
+.eyebrow { margin: 0 0 10px; color: var(--primary); font-size: 12px; font-weight: 800; letter-spacing: .14em; }
+h1 { margin: 0; font-family: var(--font-display); font-size: clamp(28px, 4vw, 48px); font-weight: 800; letter-spacing: -.04em; }
+.page-header > p:last-child { margin: 12px 0 0; color: var(--muted); }
+.screen-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 28px; max-width: 1600px; margin: 0 auto; padding: 28px 32px 80px; }
+.screen-card { min-width: 0; margin: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: 0 14px 36px rgba(24, 38, 54, .08); }
+.screen-card figcaption { display: flex; gap: 10px; align-items: center; min-height: 52px; padding: 14px 16px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.screen-card figcaption b { color: var(--primary); font-variant-numeric: tabular-nums; }
+.screen-card img { display: block; width: 100%; height: auto; aspect-ratio: 392 / 849; object-fit: cover; object-position: top; background: #fff; }
+@media (max-width: 640px) { .page-header { padding: 36px 20px 20px; } .screen-grid { grid-template-columns: 1fr; padding: 20px 20px 56px; } }

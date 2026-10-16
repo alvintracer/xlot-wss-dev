@@ -1,6 +1,7 @@
 import {
   ChartPieSlice,
   Globe,
+  GearSix,
   SquaresFour,
   Star,
   Tag,
@@ -10,6 +11,7 @@ import './styles.css';
 
 export interface KiwoomHostChromeProps {
   onAction?: (message: string) => void;
+  onOpenWalletSettings?: () => void;
 }
 
 const logoPreviewUrl = new URL(
@@ -25,7 +27,7 @@ const ROOT_NAV_ITEMS = [
   { id: 'menu', label: '메뉴', Icon: SquaresFour },
 ] as const;
 
-export function KiwoomHostHeader({ onAction }: KiwoomHostChromeProps) {
+export function KiwoomHostHeader({ onAction, onOpenWalletSettings }: KiwoomHostChromeProps) {
   return (
     <header className="kw-host-header" data-testid="kiwoom-root-header">
       <div className="kw-host-header__brand" aria-label="자산 페이지">
@@ -36,6 +38,7 @@ export function KiwoomHostHeader({ onAction }: KiwoomHostChromeProps) {
         </nav>
       </div>
       <div className="kw-host-header__actions">
+        <button type="button" aria-label="설정" onClick={onOpenWalletSettings}><GearSix aria-hidden="true" /></button>
         <button type="button" aria-label="고객 정보" onClick={() => onAction?.('고객 정보는 금융사 호스트 앱이 연결합니다.')}>
           <UserCircle aria-hidden="true" />
         </button>

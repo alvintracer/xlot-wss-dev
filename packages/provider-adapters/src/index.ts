@@ -6,9 +6,11 @@ import type {
   ProvisionWalletResponse,
   TenantManifest,
   WalletHomePayload,
+  WalletProfileSummary,
   WssSessionClaims,
   VerifyPhoneChallengeResponse,
   WssIdentityState,
+  ExchangeQuoteMode,
 } from '@took-wss/contracts';
 
 export interface TransferIntent {
@@ -53,6 +55,40 @@ export interface QuoteProvider {
   getKrwQuote(input: Pick<TransferIntent, 'asset' | 'amount'>): Promise<KrwQuote>;
 }
 
+export interface DexQuoteRequest {
+  chainId: number;
+  taker: string;
+  sellToken: string;
+  buyToken: string;
+  mode: ExchangeQuoteMode;
+  amountAtomic: string;
+}
+
+export interface DexQuoteResult {
+  providerQuoteId: string;
+  sellAmountAtomic: string;
+  buyAmountAtomic: string;
+  minimumBuyAmountAtomic?: string;
+  maximumSellAmountAtomic?: string;
+  allowanceTarget?: string;
+  allowanceRequired: boolean;
+  liquidityAvailable: boolean;
+  networkFeeAtomic: string;
+  transaction: {
+    to: string;
+    data: string;
+    value: string;
+    gas: string;
+    gasPrice?: string;
+  };
+}
+
+/** Server-side only. Provider credentials and raw routing responses never cross into a wallet WebView. */
+export interface DexQuoteProvider {
+  readonly id: string;
+  getFirmQuote(input: DexQuoteRequest): Promise<DexQuoteResult>;
+}
+
 export interface ComplianceProvider {
   readonly id: string;
   screenTransfer(intent: TransferIntent): Promise<ComplianceDecision>;
@@ -67,10 +103,33 @@ export interface ExecutionProvider {
 
 export interface WalletQueryProvider {
   readonly id: string;
+  getOwnedReceiveAddress(input: {
+    session: Omit<WssSessionClaims, 'nonce'>;
+    manifest: TenantManifest;
+    walletId: string;
+    chainId: string;
+  }): Promise<string | null>;
+  verifyProviderWallet?(input: {
+    session: Omit<WssSessionClaims, 'nonce'>;
+    manifest: TenantManifest;
+    walletId: string;
+    account: { subjectHash: string; address: string };
+  }): Promise<boolean>;
   getHome(input: {
     session: Omit<WssSessionClaims, 'nonce'>;
     manifest: TenantManifest;
     walletId?: string;
+  }): Promise<WalletHomePayload>;
+  renameWallet(input: {
+    session: Omit<WssSessionClaims, 'nonce'>;
+    walletId: string;
+    label: string;
+  }): Promise<WalletProfileSummary>;
+  removeWallet(input: {
+    session: Omit<WssSessionClaims, 'nonce'>;
+    manifest: TenantManifest;
+    walletId: string;
+    authorizationId: string;
   }): Promise<WalletHomePayload>;
 }
 
@@ -83,6 +142,7 @@ export interface WalletProvisioningProvider {
     evidence: {
       hostAuthorizationId: string;
       keyCoreAttestationId?: string;
+      providerAccount?: { subjectHash: string; address: string };
     };
   }): Promise<ProvisionWalletResponse>;
 }

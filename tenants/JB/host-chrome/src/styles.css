@@ -1,0 +1,89 @@
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('../../assets/Paperlogy-7Bold.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+.phone[data-host-chrome='jb-mobile-wallet-v1'] { --host-root-header-height: 128px; --host-root-nav-height: 76px; font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', system-ui, sans-serif; background: #f0f3f8; }
+.jb-host-header { display: flex; flex-direction: column; justify-content: space-between; padding: 14px 16px 0; background: #f0f3f8; color: #202428; }
+.jb-host-header__top, .jb-host-header__tabs { display: flex; align-items: center; justify-content: space-between; }
+.jb-host-header__top { min-height: 47px; }
+.jb-host-header__top > strong { font-size: 20px; letter-spacing: -.04em; }
+.jb-host-header__customer-name { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.jb-host-header__actions { display: flex; gap: 4px; }
+.jb-host-header button { border: 0; background: transparent; color: inherit; cursor: pointer; }
+.jb-host-header__actions button, .jb-host-header__settings { display: grid; width: 40px; height: 40px; place-items: center; padding: 0; }
+.jb-host-header__tabs { min-height: 54px; }
+.jb-host-header__tabs nav { display: flex; align-self: stretch; align-items: stretch; gap: clamp(9px, 3vw, 24px); min-width: 0; }
+.jb-host-header__tabs nav button { position: relative; padding: 0 2px; color: #8b96a3; font-size: clamp(16px, 4.7vw, 19px); font-weight: 700; white-space: nowrap; }
+.jb-host-header__tabs nav button[aria-current='page'] { color: #0874e8; }
+.jb-host-header__tabs nav button[aria-current='page']::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: #0874e8; content: ''; }
+.jb-host-header__settings { flex: 0 0 40px; color: #707c8a !important; }
+.jb-host-header button:focus-visible, .jb-host-nav button:focus-visible, .jb-host-preview button:focus-visible { outline: 2px solid #0874e8; outline-offset: 2px; border-radius: 4px; }
+.jb-host-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch; border-top: 1px solid #e1e5e9; background: #fff; }
+.jb-host-nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; padding: 4px 0 6px; border: 0; background: transparent; color: #9ba4ae; font-size: 10px; cursor: pointer; }
+.jb-host-nav button[aria-current='page'] { color: #0874e8; }
+.jb-host-nav__icon { display: grid; width: 39px; height: 39px; place-items: center; }
+.jb-host-nav__icon img { width: 28px; height: 28px; object-fit: contain; }
+.jb-host-nav button:nth-child(3) .jb-host-nav__icon { border-radius: 50%; background: #eef4fd; }
+.jb-host-nav button:nth-child(3) .jb-host-nav__icon img { width: 29px; height: 29px; }
+.jb-host-preview { min-height: 0; height: 100%; overflow-y: auto; padding: 16px 16px 24px; background: #f0f3f8; color: #202428; }
+.jb-host-preview__card { min-height: 196px; padding: 16px; border-radius: 16px; background: #fff; box-shadow: 0 4px 12px rgb(24 38 54 / 5%); }
+.jb-host-preview__card-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 12px; background: #e9f3ff; color: #0874e8; }
+.jb-host-preview__card p { margin: 8px 0 0; color: #747c83; font-size: 12px; }
+.jb-host-preview__card h2 { margin: 4px 0 0; font-size: 24px; letter-spacing: -.04em; }
+.jb-host-preview__card .jb-host-preview__detail { margin-top: 3px; }
+.jb-host-preview__card button { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 43px; margin-top: 13px; padding: 0 14px; border: 0; border-radius: 8px; background: #0874e8; color: #fff; font-weight: 700; cursor: pointer; }
+.jb-host-preview__dots { display: flex; justify-content: center; gap: 5px; margin: 11px 0; }
+.jb-host-preview__dots i { width: 6px; height: 6px; border-radius: 50%; background: #cbd2db; }
+.jb-host-preview__dots i:first-child { background: #0874e8; }
+.jb-host-preview__all { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 48px; padding: 0 16px; border: 0; border-radius: 16px; background: #fff; color: #202428; text-align: left; cursor: pointer; }
+.jb-host-preview__all strong { font-size: 14px; }
+.jb-host-preview__all svg { color: #9ba4ae; }
+.jb-host-preview__quick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; margin-top: 12px; padding: 15px 7px; border-radius: 16px; background: #fff; }
+.jb-host-preview__quick button { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; padding: 0 2px; border: 0; background: transparent; color: #39434d; font-size: 10px; white-space: nowrap; cursor: pointer; }
+.jb-quick-icon { display: grid; width: 39px; height: 39px; place-items: center; border-radius: 12px; background: #e9f3ff; color: #0874e8; }
+.jb-host-preview__quick button:nth-child(1) .jb-quick-icon { background: #fff1ca; color: #ef9a00; }
+.jb-host-preview__quick button:nth-child(2) .jb-quick-icon { background: #ffe4e7; color: #ec526b; }
+.jb-host-preview__quick button:nth-child(3) .jb-quick-icon { background: #eee8ff; color: #8553f6; }
+.jb-host-preview__quick button:nth-child(5) .jb-quick-icon { background: #dcf8e8; color: #12a765; }
+.jb-host-preview__banner { position: relative; min-height: 122px; margin-top: 12px; overflow: hidden; padding: 18px; border-radius: 16px; background: linear-gradient(110deg, #7836f0, #a944df); color: #fff; }
+.jb-host-preview__banner small { display: block; font-size: 11px; }
+.jb-host-preview__banner strong { display: block; margin-top: 7px; font-size: 17px; line-height: 1.3; }
+.jb-host-preview :is(.jb-host-preview__card h2, .jb-host-preview__card p, .jb-host-preview__banner strong) {
+  word-break: keep-all;
+  overflow-wrap: normal;
+  text-wrap: wrap;
+}
+.jb-host-preview__banner svg { position: absolute; right: 15px; bottom: 14px; opacity: .8; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-security-symbol,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .app-entry-mark { background: transparent; color: #0874e8; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-security-kicker,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-security-notice svg,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-security-warning svg,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .app-entry > svg { color: #0874e8 !important; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-security-check input { accent-color: #0874e8; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-vault-factor-pairs input { accent-color: #0874e8; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-pin-dots span.is-filled { border-color: #0874e8; background: #0874e8; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-pin-erase { color: #0874e8; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-pin-dots:focus-visible,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-pin-sheet__head button:focus-visible { outline-color: #0874e8; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-pin-keypad button:focus-visible { outline-color: #0874e8; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-vault-factor-pairs input:focus-visible,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-vault-recovery-options button:focus-visible,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-recovery-secret:focus-visible { outline-color: rgb(8 116 232 / 35%); }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-seed-confirmation input:focus,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-secure-import-field input:focus,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-secure-import-field textarea:focus { border-bottom-color: #0874e8; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-security-primary,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .app-entry button { background: #1769ff; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-security-secondary { background: #edf3fa; color: #415367; }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-security-header button:focus-visible,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-security-footer button:focus-visible,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-security-check input:focus-visible { outline-color: rgb(8 116 232 / 35%); }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-security-content h2,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-vault-panel h3,
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .app-entry h1 { font-family: 'Paperlogy', 'Noto Sans KR', 'Apple SD Gothic Neo', system-ui, sans-serif; font-weight: 700; }
+@media (max-width: 350px) { .jb-host-header__tabs nav { gap: 8px; } .jb-host-preview__quick { padding-inline: 3px; } .jb-host-preview__quick button { font-size: 9px; } }
+.phone[data-host-chrome='jb-mobile-wallet-v1'] .host-password-strength { --host-password-safe: #0874e8; }

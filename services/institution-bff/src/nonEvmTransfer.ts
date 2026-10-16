@@ -137,10 +137,12 @@ export async function prepareSolanaSplTransfer(input: {
   recipient: string;
   amountAtomic: bigint;
   deployment: StablecoinDeployment;
+  sponsorFeePayer?: string;
 }): Promise<{ transaction: SolanaSigningTransaction; feeAtomic: bigint }> {
   const connection = new Connection(input.rpcUrl, 'confirmed');
   const owner = new PublicKey(input.fromAddress);
   const recipient = new PublicKey(input.recipient);
+  const payer = input.sponsorFeePayer ? new PublicKey(input.sponsorFeePayer) : owner;
   if (owner.equals(recipient)) throw new Error('self_transfer_not_allowed');
   const mint = new PublicKey(input.deployment.tokenAddress);
   const mintInfo = await connection.getAccountInfo(mint, 'confirmed');
@@ -163,7 +165,7 @@ export async function prepareSolanaSplTransfer(input: {
   const instructions: TransactionInstruction[] = [];
   if (!destinationInfo) {
     instructions.push(createAssociatedTokenInstruction({
-      payer: owner,
+      payer,
       owner: recipient,
       mint,
       tokenProgram,
@@ -183,14 +185,14 @@ export async function prepareSolanaSplTransfer(input: {
   }));
   const latest = await connection.getLatestBlockhash('confirmed');
   const message = new TransactionMessage({
-    payerKey: owner,
+    payerKey: payer,
     recentBlockhash: latest.blockhash,
     instructions,
   }).compileToV0Message();
   const [fee, rent, nativeBalance] = await Promise.all([
     connection.getFeeForMessage(message, 'confirmed'),
     destinationInfo ? Promise.resolve(0) : connection.getMinimumBalanceForRentExemption(165, 'confirmed'),
-    connection.getBalance(owner, 'confirmed'),
+    connection.getBalance(payer, 'confirmed'),
   ]);
   if (fee.value === null) throw new Error('solana_network_fee_unavailable');
   const feeAtomic = BigInt(fee.value + rent);
@@ -207,6 +209,7 @@ export async function prepareSolanaSplTransfer(input: {
       destinationTokenAccount: destination.toBase58(),
       amountAtomic: input.amountAtomic.toString(),
       feeLamports: feeAtomic.toString(),
+      ...(input.sponsorFeePayer ? { sponsorFeePayer: payer.toBase58() } : {}),
     },
     feeAtomic,
   };
@@ -258,14 +261,53 @@ export async function submitSolanaSplTransfer(input: {
   fromAddress: string;
   signedTransactionBase64: string;
   expected: SolanaSigningTransaction;
+  recipient: string;
+  cosignSponsored?: (input: { transactionBase64: string; owner: string; recipient: string; mint: string; amountAtomic: string; expectedPayer: string }) => Promise<string>;
+  reserveSponsor?: () => Promise<void>;
   authorize: (transactionHash: string) => Promise<void>;
 }): Promise<string> {
   const verified = await verifySolanaSplTransfer(input);
-  await input.authorize(verified.transactionHash);
+  let serialized = verified.serialized;
+  let transactionHash = verified.transactionHash;
+  if (input.expected.sponsorFeePayer) {
+    if (!input.cosignSponsored || !input.reserveSponsor) throw new Error('solana_sponsor_unavailable');
+    await input.reserveSponsor();
+    const cosigned = await input.cosignSponsored({
+      transactionBase64: input.signedTransactionBase64,
+      owner: input.fromAddress,
+      recipient: input.recipient,
+      mint: input.expected.mintAddress,
+      amountAtomic: input.expected.amountAtomic,
+      expectedPayer: input.expected.sponsorFeePayer,
+    });
+    const completed = await verifyCosignedSolanaTransfer({
+      partial: verified.serialized, cosignedBase64: cosigned,
+      payer: input.expected.sponsorFeePayer, owner: input.fromAddress,
+    });
+    serialized = completed.serialized;
+    transactionHash = completed.transactionHash;
+  }
+  await input.authorize(transactionHash);
   const connection = new Connection(input.rpcUrl, 'confirmed');
-  const broadcastHash = await connection.sendRawTransaction(verified.serialized, { skipPreflight: false, preflightCommitment: 'confirmed' });
-  if (broadcastHash !== verified.transactionHash) throw new Error('solana_transaction_hash_mismatch');
-  return verified.transactionHash;
+  const broadcastHash = await connection.sendRawTransaction(serialized, { skipPreflight: false, preflightCommitment: 'confirmed' });
+  if (broadcastHash !== transactionHash) throw new Error('solana_transaction_hash_mismatch');
+  return transactionHash;
+}
+
+export async function verifyCosignedSolanaTransfer(input: {
+  partial: Uint8Array; cosignedBase64: string; payer: string; owner: string;
+}): Promise<{ serialized: Uint8Array; transactionHash: string }> {
+  const partial = VersionedTransaction.deserialize(input.partial);
+  const cosigned = VersionedTransaction.deserialize(Buffer.from(input.cosignedBase64, 'base64'));
+  if (!equalBytes(partial.message.serialize(), cosigned.message.serialize())
+    || !equalBytes(partial.signatures[1]!, cosigned.signatures[1]!)
+    || cosigned.message.staticAccountKeys[0]?.toBase58() !== input.payer
+    || cosigned.message.staticAccountKeys[1]?.toBase58() !== input.owner) throw new Error('solana_sponsor_result_invalid');
+  const payerSignature = cosigned.signatures[0];
+  if (!payerSignature || !await verifyAsync(payerSignature, cosigned.message.serialize(), new PublicKey(input.payer).toBytes())) {
+    throw new Error('solana_sponsor_signature_invalid');
+  }
+  return { serialized: cosigned.serialize(), transactionHash: base58Encode(payerSignature) };
 }
 
 export async function submitSolanaNativeTransfer(input: {
@@ -292,11 +334,16 @@ export async function verifySolanaSplTransfer(input: {
   const unsigned = VersionedTransaction.deserialize(Buffer.from(input.expected.unsignedTransactionBase64, 'base64'));
   if (!equalBytes(signed.message.serialize(), unsigned.message.serialize())) throw new Error('signed_transaction_mismatch');
   const payer = signed.message.staticAccountKeys[0];
-  if (!payer || payer.toBase58() !== input.fromAddress) throw new Error('signed_transaction_mismatch');
-  const signature = signed.signatures[0];
-  if (!signature || !await verifyAsync(signature, signed.message.serialize(), payer.toBytes())) {
+  const sponsored = Boolean(input.expected.sponsorFeePayer);
+  const owner = sponsored ? signed.message.staticAccountKeys[1] : payer;
+  if (!payer || payer.toBase58() !== (input.expected.sponsorFeePayer ?? input.fromAddress)
+    || !owner || owner.toBase58() !== input.fromAddress
+    || signed.message.header.numRequiredSignatures !== (sponsored ? 2 : 1)) throw new Error('signed_transaction_mismatch');
+  const signature = signed.signatures[sponsored ? 1 : 0];
+  if (!signature || !await verifyAsync(signature, signed.message.serialize(), owner.toBytes())) {
     throw new Error('invalid_solana_signature');
   }
+  if (sponsored && signed.signatures[0]?.some((byte) => byte !== 0)) throw new Error('signed_transaction_mismatch');
   const transactionHash = base58Encode(signature);
   return { serialized: signed.serialize(), transactionHash };
 }

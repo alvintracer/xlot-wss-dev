@@ -21,8 +21,12 @@ verify_jwt = true
 [auth.sms]
 enable_signup = true
 enable_confirmations = false
-template = "[키움 디지털 월렛] 인증번호는 {{ .Code }}입니다."
+template = "[디지털 지갑] 인증번호는 {{ .Code }}입니다."
 max_frequency = "60s"
+
+[auth.email.template.magic_link]
+subject = "WSS 지갑 보관 인증번호"
+content_path = "./supabase/templates/sar-vault-otp.html"
 
 [auth.hook.send_sms]
 enabled = true

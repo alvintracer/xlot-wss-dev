@@ -76,9 +76,13 @@ export async function sendSolapiOtp(
   configuration: SolapiConfiguration,
   phone: string,
   otp: string,
+  brandName: string,
   fetcher: typeof fetch = fetch,
 ): Promise<void> {
   if (!/^\d{6}$/.test(otp)) throw new Error("invalid_otp_shape");
+  if (!/^[\p{L}\p{N} ]{1,40}$/u.test(brandName)) {
+    throw new Error("invalid_sms_brand");
+  }
   const response = await fetcher(
     "https://api.solapi.com/messages/v4/send-many/detail",
     {
@@ -95,7 +99,7 @@ export async function sendSolapiOtp(
           to: domesticPhone(phone),
           from: senderNumber(configuration.senderNumber),
           text:
-            `[키움 디지털 월렛] 인증번호는 ${otp}입니다. 타인에게 알려주지 마세요.`,
+            `[${brandName}] 인증번호는 ${otp}입니다. 타인에게 알려주지 마세요.`,
           autoTypeDetect: true,
           country: "82",
           customFields: { purpose: "wss-phone-possession" },
@@ -120,10 +124,73 @@ export async function sendSolapiOtp(
   }
 }
 
+export async function smsPhoneKey(
+  phone: string,
+  secret: string,
+): Promise<string> {
+  if (!secret) throw new Error("sms_hook_not_configured");
+  const normalizedPhone = domesticPhone(phone);
+  const canonicalPhone = `+82${normalizedPhone.slice(1)}`;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return bytesToHex(
+    await crypto.subtle.sign(
+      "HMAC",
+      key,
+      encoder.encode(`wss-sms-delivery:v1\u0000${canonicalPhone}`),
+    ),
+  );
+}
+
+export async function consumeSmsBrand(
+  phone: string,
+  configuration: {
+    supabaseUrl: string;
+    serviceRoleKey: string;
+    phoneLookupSecret: string;
+  },
+  fetcher: typeof fetch = fetch,
+): Promise<string> {
+  const phoneKey = await smsPhoneKey(phone, configuration.phoneLookupSecret);
+  const url = new URL(
+    "/rest/v1/wss_sms_delivery_contexts",
+    configuration.supabaseUrl,
+  );
+  url.searchParams.set("phone_key", `eq.${phoneKey}`);
+  url.searchParams.set("expires_at", `gt.${new Date().toISOString()}`);
+  url.searchParams.set("select", "brand_name");
+  const response = await fetcher(url, {
+    method: "DELETE",
+    headers: {
+      apikey: configuration.serviceRoleKey,
+      authorization: `Bearer ${configuration.serviceRoleKey}`,
+      prefer: "return=representation",
+    },
+  });
+  if (!response.ok) throw new Error("sms_context_lookup_failed");
+  const rows = await response.json().catch(() => null);
+  if (
+    !Array.isArray(rows) || rows.length !== 1 ||
+    typeof rows[0]?.brand_name !== "string"
+  ) {
+    throw new Error("sms_context_missing");
+  }
+  return rows[0].brand_name;
+}
+
 export function safeSmsFailureCode(error: unknown): string {
   const message = error instanceof Error ? error.message : "";
   if (
     message === "sms_hook_not_configured" ||
+    message === "sms_context_lookup_failed" ||
+    message === "sms_context_missing" ||
+    message === "invalid_sms_brand" ||
     message === "unsupported_recipient" ||
     message === "invalid_sender" ||
     message === "invalid_otp_shape"
@@ -167,6 +234,11 @@ export async function handle(request: Request): Promise<Response> {
     ) {
       return json(400, { error: "invalid_hook_payload" });
     }
+    const brandName = await consumeSmsBrand(event.user.phone, {
+      supabaseUrl: requiredEnvironment("SUPABASE_URL"),
+      serviceRoleKey: requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY"),
+      phoneLookupSecret: requiredEnvironment("WSS_PHONE_LOOKUP_SECRET"),
+    });
     await sendSolapiOtp(
       {
         apiKey: requiredEnvironment("WSS_SOLAPI_API_KEY"),
@@ -175,6 +247,7 @@ export async function handle(request: Request): Promise<Response> {
       },
       event.user.phone,
       event.sms.otp,
+      brandName,
     );
     return json(200, {});
   } catch (error) {

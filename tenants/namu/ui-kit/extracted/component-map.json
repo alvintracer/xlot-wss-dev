@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "namu",
+  "components": [
+    { "id": "root-header", "kind": "host-owned", "references": ["R033", "R032"], "code": "tenants/namu/host-chrome/src/index.tsx" },
+    { "id": "bottom-navigation", "kind": "host-owned", "references": ["R003", "R019", "R020", "R032"], "code": "tenants/namu/host-chrome/src/index.tsx" },
+    { "id": "wallet-summary", "kind": "tenant-composition", "references": ["R033", "R032"], "code": "tenants/namu/presentation/src/NamuWalletSummary.tsx" },
+    { "id": "wallet-action", "kind": "theme-variant", "references": ["R018", "R035"], "code": "tenants/kiwoom/presentation/src/WalletActionSheet.tsx" },
+    { "id": "wallet-selector", "kind": "theme-variant", "references": ["R018", "R022"], "code": "tenants/kiwoom/presentation/src/WalletSelectorSheet.tsx" },
+    { "id": "os-keyboard", "kind": "host-owned", "references": ["R037"], "code": null },
+    { "id": "secure-keypad", "kind": "host-owned", "references": ["R041", "R042"], "code": "apps/reference-bank-host/src/SecurePinKeypad.tsx" }
+  ]
+}

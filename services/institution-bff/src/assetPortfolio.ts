@@ -18,7 +18,7 @@ export interface NativeAssetConfig {
 
 const nativeAssets: Readonly<Record<string, NativeAssetConfig>> = {
   ethereum: { name: '이더리움', symbol: 'ETH', decimals: 18, rpcUrl: 'https://ethereum-rpc.publicnode.com', rpcEnvironment: 'WSS_ETHEREUM_RPC_URL', evmChainId: 1 },
-  polygon: { name: '폴리곤', symbol: 'POL', decimals: 18, rpcUrl: 'https://polygon-bor-rpc.publicnode.com', rpcEnvironment: 'WSS_POLYGON_RPC_URL', evmChainId: 137 },
+  polygon: { name: '폴리곤', symbol: 'POL', decimals: 18, rpcUrl: 'https://polygon.drpc.org', rpcEnvironment: 'WSS_POLYGON_RPC_URL', evmChainId: 137 },
   arbitrum: { name: '이더리움', symbol: 'ETH', decimals: 18, rpcUrl: 'https://arbitrum-one-rpc.publicnode.com', rpcEnvironment: 'WSS_ARBITRUM_RPC_URL', evmChainId: 42161 },
   base: { name: '이더리움', symbol: 'ETH', decimals: 18, rpcUrl: 'https://base-rpc.publicnode.com', rpcEnvironment: 'WSS_BASE_RPC_URL', evmChainId: 8453 },
   bnb: { name: '비앤비', symbol: 'BNB', decimals: 18, rpcUrl: 'https://bsc-rpc.publicnode.com', rpcEnvironment: 'WSS_BNB_RPC_URL', evmChainId: 56 },
@@ -37,6 +37,12 @@ interface PriceSnapshot {
   krw: number;
   provider: string;
   asOf: string;
+}
+
+interface PriceProviderTarget {
+  url: string;
+  apiKey?: string;
+  timeoutMs: number;
 }
 
 function iconAssetId(symbol: string): string {
@@ -318,19 +324,42 @@ function formatKrw(value: number): string {
   return `${new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(Math.round(value))}원`;
 }
 
-async function priceSnapshots(symbols: string[]): Promise<Map<string, PriceSnapshot>> {
-  const quoteUrl = process.env.WSS_TOOK_PRICE_QUOTE_URL?.trim()
-    || (process.env.SUPABASE_URL?.trim() ? `${process.env.SUPABASE_URL.trim().replace(/\/$/, '')}/functions/v1/wallet-price-quote` : '');
-  if (!quoteUrl || symbols.length === 0) return new Map();
-  const apiKey = process.env.WSS_TOOK_INFRA_ANON_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
-  const response = await fetchWithTimeout(quoteUrl, {
+function priceProviderTargets(): PriceProviderTarget[] {
+  const targets: PriceProviderTarget[] = [];
+  const tookUrl = process.env.WSS_TOOK_PRICE_QUOTE_URL?.trim();
+  if (tookUrl) {
+    targets.push({
+      url: tookUrl,
+      apiKey: process.env.WSS_TOOK_INFRA_ANON_KEY?.trim(),
+      timeoutMs: 3_000,
+    });
+  }
+  const supabaseUrl = process.env.SUPABASE_URL?.trim();
+  if (supabaseUrl) {
+    const fallbackUrl = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/wallet-price-quote`;
+    if (!targets.some(({ url }) => url === fallbackUrl)) {
+      targets.push({
+        url: fallbackUrl,
+        apiKey: process.env.SUPABASE_ANON_KEY?.trim(),
+        timeoutMs: 2_500,
+      });
+    }
+  }
+  return targets;
+}
+
+async function queryPriceProvider(
+  target: PriceProviderTarget,
+  symbols: string[],
+): Promise<Map<string, PriceSnapshot>> {
+  const response = await fetchWithTimeout(target.url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(apiKey ? { apikey: apiKey, Authorization: `Bearer ${apiKey}` } : {}),
+      ...(target.apiKey ? { apikey: target.apiKey, Authorization: `Bearer ${target.apiKey}` } : {}),
     },
     body: JSON.stringify({ action: 'portfolio', assetKeys: [...new Set(symbols)] }),
-  }, 8_000);
+  }, target.timeoutMs);
   if (!response.ok) return new Map();
   const payload = await response.json() as {
     prices?: Array<{ assetKey?: string; krw?: number; providerKrw?: string; sourceUpdatedAtKrw?: string }>;
@@ -343,6 +372,23 @@ async function priceSnapshots(symbols: string[]): Promise<Map<string, PriceSnaps
       asOf: price.sourceUpdatedAtKrw || new Date().toISOString(),
     }] as const];
   }));
+}
+
+async function priceSnapshots(symbols: string[]): Promise<Map<string, PriceSnapshot>> {
+  const uniqueSymbols = [...new Set(symbols)];
+  if (uniqueSymbols.length === 0) return new Map();
+  const prices = new Map<string, PriceSnapshot>();
+  for (const target of priceProviderTargets()) {
+    const missing = uniqueSymbols.filter((symbol) => !prices.has(symbol));
+    if (missing.length === 0) break;
+    try {
+      const received = await queryPriceProvider(target, missing);
+      for (const [symbol, snapshot] of received) prices.set(symbol, snapshot);
+    } catch {
+      // The next configured provider is the bounded fallback.
+    }
+  }
+  return prices;
 }
 
 export function supportedReceiveAssets(
@@ -368,8 +414,8 @@ export function supportedReceiveAssets(
       balanceDisplay: '0',
       availableAtomic: '0',
       transferStatus: nativeTransferChainIds.has(network.chainId) ? 'enabled' : 'unavailable',
-      phoneTransferStatus: supportsPhoneEscrow(network.chainId) ? 'enabled' : 'unavailable',
-      ...(phoneEscrowUnavailableReason(network.chainId) ? { phoneTransferUnavailableReason: phoneEscrowUnavailableReason(network.chainId) } : {}),
+      phoneTransferStatus: supportsPhoneEscrow(network.chainId, `${network.chainId}:native`) ? 'enabled' : 'unavailable',
+      ...(phoneEscrowUnavailableReason(network.chainId, `${network.chainId}:native`) ? { phoneTransferUnavailableReason: phoneEscrowUnavailableReason(network.chainId, `${network.chainId}:native`) } : {}),
       ...(!nativeTransferChainIds.has(network.chainId) ? { transferUnavailableReason: '이 네트워크의 보내기 서명 연동을 준비하고 있어요.' } : {}),
     };
     return [native, ...deployments.filter(({ chainId }) => chainId === network.chainId).map((deployment) => {
@@ -393,10 +439,10 @@ export function supportedReceiveAssets(
         balanceDisplay: '0',
         availableAtomic: '0',
         transferStatus: canTransfer ? 'enabled' as const : 'unavailable' as const,
-        phoneTransferStatus: supportsPhoneEscrow(network.chainId) && deployment.transport === 'evm-erc20' ? 'enabled' as const : 'unavailable' as const,
-        ...(!(supportsPhoneEscrow(network.chainId) && deployment.transport === 'evm-erc20') ? {
+        phoneTransferStatus: supportsPhoneEscrow(network.chainId, deployment.assetId) && deployment.transport === 'evm-erc20' ? 'enabled' as const : 'unavailable' as const,
+        ...(!(supportsPhoneEscrow(network.chainId, deployment.assetId) && deployment.transport === 'evm-erc20') ? {
           phoneTransferUnavailableReason: deployment.transport === 'evm-erc20'
-            ? phoneEscrowUnavailableReason(network.chainId)
+            ? phoneEscrowUnavailableReason(network.chainId, deployment.assetId)
             : '이 네트워크에서는 아직 휴대폰 번호로 보낼 수 없어요.',
         } : {}),
         ...(!canTransfer ? { transferUnavailableReason: '이 네트워크의 보내기 서명 연동을 준비하고 있어요.' } : {}),
@@ -412,14 +458,16 @@ export async function queryWalletPortfolio(
   const asOf = new Date().toISOString();
   const deployments = stablecoinsForPolicy(networks.map(({ chainId }) => chainId), enabledStablecoins);
   const receiveAssets = supportedReceiveAssets(networks, enabledStablecoins);
-  const settled = await Promise.allSettled(networks.map((network) => (
-    scanNetwork(network, deployments.filter(({ chainId }) => chainId === network.chainId))
-  )));
+  const [settled, prices] = await Promise.all([
+    Promise.allSettled(networks.map((network) => (
+      scanNetwork(network, deployments.filter(({ chainId }) => chainId === network.chainId))
+    ))),
+    priceSnapshots(receiveAssets.map(({ symbol }) => symbol))
+      .catch(() => new Map<string, PriceSnapshot>()),
+  ]);
   const scans = settled.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
   const holdings = scans.flatMap(({ balances }) => balances.filter(({ balance }) => balance > 0n));
   const balanceQueriesComplete = settled.every((result) => result.status === 'fulfilled' && result.value.complete);
-  const prices = await priceSnapshots(receiveAssets.map(({ symbol }) => symbol))
-    .catch(() => new Map<string, PriceSnapshot>());
   const assets = holdings.map(({ network, config, deployment, balance }): WalletAssetView => {
     const decimals = deployment?.decimals ?? config.decimals;
     const symbol = deployment?.symbol ?? config.symbol;

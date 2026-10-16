@@ -2,7 +2,7 @@
 
 - Profile: `kiwoom-simple-mode-v1`
 - Status: development contract
-- Updated: 2026-09-27
+- Updated: 2026-09-29
 - Design authority: `ui-kit/kiwoom-wallet-ui-guide/`
 
 ## 1. Core product model
@@ -111,6 +111,33 @@ host-secure-import source adds a key-core attestation bound to the canonical has
 registration. The BFF persists only the proof UUIDs and rejects reuse for a
 different wallet operation.
 
+### Exchange execution
+
+`환전하기` is scoped to the selected wallet and currently supports same-chain
+EVM exchange on Ethereum, Polygon, Arbitrum, Base, and BNB Chain. The customer
+selects a network, a sell asset, and a buy asset from the tenant-approved
+catalog. Sell and receive cards both default to KRW entry and can independently
+switch to token units. Editing the sell side requests an exact-input quote;
+editing the receive side requests an exact-output quote. A zero-balance wallet
+can still inspect the complete flow and quote, but cannot authorize execution.
+
+K-VWAP and its labeled market-reference fallbacks are used only to translate
+the customer's KRW input and display. The executable token amounts, slippage
+bounds, allowance requirement, route, and network fee come from the DEX quote;
+a market reference is never represented as an executable exchange rate. The
+Institution BFF owns the DEX provider credential and raw route response. The
+WebView receives only a short-lived, wallet/session-bound economic quote.
+
+Preparation creates either one swap transaction or an ordered allowance-plus-
+swap EVM batch. The allowance spender comes from the provider response and is
+never hard-coded. Exact-output allowance uses the quoted maximum sell amount.
+The host presents the send and expected receive amounts, obtains a one-time
+`exchange-approval` proof, and signs only the exact prepared payload. Before
+broadcast the BFF rechecks sender, chain, nonce, destination, value, fee, and
+calldata. Economic intent, proof UUID, provider quote reference, and submitted
+transaction hash may be audited; API credentials, calldata, signatures, and
+raw signed transactions are excluded from storage.
+
 ## 6. Shared WSS versus Kiwoom customization
 
 Reusable WSS responsibilities:
@@ -158,13 +185,28 @@ slot is not yet a production recovery mechanism.
 
 The selected wallet now queries real native balances for Ethereum, Polygon, Arbitrum, Base, BNB Chain, Solana, Bitcoin, TRON, and XRP plus tenant-enabled stablecoins on EVM, Solana, TRON, and XRP Ledger. Receive and send both use `asset → network`: the first screen groups all deployments of the same symbol, and the next screen keeps the chain-specific asset ID distinct. Receive then renders an actual QR from the registered address and supports copy/share. Send keeps the asset/network/amount controls visible at zero balance, clearly reports an available amount of zero, and blocks progression rather than replacing the flow with an empty state. The amount field switches between exact token-unit input and KRW input using the catalog reference price without floating-point atomic-amount conversion.
 
+Exchange uses the same selected-wallet catalog and Kiwoom sheet language. Its
+first executable slice supports same-chain EVM exact-input and exact-output
+quotes, KRW/token input on both sides, quote expiry, allowance-aware preparation,
+host confirmation, SAR key-core signing, exact-payload verification, sequential
+broadcast, and exchange intent/execution audit. The server-only 0x credential is
+configured in the local development environment and a live Base exact-input
+quote has passed through the browser-to-BFF flow. A funded-wallet
+sign-and-broadcast smoke test is still required before live execution sign-off.
+Solana, TRON, XRP Ledger, Bitcoin, and cross-chain exchange are intentionally
+outside this first slice.
+
 After a valid amount, send offers a wallet-address route and a phone-number route. The address route is executable for EVM, SOL, BTC, TRX, and XRP native assets plus allowlisted ERC-20, Solana SPL, TRON TRC-20, and XRPL issued assets: actual fee preparation, expiring preparation, fail-closed KYT, a host-owned customer confirmation, SAR key-core signing, exact signed-payload verification, broadcast, and persisted intent/execution audit. Bitcoin uses a server-prepared strict-prevout PSBT; the host signs only the slot's P2PKH inputs, and the BFF rechecks transaction structure, ownership, outputs, fee, and every input signature before broadcast. XRPL address entry accepts an optional destination tag and native XRP preparation preserves the live base/owner reserve and activation minimum. Solana includes destination associated-token-account creation rent when needed, while TRON labels its fee limit as a maximum rather than an exact charge. The phone route now has a WSS-native sender implementation for Ethereum, Polygon, Arbitrum, and Base: live sender-pays fee calculation, native or ordered ERC-20 approve/deposit signing, exact payload verification, confirmed `Deposited` event matching, encrypted recipient handling, and tenant-branded SOLAPI delivery. It remains unavailable until the WSS claim URL and matching contract signer are explicitly configured, preventing funds from being deposited into an escrow that WSS cannot release. The route is never passed to the ordinary address-transfer endpoint. The deployed price gateway prefers Bonanza K-VWAP and otherwise labels CoinGecko or CoinMarketCap output as a market reference. The deployed KYT gateway blocks address sending when TranSight is unavailable.
 
-Remaining development gaps are explicit: the phone recipient-claim/OTP/KYT/relay and refund gateway with its matching signer, phone-delivery retry, permit/Solana/TRON sponsorship execution, XRP trust-line setup, durable transfer resumption after a BFF restart, general transaction confirmation/reconciliation, and production provider secrets. The gas-support sheet therefore distinguishes relay eligibility from sponsorship actually applied and does not claim sponsorship for a direct transfer.
+Remaining development gaps are explicit: the phone recipient-claim/OTP/KYT/relay and refund gateway with its matching signer, phone-delivery retry, non-USDC Permit/Solana/TRON sponsorship execution, XRP trust-line setup, durable transfer resumption after a BFF restart, general transaction confirmation/reconciliation, and production provider secrets. Native USDC address sends on Ethereum, Polygon, Arbitrum, and Base now prepare a Took Pay Router V2 fee quote and execute through the Took Pay direct-transfer relay when configured; the gas-support sheet shows the token fee and total debit. A funded mainnet transfer remains to be checked before claiming live execution parity.
 
 The Kiwoom phone-first profile path is implemented against `xlot-wss-dev` and selects `supabase-auth-solapi`. Registration PII is AES-256-GCM encrypted before persistence, the phone lookup uses a separate keyed digest, Supabase Auth owns code generation and verification, and the activated SOLAPI Send SMS Hook only delivers the Auth-owned code. WSS keeps neither the code nor its MAC on that path. The BFF matches the Auth-verified number to the tenant-scoped lookup digest, persists only a domain-separated keyed Auth-subject digest, and then atomically creates the random profile UUID, encrypted private attributes, consent, external institution link, and audit event before purging the intent PII. If delivery is unavailable, the isolated sandbox visibly falls back to the loopback-only MAC-based development code; production never falls back. This still proves phone possession, not carrier-backed legal identity.
 
 ## 8. Change record
+
+- 2026-09-29: Added a development-only, production-disabled voice-phishing review fixture, an explicit warning confirmation before host signing, visible send-preparation progress, and actionable balance/network-fee error guidance.
+- 2026-09-29: Replaced the exchange placeholder with a Kiwoom-style two-sided flow. Added default-KRW sell/receive entry, token-unit switching, exact-input and exact-output quotes, same-chain EVM asset selection, quote expiry, balance and maximum-fee guards, host-owned exchange confirmation, allowance-aware exact transaction signing, submission audit, and receipt display. DEX provider credentials and raw routing remain server-only; live execution is gated by `WSS_ZEROX_API_KEY` and a funded-wallet smoke test.
+- 2026-09-29: Connected the existing local took 0x credential to the WSS BFF without exposing it to the WebView, verified a live Base ETH→USDC exact-input quote, added a compact reduced-motion-aware quote spinner, and replaced the generic quote failure with configuration, liquidity, provider, and pair-specific customer messages. Funded signing/broadcast remains unverified.
 
 - 2026-09-28: Implemented the development host-only mnemonic and EVM-private-key import ceremonies, real SAR wrapping, payload-bound attestation, public-address persistence, and current-session transaction signing. Private-key imports are EVM-only and all imported signing material remains volatile.
 
@@ -189,5 +231,5 @@ The Kiwoom phone-first profile path is implemented against `xlot-wss-dev` and se
 - 2026-09-28: Added the local 21-symbol coin/stablecoin icon catalog and a Bonanza K-VWAP → CoinGecko → CoinMarketCap KRW fallback chain using stable provider IDs.
 - 2026-09-28: Added the WSS phone-escrow sender path, encrypted recipient table, ordered EVM batch signing, receipt/event verification, and tenant-branded SOLAPI delivery. Real-value activation remains fail-closed until the WSS claim gateway and matching signer are configured.
 - 2026-09-28: Changed network selection to use chain marks instead of the selected asset mark and made KRW the default send-amount input. Chose the existing took V3 claim stack for development reuse behind a required server-to-server escrow-registration adapter; execution remains disabled until that cross-project adapter is tested.
-- 2026-09-28: Replaced the cross-project claim-record replication plan with a WSS-owned claimant surface at `tookwallet.com/waas/c`. Existing V3 contracts and signer address remain unchanged; the private signer stays in the took backend behind a new authenticated WSS relay boundary.
+- 2026-09-28: Replaced the cross-project claim-record replication plan with a WSS-owned claimant surface, now reserved at `took-wss.vercel.app/c` instead of the took consumer domain. Existing V3 contracts and signer address remain unchanged; the private signer stays in the took backend behind a new authenticated WSS relay boundary.
 - 2026-09-29: Replaced generic wallet marks in the public-address list with the local Ethereum, Solana, Bitcoin, TRON, and XRP chain artwork. Enabled direct native SOL, BTC, TRX, and XRP prepare/sign/verify/broadcast paths, including Bitcoin strict-prevout PSBT verification and live XRP reserve enforcement.
