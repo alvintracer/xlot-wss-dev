@@ -1,4 +1,6 @@
 import { createHash, createHmac, createPrivateKey, createPublicKey, randomUUID, sign, verify } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import postgres from 'postgres';
 import { verifyMessage } from 'ethers';
 import { createIdentityCommitment, verifyIdentityEqualityProof, type IdentityEqualityProof } from '@took-wss/identity-proof';
@@ -274,7 +276,8 @@ export class DevelopmentDigitalIdentityService {
     try { validHolder = verify(null, Buffer.from(challenge.challenge), publicKeyFromDid(row.holder_did), Buffer.from(holderSignature, 'base64url')); } catch { /* invalid holder signature */ }
     if (!validHolder) throw new DigitalIdentityError('holder_signature_invalid');
     if (!await verifyIdentityEqualityProof({ credentialId, nonce: challengeId,
-      commitment: subject.identityCommitment, expectedName, expectedBirthDate, proof })) {
+      commitment: subject.identityCommitment, expectedName, expectedBirthDate, proof,
+      crsPath: join(tmpdir(), 'took-wss-identity-crs') })) {
       throw new DigitalIdentityError('identity_claims_do_not_match');
     }
     const claimed = await this.#sql<{ id: string }[]>`

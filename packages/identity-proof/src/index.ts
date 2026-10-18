@@ -129,6 +129,7 @@ export async function verifyIdentityEqualityProof(input: {
   expectedName: string;
   expectedBirthDate: string;
   proof: IdentityEqualityProof;
+  crsPath?: string;
 }): Promise<boolean> {
   try {
     if (input.proof?.scheme !== PROOF_SCHEME || !Array.isArray(input.proof.publicInputs)) return false;
@@ -139,7 +140,7 @@ export async function verifyIdentityEqualityProof(input: {
       console.error('identity_proof_public_inputs_mismatch');
       return false;
     }
-    const api = await Barretenberg.new();
+    const api = await Barretenberg.new(input.crsPath ? { crsPath: input.crsPath } : {});
     const backend = new UltraHonkBackend(circuit.bytecode, api);
     try {
       const valid = await backend.verifyProof({ proof: fromBase64url(input.proof.proof), publicInputs: input.proof.publicInputs });
