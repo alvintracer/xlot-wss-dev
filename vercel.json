@@ -5,7 +5,8 @@
   "installCommand": "npm ci",
   "functions": {
     "api/index.js": {
-      "maxDuration": 120
+      "maxDuration": 120,
+      "includeFiles": "node_modules/@aztec/bb.js/dest/node-cjs/**"
     }
   },
   "redirects": [
@@ -111,7 +112,7 @@
     {
       "source": "/shinhan/(.*)",
       "headers": [
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; connect-src 'self' https://*.thirdweb.com https://*.thirdwebcdn.com wss://relay.walletconnect.org https://verify.walletconnect.org; img-src 'self' data: https://*.thirdwebcdn.com; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' https://*.thirdweb.com; frame-ancestors 'self'" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; connect-src 'self' https://*.thirdweb.com https://*.thirdwebcdn.com wss://relay.walletconnect.org https://verify.walletconnect.org; img-src 'self' data: https://*.thirdwebcdn.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self' https://*.thirdweb.com; frame-ancestors 'self'" }
       ]
     },
     {
