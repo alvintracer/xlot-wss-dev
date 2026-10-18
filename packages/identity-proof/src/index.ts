@@ -135,11 +135,19 @@ export async function verifyIdentityEqualityProof(input: {
     const commitment = fromHex(input.commitment, 32);
     const expected = expectedPublicInputs(input.expectedName, input.expectedBirthDate, commitment, nonceBytes(input.nonce));
     if (input.proof.publicInputs.length !== expected.length
-      || input.proof.publicInputs.some((value, index) => BigInt(value) !== expected[index])) return false;
+      || input.proof.publicInputs.some((value, index) => BigInt(value) !== expected[index])) {
+      console.error('identity_proof_public_inputs_mismatch');
+      return false;
+    }
     const api = await Barretenberg.new();
     const backend = new UltraHonkBackend(circuit.bytecode, api);
     try {
-      return await backend.verifyProof({ proof: fromBase64url(input.proof.proof), publicInputs: input.proof.publicInputs });
+      const valid = await backend.verifyProof({ proof: fromBase64url(input.proof.proof), publicInputs: input.proof.publicInputs });
+      if (!valid) console.error('identity_proof_invalid');
+      return valid;
     } finally { await api.destroy(); }
-  } catch { return false; }
+  } catch (error) {
+    console.error('identity_proof_verifier_unavailable', error instanceof Error ? error.message : 'unknown');
+    return false;
+  }
 }
