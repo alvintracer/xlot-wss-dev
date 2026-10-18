@@ -260,7 +260,7 @@ function WalletCardSheet({ props, onClose }: { props: Props; onClose: () => void
     </div>
     {cardError ? <p className="kw-payment-note" role="alert">{cardError}</p> : null}
     {physicalCard ? <p className="kw-payment-note">NFC 카드 확인됨 · {physicalCard.cardIdHex.slice(0, 8)}…{physicalCard.cardIdHex.slice(-6)}. 결제 서명은 아직 연결되지 않았어요.</p>
-      : <p className="kw-payment-note">카드 화면 미리보기예요. 실물 카드 결제는 아직 연결되지 않았어요.</p>}
+      : <p className="kw-payment-note">연결된 지갑과 결제 내역을 여기서 확인할 수 있어요.</p>}
     {cardReady ? <section className="kw-payment-block" aria-labelledby="kw-card-wallets-title">
       <div className="kw-payment-block__heading"><h3 id="kw-card-wallets-title">연결된 월렛 관리</h3><small>{linked.length}개 월렛</small></div>
       <div className="kw-card-wallet-list">{props.walletHome.wallets.map((wallet) => {
