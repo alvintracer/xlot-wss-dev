@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "shinhan",
+  "calibration": {
+    "capture": {
+      "widthPx": 648,
+      "heightPx": 1404
+    },
+    "recording": {
+      "widthPx": 1080,
+      "heightPx": 2340,
+      "frameRateFps": 30
+    },
+    "proposedCssViewport": {
+      "widthPx": 360,
+      "heightPx": 780
+    },
+    "captureScale": 1.8,
+    "recordingScale": 3,
+    "status": "estimated-device-css-viewport",
+    "referenceIds": [
+      "R028",
+      "R031",
+      "R048"
+    ]
+  },
+  "observations": [
+    {
+      "name": "finance-canvas",
+      "value": "#F0F3FA",
+      "kind": "measured-jpeg-candidate",
+      "evidence": "R028 interior around source (300,270)"
+    },
+    {
+      "name": "card-white",
+      "value": "#FFFFFF",
+      "kind": "measured-jpeg-candidate",
+      "evidence": "R028 interior around source (300,400)"
+    },
+    {
+      "name": "secondary-button-fill",
+      "value": "#EAF0FE",
+      "kind": "measured-jpeg-candidate",
+      "evidence": "R028 interior around source (270,736)"
+    },
+    {
+      "name": "campaign-blue",
+      "value": "#1179EB",
+      "kind": "measured-jpeg-candidate",
+      "evidence": "R043 hero around source (300,180); not the finance action blue"
+    },
+    {
+      "name": "root-card-left-inset",
+      "value": 12,
+      "unit": "CSS px",
+      "kind": "estimated",
+      "evidence": "R028 card starts around source x=22 at 1.8x"
+    },
+    {
+      "name": "root-card-top",
+      "value": 207,
+      "unit": "CSS px",
+      "kind": "estimated",
+      "evidence": "R028 card starts around source y=373 at 1.8x"
+    },
+    {
+      "name": "large-card-radius",
+      "value": 22,
+      "unit": "CSS px",
+      "kind": "estimated",
+      "evidence": "R028/R031 card upper corners"
+    },
+    {
+      "name": "floating-nav-horizontal-inset",
+      "value": 20,
+      "unit": "CSS px",
+      "kind": "estimated",
+      "evidence": "R028 bottom white pill"
+    },
+    {
+      "name": "floating-nav-height",
+      "value": 66,
+      "unit": "CSS px",
+      "kind": "estimated",
+      "evidence": "R028 bottom five-control pill, excluding Android system navigation"
+    },
+    {
+      "name": "content-card-shadow",
+      "value": "0 5px 16px rgba(29,49,85,.05)",
+      "kind": "estimated",
+      "evidence": "R031 card outer edge: canvas transitions from #EFF2FB to #EDF0F9 before white"
+    },
+    {
+      "name": "floating-nav-shadow",
+      "value": "0 7px 18px rgba(34,45,70,.17)",
+      "kind": "estimated",
+      "evidence": "R028/R048 visibly deeper pill elevation"
+    },
+    {
+      "name": "pane-slide",
+      "value": 280,
+      "unit": "ms",
+      "kind": "estimated-from-video",
+      "evidence": "이동애니메이션참고영상.mp4, tab changes around 7–8 and 13–16 seconds"
+    },
+    {
+      "name": "spinner-diameter",
+      "value": 32,
+      "unit": "CSS px",
+      "kind": "estimated-from-video",
+      "evidence": "로딩스피젯(가운데)참고영상.mp4, around 2.1–3.1 seconds; straddles bottom of rate card"
+    },
+    {
+      "name": "spinner-cycle",
+      "value": 900,
+      "unit": "ms",
+      "kind": "estimated-from-video",
+      "evidence": "Recording shows rotation but not an authoritative cycle"
+    },
+    {
+      "name": "linked-account-card-height",
+      "value": 335,
+      "unit": "CSS px",
+      "kind": "estimated",
+      "evidence": "R068 card near source y=373–977 at provisional 1.8× scale"
+    },
+    {
+      "name": "transfer-horizontal-inset",
+      "value": 20,
+      "unit": "CSS px",
+      "kind": "estimated",
+      "evidence": "R069–R073 focused transfer pages"
+    },
+    {
+      "name": "transfer-amount-keypad-layout",
+      "value": "3 columns × 4 rows",
+      "kind": "observed",
+      "evidence": "R071"
+    },
+    {
+      "name": "simple-password-indicators",
+      "value": 6,
+      "kind": "observed",
+      "evidence": "R074 photographed device screen; geometry lower confidence"
+    },
+    {
+      "name": "simple-password-keypad-layout",
+      "value": "3 columns × 4 rows",
+      "kind": "observed",
+      "evidence": "R074 photographed device screen; number order is one captured instance"
+    }
+  ]
+}

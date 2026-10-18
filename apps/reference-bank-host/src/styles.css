@@ -33,6 +33,15 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .device-stage { display: grid; place-items: center; min-height: 100vh; padding: 30px; border-left: 1px solid var(--ops-line-light); background: var(--ops-paper); }
 .phone { position: relative; display: grid; width: min(402px, 100%); height: min(850px, calc(100vh - 60px)); min-height: 620px; grid-template-rows: 30px var(--host-root-header-height, 52px) 1fr var(--host-root-nav-height, 62px); grid-template-columns: minmax(0, 1fr); overflow: hidden; border: 10px solid #17131c; border-radius: 43px; background: #fff; color: #17131c; box-shadow: 0 42px 90px rgb(22 10 31 / 34%); }
 .phone--focus { grid-template-rows: 30px 1fr; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] { --host-root-header-height: 113px; --host-root-nav-height: 82px; background: #f0f3fa; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'][data-host-tab='wallet'] { --host-root-header-height: 56px; grid-template-rows: 30px 56px 1fr; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'].phone--focus { grid-template-rows: 30px 1fr; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1']:has(.shinhan-live-preview__flow) { grid-template-rows: 1fr; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1']:has(.shinhan-live-preview__flow) > .shinhan-host-header,
+.phone[data-host-chrome='shinhan-super-sol-preview-v1']:has(.shinhan-live-preview__flow) > .shinhan-host-navigation,
+.phone[data-host-chrome='shinhan-super-sol-preview-v1']:has(.shinhan-live-preview__flow) > .phone-status { display: none; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1']:has(.shinhan-live-preview__flow) > .shinhan-live-preview { grid-row: 1 / -1; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] > .shinhan-host-navigation { width: calc(100% - 32px); height: 66px; align-self: start; justify-self: center; margin-top: 6px; }
 .phone-status { display: flex; align-items: center; justify-content: space-between; padding: 0 18px; background: #fff; font-size: 9px; font-weight: 900; }
 .bank-header { display: grid; grid-template-columns: 30px 1fr 30px; align-items: center; padding: 0 14px; border-bottom: 1px solid #eeeaf0; text-align: center; }
 .bank-header strong { font-size: 14px; }
@@ -47,6 +56,8 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .host-page--app-only.host-page--focus-surface, .host-page--app-only.host-page--focus-surface .device-stage { background: #fff; }
 .host-page--app-only .phone { width: min(430px, calc(100dvh * 9 / 19.5)); height: min(var(--host-visible-height, 100dvh), calc(430px * 19.5 / 9)); min-height: 0; grid-template-rows: var(--host-root-header-height, 52px) minmax(0, 1fr) var(--host-root-nav-height, 62px); border: 0; border-radius: 0; box-shadow: 0 0 0 1px #e8e8ea; }
 .host-page--app-only .phone--focus { grid-template-rows: minmax(0, 1fr); }
+.host-page--app-only .phone[data-host-chrome='shinhan-super-sol-preview-v1'][data-host-tab='wallet'] { grid-template-rows: 56px minmax(0, 1fr); }
+.host-page--app-only .phone[data-host-chrome='shinhan-super-sol-preview-v1'].phone--focus { grid-template-rows: minmax(0, 1fr); }
 .host-page--app-only .host-security-layer { inset: 0; }
 .app-entry { position: absolute; inset: 0; z-index: 10; display: grid; align-content: center; justify-items: center; gap: 10px; padding: 32px; background: var(--app-loading-canvas); color: var(--app-loading-ink); text-align: center; word-break: keep-all; }
 .app-entry-mark { position: relative; display: grid; width: 58px; height: 58px; place-items: center; margin-bottom: 8px; color: var(--app-loading-primary); }
@@ -67,6 +78,12 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .host-app-settings { --host-settings-brand: #7d3bdd; --host-settings-soft: #f3ecfb; }
 .phone[data-host-chrome='jb-mobile-wallet-v1'] .host-app-settings { --host-settings-brand: #0874e8; --host-settings-soft: #eef5fd; }
 .phone[data-host-chrome='namu-investment-wallet-v1'] .host-app-settings { --host-settings-brand: #408625; --host-settings-soft: #eff8e9; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-app-settings { --host-settings-brand: #0565f5; --host-settings-soft: #eaf0fe; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-layer { font-family: ShinhanPreviewNanumSquareAC, 'Apple SD Gothic Neo', sans-serif; word-break: keep-all; overflow-wrap: normal; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-symbol { background: #eaf0fe; color: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-kicker { color: #0565f5 !important; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-primary { background: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-check input { accent-color: #0565f5; }
 .host-app-settings__header { display: grid; min-height: 56px; grid-template-columns: 42px 1fr 42px; align-items: center; padding: 0 16px; border-bottom: 1px solid #f0f0f0; text-align: center; }
 .host-app-settings__header strong { font-size: 17px; }
 .host-app-settings__header button { display: grid; width: 40px; height: 40px; place-items: center; border: 0; background: transparent; color: #25282b; cursor: pointer; }
@@ -103,6 +120,7 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .host-vault-biometric:disabled { opacity: .5; }
 .phone[data-host-chrome='namu-investment-wallet-v1'] .host-vault-biometric { border-color: #aedb8c; color: #326e24; }
 .phone[data-host-chrome='jb-mobile-wallet-v1'] .host-vault-biometric { border-color: #b6d8fa; color: #0874e8; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-vault-biometric { border-color: #dce6fa; color: #0565f5; }
 .host-recipient-layer { position: absolute; inset: 30px 0 0; z-index: 35; display: flex; min-height: 0; flex-direction: column; gap: 18px; padding: 24px; overflow: auto; background: #fff; color: #222129; }
 .host-page--app-only .host-recipient-layer { inset: 0; padding-top: max(24px, env(safe-area-inset-top)); }
 .host-recipient-head { display: flex; align-items: flex-start; justify-content: space-between; }
@@ -195,6 +213,22 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .host-pin-erase { display: flex; align-items: center; gap: 8px; margin: 8px auto 0; padding: 9px 14px; border: 0; background: transparent; color: #7d3bdd; font: inherit; font-size: 13px; cursor: pointer; }
 .host-pin-keypad[data-layout='three-column'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .host-pin-keypad[data-layout='three-column'] button { min-height: 66px; }
+.host-pin-preview-prompt { padding: 30px 18px 0; text-align: center; }
+.host-pin-preview-prompt h2 { margin: 0; font-size: 21px; line-height: 1.5; word-break: keep-all; }
+.host-pin-preview-dots { display: flex; justify-content: center; gap: 22px; margin-top: 30px; }
+.host-pin-preview-dots span { width: 15px; height: 15px; border: 1.5px solid #c9cdd5; border-radius: 50%; background: #fff; }
+.host-pin-preview-dots span.is-filled { border-color: #0565f5; background: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-overlay { align-items: stretch; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-overlay__scrim { display: none; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-sheet { display: flex; height: 100%; flex-direction: column; padding-bottom: 30px; box-shadow: none; animation: none; font-family: ShinhanPreviewNanumSquareAC, sans-serif; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-sheet__head { justify-content: flex-end; border: 0; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-sheet__head > span { display: none; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-sheet .host-pin-preview-prompt { padding-top: clamp(50px, 13vh, 95px); }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-sheet .host-pin-keypad { margin-top: auto; padding: 0 17px 10px; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-keypad[data-layout='three-column'] button { min-height: 66px; color: #172132; font-size: 28px; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-inline .host-pin-preview-prompt { padding-top: 8px; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-dots span.is-filled { border-color: #0565f5; background: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-keypad button:focus-visible { outline-color: #0565f5; }
 @keyframes host-pin-rise { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .host-pin-sheet { animation: none; } }
 .host-recovery-secret { width: 100%; min-height: 134px; margin-top: 22px; padding: 16px; border: 1px solid #dcd6e1; border-radius: 12px; background: #f8f6fa; color: #211d25; font: 600 14px/1.9 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; resize: vertical; }

@@ -78,7 +78,9 @@ export function App() {
   const thirdwebClientId = runtime.status === 'ready'
     ? runtime.bootstrap.publicProviders?.thirdwebClientId : undefined;
   const pwaOAuthRedirect = isStandaloneWalletHost() && window.parent !== window;
-  const nativeAndroid = configuredManifest?.tenantId === 'namu' && isNativeAndroidHost();
+  const nativeAuthRedirectUri = configuredManifest?.presentation.nativeAuthRedirectUri;
+  const nativeAuthProtocol = nativeAuthRedirectUri ? new URL(nativeAuthRedirectUri).protocol : null;
+  const nativeAndroid = Boolean(nativeAuthProtocol) && isNativeAndroidHost();
   useEffect(() => {
     if (!nativeAndroid) return;
     const onNativeReturn = (event: MessageEvent) => {
@@ -89,7 +91,7 @@ export function App() {
       if (!pending) return;
       let callback: URL;
       try { callback = new URL(event.data.url); } catch { return; }
-      if (callback.protocol !== 'com.tookwss.namu:' || callback.hostname !== 'auth'
+      if (callback.protocol !== nativeAuthProtocol || callback.hostname !== 'auth'
         || !callback.searchParams.has('state')
         || !(callback.searchParams.has('authResult') || callback.searchParams.has('authCookie'))) return;
       void (async () => {
@@ -135,7 +137,7 @@ export function App() {
     };
     window.addEventListener('message', onNativeReturn);
     return () => window.removeEventListener('message', onNativeReturn);
-  }, [nativeAndroid]);
+  }, [nativeAndroid, nativeAuthProtocol]);
   useEffect(() => {
     if (runtime.status !== 'ready') return;
     const onExchangeSign = (event: MessageEvent) => {
@@ -182,13 +184,13 @@ export function App() {
   }, []);
   const beginNativeAuth = useCallback((strategy: 'google' | 'apple') => {
     const pending = nativeAuthRef.current;
-    if (!pending) return;
+    if (!pending || !nativeAuthRedirectUri) return;
     setNativeAuthPicker(false);
     setNativeAuthBusy(true);
     const startedAt = Date.now();
     const wallet = inAppWallet({
       auth: { options: ['google', 'apple', 'email'], mode: 'window',
-        redirectUrl: 'com.tookwss.namu://auth' },
+        redirectUrl: nativeAuthRedirectUri },
       hidePrivateKeyExport: true,
     });
     void wallet.connect({ client: createThirdwebClient({ clientId: pending.clientId }), strategy }).catch(() => {
@@ -197,7 +199,7 @@ export function App() {
       // mean the browser could not be opened.
       if (Date.now() - startedAt < 3_000 && nativeAuthRef.current === pending) cancelNativeAuth();
     });
-  }, [cancelNativeAuth]);
+  }, [cancelNativeAuth, nativeAuthRedirectUri]);
   const connectThirdweb = useCallback(async (strategy?: 'google' | 'apple' | 'stored' | 'email') => {
     if (!configuredManifest || !thirdwebClientId) throw new Error('thirdweb_not_configured');
     if (strategy === 'stored') {

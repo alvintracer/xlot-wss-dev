@@ -247,12 +247,14 @@ const developmentDatabaseProvider = databaseUrl && !process.env.VITEST
 const kiwoomSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();
 const jbSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();
 const namuSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();
+const shinhanSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();
 const referenceSandboxProvider = developmentDatabaseProvider ?? new SandboxWalletProvider();
 
 export const walletQueryProviders = new Map<string, WalletQueryProvider>([
   ['kiwoom', kiwoomSandboxProvider],
   ['jb', jbSandboxProvider],
   ['namu', namuSandboxProvider],
+  ['shinhan', shinhanSandboxProvider],
   ['reference-bank', referenceSandboxProvider],
 ]);
 
@@ -260,6 +262,7 @@ export const walletProvisioningProviders = new Map<string, WalletProvisioningPro
   ['kiwoom', kiwoomSandboxProvider],
   ['jb', jbSandboxProvider],
   ['namu', namuSandboxProvider],
+  ['shinhan', shinhanSandboxProvider],
   ['reference-bank', referenceSandboxProvider],
 ]);
 
@@ -267,5 +270,6 @@ export const identityRegistrationProviders = new Map<string, IdentityRegistratio
   ['kiwoom', kiwoomSandboxProvider],
   ['jb', jbSandboxProvider],
   ['namu', namuSandboxProvider],
+  ['shinhan', shinhanSandboxProvider],
   ['reference-bank', referenceSandboxProvider],
 ]);

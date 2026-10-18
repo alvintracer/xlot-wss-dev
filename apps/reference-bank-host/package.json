@@ -27,6 +27,8 @@
     "@took-wss/tenant-kiwoom-host-chrome": "0.1.0",
     "@took-wss/tenant-namu": "0.1.0",
     "@took-wss/tenant-namu-host-chrome": "0.1.0",
+    "@took-wss/tenant-shinhan": "0.1.0",
+    "@took-wss/tenant-shinhan-host-chrome": "0.1.0",
     "@took-wss/tenant-reference-bank": "0.1.0",
     "@walletconnect/core": "^2.25.0",
     "@walletconnect/utils": "^2.25.0",

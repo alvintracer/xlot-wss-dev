@@ -31,6 +31,8 @@ Every project selects a versioned recovery requirement at creation time: `sar-re
 - `tenants/JB` — second institutional tenant, using the JB home/account UI references
 - `tenants/JB/host-chrome` — JB home tabs, account/card preview, and five-item host navigation
 - `tenants/JB/presentation` — JB wallet styling over the shared WSS wallet flows
+- `tenants/shinhan` — Super SOL development manifest, UI-kit, host chrome, and wallet presentation; see `tenants/shinhan/README.md`
+- `apps/shinhan-android` — Shinhan connected-device debug shell for the signed preview host
 - `tenants/reference-bank` — generic bank reference profile
 - `docs/architecture/0004-host-shell-and-focused-wallet-flows.md` — host tab, focused-flow, and future menu policy
 

@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "shinhan",
+  "components": [
+    {
+      "id": "root-header",
+      "referenceIds": [
+        "R028",
+        "R031",
+        "R048"
+      ],
+      "classification": "host-owned"
+    },
+    {
+      "id": "finance-tabs",
+      "referenceIds": [
+        "R028",
+        "R042",
+        "R048"
+      ],
+      "classification": "host-owned"
+    },
+    {
+      "id": "floating-bottom-nav",
+      "referenceIds": [
+        "R028",
+        "R031",
+        "R048"
+      ],
+      "classification": "host-owned"
+    },
+    {
+      "id": "account-summary-card",
+      "referenceIds": [
+        "R028",
+        "R042",
+        "R045",
+        "R068"
+      ],
+      "classification": "component-evidence"
+    },
+    {
+      "id": "exchange-promo-card",
+      "referenceIds": [
+        "R031",
+        "R032"
+      ],
+      "classification": "component-evidence"
+    },
+    {
+      "id": "currency-sheet",
+      "referenceIds": [
+        "R035"
+      ],
+      "classification": "component-evidence"
+    },
+    {
+      "id": "loading-spinner",
+      "referenceIds": [
+        "R040"
+      ],
+      "classification": "component-evidence"
+    },
+    {
+      "id": "wallet-balance-card",
+      "referenceIds": [
+        "R049",
+        "R053",
+        "R065"
+      ],
+      "classification": "wallet-extension"
+    },
+    {
+      "id": "assets-list",
+      "referenceIds": [
+        "R048",
+        "R065",
+        "R066"
+      ],
+      "classification": "wallet-extension"
+    },
+    {
+      "id": "splash",
+      "referenceIds": [
+        "R067"
+      ],
+      "classification": "component-evidence"
+    },
+    {
+      "id": "transfer-recipient",
+      "referenceIds": [
+        "R069",
+        "R070"
+      ],
+      "classification": "host-owned"
+    },
+    {
+      "id": "transfer-amount-keypad",
+      "referenceIds": [
+        "R071"
+      ],
+      "classification": "host-owned"
+    },
+    {
+      "id": "transfer-confirmation",
+      "referenceIds": [
+        "R072"
+      ],
+      "classification": "host-owned"
+    },
+    {
+      "id": "favorite-account-editor",
+      "referenceIds": [
+        "R073"
+      ],
+      "classification": "host-owned"
+    },
+    {
+      "id": "simple-password-pad",
+      "referenceIds": [
+        "R074"
+      ],
+      "classification": "host-owned-secure-input-preview"
+    }
+  ]
+}

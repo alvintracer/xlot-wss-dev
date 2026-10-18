@@ -17,9 +17,16 @@ supabase/.temp/
 .vercel
 .env*
 .artifacts/
-# Supplied UI screenshots and photo-derived review fixtures stay out of the public source mirror.
+# Raw UI screenshots and recordings stay out of the source mirror. Preview derivatives are kept separately and excluded from production builds.
 tenants/namu/ui-kit/references/
 tenants/JB/ui-kit/references/
 tenants/JB/ui-kit/tapbar/
 tenants/JB/ui-kit/*.svg
 tenants/JB/ui-kit/jb-ui-extractor/representative.html
+tenants/shinhan/ui-kit/*.jpeg
+tenants/shinhan/ui-kit/*.jpg
+tenants/shinhan/ui-kit/*.png
+tenants/shinhan/ui-kit/*.mp4
+tenants/shinhan/ui-kit/additional/
+tenants/shinhan/app-logo.jpg
+tenants/shinhan/splash.jpeg

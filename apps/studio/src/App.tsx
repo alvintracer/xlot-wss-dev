@@ -12,6 +12,7 @@ import { WSS_MODULES, validateModuleSelection } from '@took-wss/module-registry'
 import { kiwoomManifest } from '@took-wss/tenant-kiwoom';
 import { jbManifest } from '@took-wss/tenant-jb';
 import { namuManifest } from '@took-wss/tenant-namu';
+import { shinhanManifest } from '@took-wss/tenant-shinhan';
 import { referenceBankManifest } from '@took-wss/tenant-reference-bank';
 
 const keyAdapterIds = Object.keys(KEY_ADAPTERS) as KeyAdapterId[];
@@ -67,6 +68,7 @@ const templates = {
   kiwoom: kiwoomManifest,
   jb: jbManifest,
   namu: namuManifest,
+  shinhan: shinhanManifest,
   'reference-bank': referenceBankManifest,
 } as const;
 type TemplateId = keyof typeof templates;
@@ -75,6 +77,7 @@ const templateRoles: Record<TemplateId, string> = {
   kiwoom: 'First tenant',
   jb: 'Second tenant',
   namu: 'Third tenant · sandbox preview',
+  shinhan: 'Shinhan · sandbox preview',
   'reference-bank': 'Generic reference',
 };
 

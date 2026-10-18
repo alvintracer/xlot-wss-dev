@@ -16,6 +16,7 @@ h1 { margin: 0; font-size: clamp(29px, 8vw, 37px); line-height: 1.25; letter-spa
 .pay-entry__choices strong { min-width: 0; flex: 1; font-size: 15px; }
 .pay-entry__badge { display: grid; min-width: 44px; height: 44px; place-items: center; padding: 0 6px; border-radius: 11px; font-size: 13px; font-weight: 800; white-space: nowrap; }
 .pay-entry__badge--namu { background: #eaf7db; color: #377322; }
+.pay-entry__badge--shinhan { background: #eaf0fe; color: #0565f5; }
 .pay-entry__badge--kiwoom { background: #f0e9fc; color: #7132b3; }
 .pay-entry__badge--jb { background: #e4f1ff; color: #1368c3; }
 .pay-entry__chevron { color: #8a8982; font-size: 22px; }

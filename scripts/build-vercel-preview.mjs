@@ -27,6 +27,7 @@ await rm(output, { recursive: true, force: true });
 await mkdir(join(output, 'kiwoom', 'wallet'), { recursive: true });
 await mkdir(join(output, 'jb', 'wallet'), { recursive: true });
 await mkdir(join(output, 'namu', 'wallet'), { recursive: true });
+await mkdir(join(output, 'shinhan', 'wallet'), { recursive: true });
 await mkdir(join(output, 'c'), { recursive: true });
 await mkdir(join(output, 'pay'), { recursive: true });
 
@@ -55,6 +56,14 @@ await run('npm', ['run', 'build', '-w', '@took-wss/reference-bank-host'], {
 await cp(join(root, 'apps/reference-bank-host/dist'), join(output, 'namu'), { recursive: true });
 await cp(join(root, 'apps/reference-bank-host/dist/namu.html'), join(output, 'namu/index.html'));
 
+await run('npm', ['run', 'build', '-w', '@took-wss/reference-bank-host'], {
+  VITE_WSS_BASE_PATH: '/shinhan/',
+  VITE_WSS_PUBLIC_PREVIEW: 'true',
+  VITE_WSS_PREVIEW_TENANT: 'shinhan',
+});
+await cp(join(root, 'apps/reference-bank-host/dist'), join(output, 'shinhan'), { recursive: true });
+await cp(join(root, 'apps/reference-bank-host/dist/shinhan.html'), join(output, 'shinhan/index.html'));
+
 await run('npm', ['run', 'build', '-w', '@took-wss/wallet-webview'], {
   VITE_WSS_BASE_PATH: '/kiwoom/wallet/',
 });
@@ -74,6 +83,13 @@ await run('npm', ['run', 'build', '-w', '@took-wss/wallet-webview'], {
   VITE_WSS_LOADING_MUTED: '#747A7C',
 });
 await cp(join(root, 'apps/wallet-webview/dist'), join(output, 'namu', 'wallet'), { recursive: true });
+await run('npm', ['run', 'build', '-w', '@took-wss/wallet-webview'], {
+  VITE_WSS_BASE_PATH: '/shinhan/wallet/',
+  VITE_WSS_LOADING_PRIMARY: '#0565F5',
+  VITE_WSS_LOADING_CANVAS: '#F0F3FA',
+  VITE_WSS_LOADING_MUTED: '#748093',
+});
+await cp(join(root, 'apps/wallet-webview/dist'), join(output, 'shinhan', 'wallet'), { recursive: true });
 await cp(join(root, 'deployment/phone-claim'), join(output, 'c'), { recursive: true });
 await cp(join(root, 'deployment/qr-payment'), join(output, 'pay'), { recursive: true });
 

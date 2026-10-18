@@ -15,6 +15,7 @@ export const namuManifest = assertTenantManifest({
     profileId: 'namu-investment-wallet-v1',
     guideVersion: '1.0.0',
     secureKeypadLayout: 'four-column',
+    nativeAuthRedirectUri: 'com.tookwss.namu://auth',
   },
   brand: {
     logoText: '나무',

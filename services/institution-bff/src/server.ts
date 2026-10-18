@@ -25,6 +25,7 @@ import {
 import { kiwoomManifest } from '@took-wss/tenant-kiwoom';
 import { jbManifest } from '@took-wss/tenant-jb';
 import { namuManifest } from '@took-wss/tenant-namu';
+import { shinhanManifest } from '@took-wss/tenant-shinhan';
 import { referenceBankManifest } from '@took-wss/tenant-reference-bank';
 import { issueSessionToken, verifySessionToken } from './sessionToken.js';
 import { resolveAppPreviewIdentity } from './appPreviewIdentity.js';
@@ -96,12 +97,14 @@ const tenants = new Map<string, TenantManifest>([
   [kiwoomManifest.tenantId, kiwoomManifest],
   [jbManifest.tenantId, jbManifest],
   [namuManifest.tenantId, namuManifest],
+  ...(isDevelopmentPreview || !isProduction ? [[shinhanManifest.tenantId, shinhanManifest] as const] : []),
   [referenceBankManifest.tenantId, referenceBankManifest],
 ]);
 const appPreviewTenants = new Map<string, TenantManifest>([
   [kiwoomManifest.tenantId, kiwoomManifest],
   [jbManifest.tenantId, jbManifest],
   [namuManifest.tenantId, namuManifest],
+  [shinhanManifest.tenantId, shinhanManifest],
 ]);
 
 function requiredEnvironment(name: string, developmentFallback: string): string {

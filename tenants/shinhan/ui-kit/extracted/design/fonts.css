@@ -1,0 +1,29 @@
+/* User-selected preview substitution. Font files are unchanged NAVER NanumSquare AC. */
+@font-face {
+  font-family: ShinhanPreviewNanumSquareAC;
+  src: url('../../../assets/fonts/NanumSquare_acL.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: ShinhanPreviewNanumSquareAC;
+  src: url('../../../assets/fonts/NanumSquare_acR.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: ShinhanPreviewNanumSquareAC;
+  src: url('../../../assets/fonts/NanumSquare_acB.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: ShinhanPreviewNanumSquareAC;
+  src: url('../../../assets/fonts/NanumSquare_acEB.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 800 900;
+  font-display: swap;
+}

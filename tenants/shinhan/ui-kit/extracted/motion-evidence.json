@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "shinhan",
+  "videos": [
+    {
+      "sourcePath": "계좌개설애니메이션참고영상.mp4",
+      "sha256": "0bc21b3f49b8a7a41fa185b87d6c0816682f6dff9797672fbc6743222368f452",
+      "mediaType": "video/mp4",
+      "widthPx": 1080,
+      "heightPx": 2340,
+      "frameRateFps": 30,
+      "durationSeconds": 8.483,
+      "family": "account-product",
+      "summary": "Product hero artwork scrolls vertically under a persistent two-button footer. Content sections move; the footer stays fixed. Duration is a browsing recording, not one animation cycle.",
+      "implementation": "Fixed bottom action row; content scroll container with stable header and safe-area.",
+      "confidence": "observed-structure-estimated-timing"
+    },
+    {
+      "sourcePath": "로딩스피젯(가운데)참고영상.mp4",
+      "sha256": "6b50dafc8888e909d299bbec1f9084d1cb0f46fb2e791c7d5925edfec3670135",
+      "mediaType": "video/mp4",
+      "widthPx": 1080,
+      "heightPx": 2340,
+      "frameRateFps": 30,
+      "durationSeconds": 3.943,
+      "family": "exchange",
+      "summary": "Neutral gray circular ring rotates centered across the lower edge of the exchange rate card. Flags and currency labels stay visible while numeric rates disappear, and the next card remains visible.",
+      "implementation": "Local ~32 CSS px gray ring, estimated 0.9 s linear revolution, straddling the rate/history card boundary. Hide numeric rates during loading but retain labels and card context.",
+      "confidence": "observed-structure-estimated-timing"
+    },
+    {
+      "sourcePath": "이동애니메이션참고영상.mp4",
+      "sha256": "d35cc2b3d6ec6add5be13ee81466dbbc0a8204bd8dc46c98565491ae500bfe60",
+      "mediaType": "video/mp4",
+      "widthPx": 1080,
+      "heightPx": 2340,
+      "frameRateFps": 30,
+      "durationSeconds": 20.442,
+      "family": "finance-tabs",
+      "summary": "Bank→card→securities tabs move horizontally; adjacent pane briefly enters from the side while the selected underline relocates. Bottom pill navigation stays fixed.",
+      "implementation": "Horizontal track translation estimated 240–320 ms with ease-out; underline follows the active tab; reduced-motion path changes instantly.",
+      "confidence": "observed-structure-estimated-timing"
+    }
+  ]
+}

@@ -11,9 +11,12 @@
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "@took-wss/contracts": "0.1.0",
+    "@took-wss/ops-ui": "0.1.0",
     "@took-wss/tenant-jb-presentation": "0.1.0",
     "@took-wss/tenant-kiwoom-presentation": "0.1.0",
     "@took-wss/tenant-namu-presentation": "0.1.0",
+    "@took-wss/tenant-shinhan-presentation": "0.1.0",
+    "@took-wss/tenant-shinhan-host-chrome": "0.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "thirdweb": "^5.121.6"

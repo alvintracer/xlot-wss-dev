@@ -1,0 +1,26 @@
+@import './fonts.css';
+
+.shinhan-ui {
+  --shinhan-canvas: #f0f3fa;
+  --shinhan-surface: #fff;
+  --shinhan-ink: #172132;
+  --shinhan-text: #394459;
+  --shinhan-muted: #748093;
+  --shinhan-blue: #0565f5;
+  --shinhan-blue-strong: #0649f6;
+  --shinhan-blue-soft: #eaf0fe;
+  --shinhan-blue-line: #dce6fa;
+  --shinhan-divider: #edf0f5;
+  --shinhan-card-radius: 22px;
+  --shinhan-control-radius: 11px;
+  --shinhan-card-shadow: 0 5px 16px rgb(29 49 85 / 5%);
+  --shinhan-nav-shadow: 0 7px 18px rgb(34 45 70 / 17%);
+  --shinhan-font: ShinhanPreviewNanumSquareAC, 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  --shinhan-pane-duration: 280ms;
+  --shinhan-spinner-duration: 900ms;
+  color: var(--shinhan-ink);
+  font-family: var(--shinhan-font);
+  word-break: keep-all;
+  overflow-wrap: normal;
+  text-wrap: wrap;
+}

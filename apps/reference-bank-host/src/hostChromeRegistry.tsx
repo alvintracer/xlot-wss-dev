@@ -6,6 +6,8 @@ import {
 } from '@took-wss/tenant-kiwoom-host-chrome';
 import { JbHostHeader, JbHostNavigation, JbHostPreview } from '@took-wss/tenant-jb-host-chrome';
 import { NamuHostHeader, NamuHostNavigation } from '@took-wss/tenant-namu-host-chrome';
+import { ShinhanHostHeader, ShinhanHostNavigation, type ShinhanFinanceTab, type ShinhanRootTab } from '@took-wss/tenant-shinhan-host-chrome';
+import { ShinhanHostPreview } from './ShinhanHostPreview';
 import type { ComponentType } from 'react';
 
 export interface HostChromeProps extends KiwoomHostChromeProps {
@@ -37,6 +39,29 @@ const genericHostChrome: HostChromeProfile = {
   walletTab: 'wallet',
 };
 
+function ShinhanHeader({ activeTab = 'finance:bank', onSelectTab, onAction, onOpenWalletSettings }: HostChromeProps) {
+  const section = activeTab === 'wallet' ? 'wallet' : activeTab === 'exchange' ? 'exchange' : 'finance';
+  const financeTab = activeTab.startsWith('finance:') ? activeTab.slice(8) as ShinhanFinanceTab : 'bank';
+  return <ShinhanHostHeader section={section} financeTab={financeTab}
+    onSettings={onOpenWalletSettings}
+    onFinanceTab={(tab) => onSelectTab?.(`finance:${tab}`)}
+    onBack={() => onSelectTab?.('finance:bank')}
+    onAction={(action) => {
+      if (action === 'wallet') onSelectTab?.('wallet');
+      else if (action === 'home') onSelectTab?.('finance:bank');
+      else onAction?.(`${action === 'search' ? '검색' : 'AI 상담'} 미리보기`);
+    }} />;
+}
+
+function ShinhanNavigation({ activeTab = 'finance:bank', onSelectTab, onAction }: HostChromeProps) {
+  if (activeTab === 'wallet') return null;
+  const selected = activeTab.startsWith('finance:') ? 'finance' : activeTab as ShinhanRootTab;
+  return <ShinhanHostNavigation activeTab={selected} onSelectTab={(tab) => {
+    if (tab === 'finance') onSelectTab?.('finance:bank');
+    else onAction?.(`${tab === 'home' ? '홈' : tab === 'products' ? '상품' : tab === 'benefits' ? '혜택' : '주식'} 미리보기`);
+  }} />;
+}
+
 const hostChromeProfiles: Readonly<Record<string, HostChromeProfile>> = {
   'kiwoom-simple-mode-v1': {
     Header: KiwoomHostHeader,
@@ -55,6 +80,13 @@ const hostChromeProfiles: Readonly<Record<string, HostChromeProfile>> = {
     Header: NamuHostHeader,
     Navigation: NamuHostNavigation,
     initialTab: 'wallet',
+    walletTab: 'wallet',
+  },
+  'shinhan-super-sol-preview-v1': {
+    Header: ShinhanHeader,
+    Navigation: ShinhanNavigation,
+    Preview: ShinhanHostPreview,
+    initialTab: 'finance:bank',
     walletTab: 'wallet',
   },
 };

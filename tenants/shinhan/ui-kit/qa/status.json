@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "shinhan",
+  "workflowVersion": "1.0",
+  "stage": "pilot",
+  "reviewMode": "draft-without-intermediate-approval",
+  "approval": {
+    "state": "not-requested",
+    "approvedBy": null,
+    "approvedAt": null,
+    "evidenceRunId": null,
+    "scope": []
+  },
+  "coverage": {
+    "sourcesDiscovered": 74,
+    "sourcesClassified": 74,
+    "videosReviewed": 3,
+    "assetsMapped": 19,
+    "casesImplemented": 9,
+    "casesCaptured": 9,
+    "casesCompared": 7,
+    "casesApproved": 0,
+    "viewportWidthsChecked": [
+      320,
+      360,
+      390,
+      430
+    ]
+  },
+  "blocked": [
+    "Actual device CSS viewport and insets unverified",
+    "Production font and institution-approved artwork unavailable",
+    "Production institution policy/session manifest unavailable",
+    "Approved native simple-password input and bank transfer host integration unavailable"
+  ],
+  "nextAction": "Review the additional transfer and simple-password visuals on the target device; bind production input only through the approved Shinhan host secure surface",
+  "sourceRevision": "b389658ab175caeb9dd3ab7eda6aa901a29cccace5d46f94faf28661339e7843",
+  "codeRevision": "41e6a644edfe7f3adf68ab8b977bed5c9d079fafec811e458263142aedee4bfa"
+}

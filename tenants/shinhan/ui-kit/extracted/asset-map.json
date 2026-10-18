@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "shinhan",
+  "assets": [
+    {
+      "id": "icon_bell",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_bell.png",
+      "sha256": "e55e8d73e69c488218c6b05b17e56b5c50527de1fbf18f34d6c8f5712b5b1ae9",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_chart_up",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_chart_up.png",
+      "sha256": "144c2ca9107795b6efc203eed5f5f5dbfc6822e36a03a440421023a92f26df76",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_chat_smile",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_chat_smile.png",
+      "sha256": "955db7d1e4f0451e1ae38366641b92e4100fd2bc313d3ce53d5070368b7f938d",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_gear",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_gear.png",
+      "sha256": "ed77fb677e0821e4d55729fa8fce3b2ff96cb314c350b35bd1a79782d1a0bcd9",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_home_filled",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_home_filled.png",
+      "sha256": "2064c0290f0b7fb041842a3354dde06f908160e77ccfbfe4cfa90a39fdd280b1",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_home_outline",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_home_outline.png",
+      "sha256": "e920926223edab98d8c72bd6d98b75480bc0da1cfc883c49242cc48b12142a81",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_info",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_info.png",
+      "sha256": "224611d1036bbdf30417b3836eb0a066d56184e0a9710939e94111abe4ff4410",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_package",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_package.png",
+      "sha256": "551c22578b96e865cecf2e12a0e3411922584cb029c8e5779e9419f4467b2630",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_search",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_search.png",
+      "sha256": "17e24646a8ed7a971481e637075fe9e9a5415e0b5c0ea763669aac04ada4d2b8",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_shopping_bag",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_shopping_bag.png",
+      "sha256": "c759386715ed5bda4a49769d5f2bce48e3117441d29f1c6f8ae23ada6d8c6e49",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_wallet",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_wallet.png",
+      "sha256": "29a4739f3454bb3de6d5bd72a220a214a4b746f35fa44ec586f8ba10030ff835",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_won_circle_blue",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_won_circle_blue.png",
+      "sha256": "7ee0349f91b8bbecd85befeb63a4555f9e4b2fd160ed6ad71ff5005f8a1e59fe",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "icon_won_circle_gray",
+      "kind": "supplied-transparent-icon",
+      "sourcePath": "ui-kit/icons_transparent/icon_won_circle_gray.png",
+      "sha256": "c115adcf6f7f567347b19d4e0e4c7c56b4c558e2e555df5d501dd8f402c1f6f8",
+      "usage": "preview-host-chrome",
+      "status": "supplied"
+    },
+    {
+      "id": "app-logo",
+      "kind": "supplied-app-logo",
+      "sourcePath": "app-logo.jpg",
+      "sha256": "3d4cd8ab1ef70948e061336de34bd1faa9c789e478442c0344171b85b9fb2a6b",
+      "usage": "app-icon-candidate",
+      "status": "supplied"
+    },
+    {
+      "id": "splash",
+      "kind": "supplied-splash-reference",
+      "sourcePath": "splash.jpeg",
+      "sha256": "0c33c9ae84433134e942ee24876267d67246df41fec96918327878c272224c9b",
+      "usage": "splash-layout-color-evidence",
+      "status": "supplied"
+    },
+    {
+      "id": "shinhan-bank-mark",
+      "kind": "imagegen-transparent-extraction",
+      "sourcePath": "ui-kit/.artifacts/preview-assets/shinhan-bank-mark.png",
+      "sha256": "eea33e84846f3715e41f83409cefe421dfdd4fd003f7a7d8cad298e9189f1640",
+      "sourceReferenceId": "R028",
+      "usage": "local-preview-only",
+      "status": "derived-unapproved-local-review-only",
+      "note": "Generated from a local isolated screenshot crop; may alter original logo/illustration details. Do not ship as institution artwork.",
+      "previewPath": "presentation/assets/preview/bank-mark-preview.png",
+      "previewSha256": "b78efd035e716e2eba6432d918ccf6462f4420087e2cc97faa010e89f0c3266a",
+      "generationPrompt": "Imagegen transparent-background extraction of the exact blue circular Shinhan bank mark from isolated R028 crop; preserve shape, color, and white S symbol; no redrawing or extra shadow."
+    },
+    {
+      "id": "exchange-coin",
+      "kind": "imagegen-transparent-extraction",
+      "sourcePath": "ui-kit/.artifacts/preview-assets/exchange-coin.png",
+      "sha256": "f934a872c8631468e752c58880c02b11f2a3a1778b44bf2190c2abf4239ebacf",
+      "sourceReferenceId": "R031",
+      "usage": "local-preview-only",
+      "status": "derived-unapproved-local-review-only",
+      "note": "Generated from a local isolated screenshot crop; may alter original logo/illustration details. Do not ship as institution artwork.",
+      "previewPath": "presentation/assets/preview/exchange-coin-preview.png",
+      "previewSha256": "7da9647a2b160d01cb2a0c93ce79156dd6152ceab6783935f9fdcae71b679dac",
+      "generationPrompt": "Imagegen transparent-background extraction of the exact won coin and light-cyan/blue exchange arrows from isolated R031 crop; preserve 3D treatment and proportions; no new elements."
+    },
+    {
+      "id": "retirement-bank",
+      "kind": "imagegen-transparent-extraction",
+      "sourcePath": "ui-kit/.artifacts/preview-assets/retirement-bank.png",
+      "sha256": "71a66ee5073e00342bf77090c9581136429f6aa8c3e63a92b8c71ba3b067218a",
+      "sourceReferenceId": "R028",
+      "usage": "local-preview-only",
+      "status": "derived-unapproved-local-review-only",
+      "note": "Generated from a local isolated screenshot crop; may alter original logo/illustration details. Do not ship as institution artwork.",
+      "previewPath": "presentation/assets/preview/retirement-bank-preview.png",
+      "previewSha256": "d3107619d04fdf7a12c93b8f04f20f4aa85d61ce2306bb481a1f773d7ce96f6d",
+      "generationPrompt": "Imagegen transparent-background extraction of the blue Shinhan bank/branch and wraparound arrow from isolated R028 crop; remove pale background and clipped white card edge; preserve styling and perspective."
+    },
+    {
+      "id": "super-sol-wordmark",
+      "kind": "deterministic-white-channel-cutout",
+      "sourcePath": "app-logo.jpg",
+      "sourceAssetId": "app-logo",
+      "previewPath": "presentation/assets/preview/super-sol-wordmark-preview.png",
+      "previewSha256": "200bcf3b35c17218b99e1aaa016ea0478f520013bd10b9c88cd6f5776d89a643",
+      "method": "Local red-channel alpha threshold on the supplied app logo; rejected an imagegen version because it introduced edge artifacts.",
+      "usage": "local-preview-only",
+      "status": "derived-unapproved-local-review-only"
+    }
+  ]
+}

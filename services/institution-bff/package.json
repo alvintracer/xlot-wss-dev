@@ -18,6 +18,7 @@
     "@took-wss/tenant-kiwoom": "0.1.0",
     "@took-wss/tenant-jb": "0.1.0",
     "@took-wss/tenant-namu": "0.1.0",
+    "@took-wss/tenant-shinhan": "0.1.0",
     "@took-wss/tenant-reference-bank": "0.1.0",
     "ethers": "^6.17.0",
     "postgres": "3.4.9",

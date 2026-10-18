@@ -57,6 +57,18 @@
       "destination": "/namu/wallet/index.html"
     },
     {
+      "source": "/shinhan",
+      "destination": "/shinhan/index.html"
+    },
+    {
+      "source": "/shinhan/app",
+      "destination": "/shinhan/index.html"
+    },
+    {
+      "source": "/shinhan/wallet",
+      "destination": "/shinhan/wallet/index.html"
+    },
+    {
       "source": "/c",
       "destination": "/c/index.html"
     },
@@ -92,6 +104,12 @@
     },
     {
       "source": "/namu/(.*)",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; connect-src 'self' https://*.thirdweb.com https://*.thirdwebcdn.com wss://relay.walletconnect.org https://verify.walletconnect.org; img-src 'self' data: https://*.thirdwebcdn.com; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' https://*.thirdweb.com; frame-ancestors 'self'" }
+      ]
+    },
+    {
+      "source": "/shinhan/(.*)",
       "headers": [
         { "key": "Content-Security-Policy", "value": "default-src 'self'; connect-src 'self' https://*.thirdweb.com https://*.thirdwebcdn.com wss://relay.walletconnect.org https://verify.walletconnect.org; img-src 'self' data: https://*.thirdwebcdn.com; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' https://*.thirdweb.com; frame-ancestors 'self'" }
       ]

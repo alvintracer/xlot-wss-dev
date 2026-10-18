@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "shinhan",
+  "cases": [
+    {
+      "id": "finance-root",
+      "kind": "reference-replica",
+      "referenceIds": [
+        "R028",
+        "R042",
+        "R068"
+      ],
+      "selector": ".shinhan-review-device",
+      "viewport": {
+        "width": 1180,
+        "height": 900
+      },
+      "state": "wallet",
+      "captureScope": "host+content",
+      "comparison": "review-only",
+      "note": "Synthetic linked account, bank mark, and balance; compare account-card geometry, transfer action, and navigation only."
+    },
+    {
+      "id": "exchange-root",
+      "kind": "reference-replica",
+      "referenceIds": [
+        "R031",
+        "R032"
+      ],
+      "selector": ".shinhan-review-device",
+      "viewport": {
+        "width": 1180,
+        "height": 900
+      },
+      "state": "wallet",
+      "openButton": "환전",
+      "captureScope": "host+content",
+      "comparison": "review-only",
+      "note": "Synthetic rates; local spinner is a separate interaction check."
+    },
+    {
+      "id": "wallet-extension",
+      "kind": "wallet-extension",
+      "referenceIds": [
+        "R028",
+        "R049",
+        "R053",
+        "R065"
+      ],
+      "selector": ".shinhan-review-device",
+      "viewport": {
+        "width": 1180,
+        "height": 900
+      },
+      "state": "wallet",
+      "openButton": "내 지갑",
+      "captureScope": "host+wallet",
+      "comparison": "review-only",
+      "note": "New wallet composition with synthetic values."
+    },
+    {
+      "id": "splash",
+      "kind": "component-evidence",
+      "referenceIds": [],
+      "sourceAssetIds": [
+        "splash",
+        "app-logo"
+      ],
+      "selector": ".shinhan-review-device",
+      "viewport": {
+        "width": 1180,
+        "height": 900
+      },
+      "state": "wallet",
+      "openButton": "스플래시",
+      "captureScope": "host+content",
+      "comparison": "review-only",
+      "note": "Supplied splash.jpeg is the splash reference; it includes Android system chrome and cannot be used as a full-screen runtime image."
+    },
+    {
+      "id": "transfer-recipient",
+      "kind": "reference-replica",
+      "referenceIds": [
+        "R069",
+        "R070"
+      ],
+      "openButton": "이체 화면",
+      "note": "Synthetic recipient and masked account; compare host-owned recipient layout only.",
+      "selector": ".shinhan-review-device",
+      "viewport": {
+        "width": 1180,
+        "height": 900
+      },
+      "state": "wallet",
+      "captureScope": "host+content",
+      "comparison": "review-only"
+    },
+    {
+      "id": "transfer-amount",
+      "kind": "reference-replica",
+      "referenceIds": [
+        "R071"
+      ],
+      "openButton": "금액 입력",
+      "note": "Synthetic source and recipient; compare amount entry geometry and fixed keypad/action.",
+      "selector": ".shinhan-review-device",
+      "viewport": {
+        "width": 1180,
+        "height": 900
+      },
+      "state": "wallet",
+      "captureScope": "host+content",
+      "comparison": "review-only"
+    },
+    {
+      "id": "transfer-confirm",
+      "kind": "reference-replica",
+      "referenceIds": [
+        "R072"
+      ],
+      "openButton": "보내기 확인",
+      "note": "Synthetic amount and account details; no transfer or authorization request.",
+      "selector": ".shinhan-review-device",
+      "viewport": {
+        "width": 1180,
+        "height": 900
+      },
+      "state": "wallet",
+      "captureScope": "host+content",
+      "comparison": "review-only"
+    },
+    {
+      "id": "transfer-favorites",
+      "kind": "component-evidence",
+      "referenceIds": [
+        "R073"
+      ],
+      "openButton": "자주쓰는 계좌",
+      "note": "Synthetic favorite account; local editing only.",
+      "selector": ".shinhan-review-device",
+      "viewport": {
+        "width": 1180,
+        "height": 900
+      },
+      "state": "wallet",
+      "captureScope": "host+content",
+      "comparison": "review-only"
+    },
+    {
+      "id": "simple-password",
+      "kind": "component-evidence",
+      "referenceIds": [
+        "R074"
+      ],
+      "openButton": "간편비밀번호",
+      "note": "Host-owned visual preview; only tap count is held, no PIN digits or authorization.",
+      "selector": ".shinhan-review-device",
+      "viewport": {
+        "width": 1180,
+        "height": 900
+      },
+      "state": "wallet",
+      "captureScope": "host+content",
+      "comparison": "review-only"
+    }
+  ]
+}

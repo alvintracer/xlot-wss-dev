@@ -1,6 +1,7 @@
 import { Backspace, X } from '@phosphor-icons/react';
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { usePreviewKeypadKeys } from './PreviewKeypadContext';
 
 interface Props {
   value: string;
@@ -17,9 +18,10 @@ export function SecurePinKeypad({ value, onChange, disabled = false, layout, inl
   const dotsRef = useRef<HTMLButtonElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const keypadId = useId();
+  const previewKeys = usePreviewKeypadKeys();
   const keys = layout === 'four-column'
     ? ['1', '2', '3', '4', '5', '6', '7', '8', '', '', '9', '0']
-    : ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'delete'];
+    : previewKeys ?? ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'delete'];
 
   useEffect(() => {
     if (!open) return;
@@ -49,12 +51,17 @@ export function SecurePinKeypad({ value, onChange, disabled = false, layout, inl
   };
   const keysView = <div className="host-pin-keypad" data-layout={layout}>
     {keys.map((key, index) => key === '' ? <span key={`space-${index}`} aria-hidden="true" /> :
-      <button key={`${key}-${index}`} type="button" disabled={disabled || key !== 'delete' && value.length >= 6}
-        aria-label={key === 'delete' ? '한 자리 지우기' : `${key} 입력`}
-        onClick={() => key === 'delete' ? erase() : enter(key)}>
-        {key === 'delete' ? <Backspace size={23} aria-hidden="true" /> : key}
+      <button key={`${key}-${index}`} type="button" disabled={disabled || key !== 'delete' && key !== 'clear' && value.length >= 6}
+        aria-label={key === 'delete' ? '한 자리 지우기' : key === 'clear' ? '전체 지우기' : `${key} 입력`}
+        onClick={() => key === 'delete' ? erase() : key === 'clear' ? onChange('') : enter(key)}>
+        {key === 'delete' ? <Backspace size={23} aria-hidden="true" /> : key === 'clear' ? '↺' : key}
       </button>)}
   </div>;
+  const previewPrompt = previewKeys ? <div className="host-pin-preview-prompt"><h2>간편비밀번호를 입력해주세요</h2>
+    <div className="host-pin-preview-dots" role="status" aria-label={`${value.length}자리 입력됨`}>
+      {Array.from({ length: 6 }, (_, index) => <span key={index} className={index < value.length ? 'is-filled' : ''} aria-hidden="true" />)}
+    </div>
+  </div> : null;
 
   return <div className="host-pin-entry" data-layout={layout}>
     <button
@@ -73,6 +80,7 @@ export function SecurePinKeypad({ value, onChange, disabled = false, layout, inl
       {Array.from({ length: 6 }, (_, index) => <span key={index} className={index < value.length ? 'is-filled' : ''} aria-hidden="true" />)}
     </button>
     {open && inline ? <div ref={sheetRef} className="host-pin-inline" id={keypadId} role="group" aria-label="간편 비밀번호 숫자 키패드" onKeyDown={onPadKeyDown}>
+      {previewPrompt}
       {keysView}
       {layout === 'four-column' ? <button className="host-pin-erase" type="button" disabled={disabled || value.length === 0} onClick={erase}><Backspace size={20} aria-hidden="true" /> 한 자리 지우기</button> : null}
     </div> : null}
@@ -80,6 +88,7 @@ export function SecurePinKeypad({ value, onChange, disabled = false, layout, inl
       <button className="host-pin-overlay__scrim" type="button" aria-label="키패드 닫기" onClick={close} />
       <div ref={sheetRef} className="host-pin-sheet" role="dialog" aria-modal="true" aria-label="간편 비밀번호 숫자 키패드" onKeyDown={onPadKeyDown}>
         <div className="host-pin-sheet__head"><span>간편 비밀번호</span><button type="button" aria-label="키패드 닫기" onClick={close}><X size={20} aria-hidden="true" /></button></div>
+        {previewPrompt}
         {keysView}
         {layout === 'four-column' ? <button className="host-pin-erase" type="button" disabled={disabled || value.length === 0} onClick={erase}><Backspace size={20} aria-hidden="true" /> 한 자리 지우기</button> : null}
       </div>

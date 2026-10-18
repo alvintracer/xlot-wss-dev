@@ -29,6 +29,8 @@ import { jbManifest } from '@took-wss/tenant-jb';
 import { jbInstallLanding } from '@took-wss/tenant-jb/install-landing';
 import { namuManifest } from '@took-wss/tenant-namu';
 import { namuInstallLanding } from '@took-wss/tenant-namu/install-landing';
+import { shinhanManifest } from '@took-wss/tenant-shinhan';
+import { shinhanInstallLanding } from '@took-wss/tenant-shinhan/install-landing';
 import { referenceBankManifest } from '@took-wss/tenant-reference-bank';
 import { getHostChromeProfile } from './hostChromeRegistry';
 import { HostSecurityOverlay, type HostSecurityView } from './HostSecurityOverlay';
@@ -44,6 +46,7 @@ import { sarMasterPasswordError } from './sarMasterPasswordPolicy';
 import { handleNativeDeviceRequest, isTrustedNativeDeviceRequest, type ExchangePersonalSignRequest } from './nativeDeviceBridge';
 import { ExchangeSignLoading, ExchangeSignPanel } from './ExchangeSignPanel';
 import { HostAppSettings } from './HostAppSettings';
+import { PreviewKeypadProvider } from './PreviewKeypadContext';
 import { biometricPinEnabled, readBiometricPin } from './nativeBiometricPin';
 import { computedHexColor, setNativeSystemBarSurface } from './nativeSystemBars';
 
@@ -93,6 +96,8 @@ function tenantOption(manifest: TenantManifest, landing?: {
     institutionLabel: manifest.brand.logoText,
     presentationProfileId: manifest.presentation.profileId,
     secureKeypadLayout: manifest.presentation.secureKeypadLayout ?? 'four-column',
+    previewKeypadKeys: manifest.presentation.previewKeypadKeys,
+    nativeAuthRedirectUri: manifest.presentation.nativeAuthRedirectUri,
     focusedFlow: manifest.presentation.navigation.focusedFlow,
     loadingCanvas: manifest.brand.surfaceColor,
     loadingInk: manifest.brand.textColor,
@@ -117,6 +122,7 @@ const tenantOptions = {
   kiwoom: tenantOption(kiwoomManifest, kiwoomInstallLanding),
   jb: tenantOption(jbManifest, jbInstallLanding),
   namu: tenantOption(namuManifest, namuInstallLanding),
+  shinhan: tenantOption(shinhanManifest, shinhanInstallLanding),
   'reference-bank': tenantOption(referenceBankManifest),
 };
 
@@ -1501,14 +1507,16 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
     const walletOrigin = new URL(session.walletUrl).origin;
     let appUrlListener: PluginListenerHandle | null = null;
     let disposed = false;
-    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android' && tenantId === 'namu') {
+    const nativeAuthRedirectUri = tenantOptions[tenantId].nativeAuthRedirectUri;
+    const nativeAuthScheme = nativeAuthRedirectUri ? new URL(nativeAuthRedirectUri).protocol : null;
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android' && nativeAuthScheme) {
       const nativeApp = registerPlugin<{
         addListener(eventName: 'appUrlOpen', listener: (event: { url: string }) => void): Promise<PluginListenerHandle>;
       }>('App');
       void nativeApp.addListener('appUrlOpen', (event) => {
         let callback: URL;
         try { callback = new URL(event.url); } catch { return; }
-        if (callback.protocol !== 'com.tookwss.namu:' || callback.hostname !== 'auth'
+        if (callback.protocol !== nativeAuthScheme || callback.hostname !== 'auth'
           || event.url.length > 60_000 || !callback.searchParams.has('state')
           || !(callback.searchParams.has('authResult') || callback.searchParams.has('authCookie'))) return;
         frame.contentWindow?.postMessage({ type: 'took-wss:native-thirdweb-return', url: event.url }, walletOrigin);
@@ -1723,7 +1731,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
   }, [hostFeedback]);
 
   return (
-    <main data-tenant={tenantId} className={`host-page${publicPreviewEnabled ? ' host-page--public-preview' : ''}${appOnlyPreview ? ' host-page--app-only' : ''}${appOnlyPreview && shellMode === 'focus' ? ' host-page--focus-surface' : ''}${session ? ' host-page--session-ready' : ''}`}>
+    <PreviewKeypadProvider keys={tenantOptions[tenantId].previewKeypadKeys}><main data-tenant={tenantId} className={`host-page${publicPreviewEnabled ? ' host-page--public-preview' : ''}${appOnlyPreview ? ' host-page--app-only' : ''}${appOnlyPreview && shellMode === 'focus' ? ' host-page--focus-surface' : ''}${session ? ' host-page--session-ready' : ''}`}>
       {!appOnlyPreview ? <section className="control-panel ops-editorial-grid">
         <div className="eyebrow"><ShieldCheck size={15} weight="fill" /> WSS REFERENCE HOST</div>
         <h1>금융사 앱 안에 지갑을 안전하게.</h1>
@@ -1794,6 +1802,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
           className={`phone ${showRootChrome ? 'phone--root' : 'phone--focus'}`}
           data-host-chrome={tenantOptions[tenantId].presentationProfileId}
           data-shell-mode={shellMode}
+          data-host-tab={hostTab}
         >
           {!appOnlyPreview ? <div className="phone-status"><span>9:41</span><span>● ● ▰</span></div> : null}
           {showRootChrome ? <HostHeader onAction={setHostFeedback} onOpenWalletSettings={() => setAppSettingsOpen(true)} activeTab={hostTab} onSelectTab={setHostTab} customerName={customerName} /> : null}
@@ -1888,6 +1897,6 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
           <div className="host-feedback" role="status" aria-live="polite">{hostFeedback}</div>
         </div>
       </section>
-    </main>
+    </main></PreviewKeypadProvider>
   );
 }

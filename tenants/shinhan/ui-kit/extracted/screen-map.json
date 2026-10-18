@@ -1,0 +1,673 @@
+{
+  "schemaVersion": 1,
+  "tenantId": "shinhan",
+  "notes": "Semantic names map the original filenames; source bytes and paths are unchanged. R067 is a lower-fidelity marketing mockup.",
+  "screens": [
+    {
+      "referenceId": "R001",
+      "semanticName": "상품 소개 합성 화면·금융/계좌/앱",
+      "screenFamily": "marketing",
+      "state": "overview",
+      "classification": "reference-replica",
+      "duplicateOf": null,
+      "sourcePath": "2606_product_09-2 (1).png"
+    },
+    {
+      "referenceId": "R002",
+      "semanticName": "상품 소개 합성 화면·중복 1",
+      "screenFamily": "marketing",
+      "state": "duplicate",
+      "classification": "duplicate",
+      "duplicateOf": "R001",
+      "sourcePath": "2606_product_09-2 (2).png"
+    },
+    {
+      "referenceId": "R003",
+      "semanticName": "상품 소개 합성 화면·중복 2",
+      "screenFamily": "marketing",
+      "state": "duplicate",
+      "classification": "duplicate",
+      "duplicateOf": "R001",
+      "sourcePath": "2606_product_09-2 (3).png"
+    },
+    {
+      "referenceId": "R004",
+      "semanticName": "상품 소개 합성 화면·중복 3",
+      "screenFamily": "marketing",
+      "state": "duplicate",
+      "classification": "duplicate",
+      "duplicateOf": "R001",
+      "sourcePath": "2606_product_09-2.png"
+    },
+    {
+      "referenceId": "R005",
+      "semanticName": "상품 소개 합성 화면·가입 흐름",
+      "screenFamily": "marketing",
+      "state": "onboarding",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "2606_product_13-1 (1).png"
+    },
+    {
+      "referenceId": "R006",
+      "semanticName": "상품 소개 합성 화면·가입 흐름 중복",
+      "screenFamily": "marketing",
+      "state": "duplicate",
+      "classification": "duplicate",
+      "duplicateOf": "R005",
+      "sourcePath": "2606_product_13-1.png"
+    },
+    {
+      "referenceId": "R007",
+      "semanticName": "상품 소개 합성 화면·인증 흐름",
+      "screenFamily": "marketing",
+      "state": "authentication",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "2606_product_15-1.png"
+    },
+    {
+      "referenceId": "R008",
+      "semanticName": "제공된 투명 아이콘·icon_bell",
+      "screenFamily": "host-chrome",
+      "state": "icon_bell",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_bell.png"
+    },
+    {
+      "referenceId": "R009",
+      "semanticName": "제공된 투명 아이콘·icon_chart_up",
+      "screenFamily": "host-chrome",
+      "state": "icon_chart_up",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_chart_up.png"
+    },
+    {
+      "referenceId": "R010",
+      "semanticName": "제공된 투명 아이콘·icon_chat_smile",
+      "screenFamily": "host-chrome",
+      "state": "icon_chat_smile",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_chat_smile.png"
+    },
+    {
+      "referenceId": "R011",
+      "semanticName": "제공된 투명 아이콘·icon_gear",
+      "screenFamily": "host-chrome",
+      "state": "icon_gear",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_gear.png"
+    },
+    {
+      "referenceId": "R012",
+      "semanticName": "제공된 투명 아이콘·icon_home_filled",
+      "screenFamily": "host-chrome",
+      "state": "icon_home_filled",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_home_filled.png"
+    },
+    {
+      "referenceId": "R013",
+      "semanticName": "제공된 투명 아이콘·icon_home_outline",
+      "screenFamily": "host-chrome",
+      "state": "icon_home_outline",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_home_outline.png"
+    },
+    {
+      "referenceId": "R014",
+      "semanticName": "제공된 투명 아이콘·icon_info",
+      "screenFamily": "host-chrome",
+      "state": "icon_info",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_info.png"
+    },
+    {
+      "referenceId": "R015",
+      "semanticName": "제공된 투명 아이콘·icon_package",
+      "screenFamily": "host-chrome",
+      "state": "icon_package",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_package.png"
+    },
+    {
+      "referenceId": "R016",
+      "semanticName": "제공된 투명 아이콘·icon_search",
+      "screenFamily": "host-chrome",
+      "state": "icon_search",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_search.png"
+    },
+    {
+      "referenceId": "R017",
+      "semanticName": "제공된 투명 아이콘·icon_shopping_bag",
+      "screenFamily": "host-chrome",
+      "state": "icon_shopping_bag",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_shopping_bag.png"
+    },
+    {
+      "referenceId": "R018",
+      "semanticName": "제공된 투명 아이콘·icon_wallet",
+      "screenFamily": "host-chrome",
+      "state": "icon_wallet",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_wallet.png"
+    },
+    {
+      "referenceId": "R019",
+      "semanticName": "제공된 투명 아이콘·icon_won_circle_blue",
+      "screenFamily": "host-chrome",
+      "state": "icon_won_circle_blue",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_won_circle_blue.png"
+    },
+    {
+      "referenceId": "R020",
+      "semanticName": "제공된 투명 아이콘·icon_won_circle_gray",
+      "screenFamily": "host-chrome",
+      "state": "icon_won_circle_gray",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "icons_transparent/icon_won_circle_gray.png"
+    },
+    {
+      "referenceId": "R021",
+      "semanticName": "마이데이터 연결 관리",
+      "screenFamily": "mydata",
+      "state": "management",
+      "classification": "host-owned",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-55 008.jpeg"
+    },
+    {
+      "referenceId": "R022",
+      "semanticName": "자동동의·선택 전",
+      "screenFamily": "mydata",
+      "state": "consent-unchecked",
+      "classification": "host-owned",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-55 009.jpeg"
+    },
+    {
+      "referenceId": "R023",
+      "semanticName": "약관 원문 뷰어",
+      "screenFamily": "mydata",
+      "state": "terms-document",
+      "classification": "host-owned",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-55 010.jpeg"
+    },
+    {
+      "referenceId": "R024",
+      "semanticName": "자동동의·선택 후",
+      "screenFamily": "mydata",
+      "state": "consent-checked",
+      "classification": "host-owned",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-55 011.jpeg"
+    },
+    {
+      "referenceId": "R025",
+      "semanticName": "이벤트 시작 확인 팝업",
+      "screenFamily": "event",
+      "state": "confirmation-dialog",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-55 012.jpeg"
+    },
+    {
+      "referenceId": "R026",
+      "semanticName": "이벤트 랜딩",
+      "screenFamily": "event",
+      "state": "landing",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-55 013.jpeg"
+    },
+    {
+      "referenceId": "R027",
+      "semanticName": "자산 연결 관리",
+      "screenFamily": "assets",
+      "state": "connections",
+      "classification": "host-owned",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-55 014.jpeg"
+    },
+    {
+      "referenceId": "R028",
+      "semanticName": "금융·은행 계좌 첫 화면",
+      "screenFamily": "finance-bank",
+      "state": "account-card",
+      "classification": "reference-replica",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-55 015.jpeg"
+    },
+    {
+      "referenceId": "R029",
+      "semanticName": "금융·은행 서비스 스크롤",
+      "screenFamily": "finance-bank",
+      "state": "services-scroll",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-56 016.jpeg"
+    },
+    {
+      "referenceId": "R030",
+      "semanticName": "금융·은행 추천 서비스",
+      "screenFamily": "finance-bank",
+      "state": "services-grid",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-56 017.jpeg"
+    },
+    {
+      "referenceId": "R031",
+      "semanticName": "환전 첫 화면",
+      "screenFamily": "exchange",
+      "state": "overview",
+      "classification": "reference-replica",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-56 018.jpeg"
+    },
+    {
+      "referenceId": "R032",
+      "semanticName": "환전 하단 스크롤",
+      "screenFamily": "exchange",
+      "state": "scroll-details",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-56 019.jpeg"
+    },
+    {
+      "referenceId": "R033",
+      "semanticName": "환전 금액 입력·매입",
+      "screenFamily": "exchange",
+      "state": "amount-buy",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-56 020.jpeg"
+    },
+    {
+      "referenceId": "R034",
+      "semanticName": "환전 금액 입력·매도",
+      "screenFamily": "exchange",
+      "state": "amount-sell",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-56 021.jpeg"
+    },
+    {
+      "referenceId": "R035",
+      "semanticName": "환전 통화 선택 시트",
+      "screenFamily": "exchange",
+      "state": "currency-sheet",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-56 022.jpeg"
+    },
+    {
+      "referenceId": "R036",
+      "semanticName": "환전 금액 검증 오류",
+      "screenFamily": "exchange",
+      "state": "validation",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-56 023.jpeg"
+    },
+    {
+      "referenceId": "R037",
+      "semanticName": "환전 예상금액과 안내",
+      "screenFamily": "exchange",
+      "state": "estimate",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-57 024.jpeg"
+    },
+    {
+      "referenceId": "R038",
+      "semanticName": "환전 금액 입력 완료",
+      "screenFamily": "exchange",
+      "state": "amount-filled",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-57 025.jpeg"
+    },
+    {
+      "referenceId": "R039",
+      "semanticName": "환전 한도 안내",
+      "screenFamily": "exchange",
+      "state": "limit-notice",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-57 026.jpeg"
+    },
+    {
+      "referenceId": "R040",
+      "semanticName": "환전 잔액/로딩 상태",
+      "screenFamily": "exchange",
+      "state": "empty-or-loading",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-57 027.jpeg"
+    },
+    {
+      "referenceId": "R041",
+      "semanticName": "신한인증서 가입",
+      "screenFamily": "identity",
+      "state": "certificate-signup",
+      "classification": "host-owned",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-57 028.jpeg"
+    },
+    {
+      "referenceId": "R042",
+      "semanticName": "금융 계좌 배너 포함 화면",
+      "screenFamily": "finance-bank",
+      "state": "bank-banner",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-57 029.jpeg"
+    },
+    {
+      "referenceId": "R043",
+      "semanticName": "SOL야구 첫 화면",
+      "screenFamily": "sol-baseball",
+      "state": "overview",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-38-57 030.jpeg"
+    },
+    {
+      "referenceId": "R044",
+      "semanticName": "SOL야구 투표",
+      "screenFamily": "sol-baseball",
+      "state": "poll",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-39-30 001.jpeg"
+    },
+    {
+      "referenceId": "R045",
+      "semanticName": "금융·계좌 없음",
+      "screenFamily": "finance-bank",
+      "state": "empty-account",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-39-30 002.jpeg"
+    },
+    {
+      "referenceId": "R046",
+      "semanticName": "입출금통장 상품 소개",
+      "screenFamily": "account-product",
+      "state": "hero",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-39-30 003.jpeg"
+    },
+    {
+      "referenceId": "R047",
+      "semanticName": "입출금통장 상품 안내",
+      "screenFamily": "account-product",
+      "state": "details",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-08-39-30 004.jpeg"
+    },
+    {
+      "referenceId": "R048",
+      "semanticName": "홈·금융 요약",
+      "screenFamily": "home",
+      "state": "summary",
+      "classification": "reference-replica",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-43 001.jpeg"
+    },
+    {
+      "referenceId": "R049",
+      "semanticName": "쏠지갑·신원결제",
+      "screenFamily": "sol-wallet",
+      "state": "identity-payment",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-43 002.jpeg"
+    },
+    {
+      "referenceId": "R050",
+      "semanticName": "쏠지갑·전자문서/추천",
+      "screenFamily": "sol-wallet",
+      "state": "services",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-43 003.jpeg"
+    },
+    {
+      "referenceId": "R051",
+      "semanticName": "쏠지갑·추천 서비스",
+      "screenFamily": "sol-wallet",
+      "state": "recommendations",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-43 004.jpeg"
+    },
+    {
+      "referenceId": "R052",
+      "semanticName": "쏠지갑·탭 전환",
+      "screenFamily": "sol-wallet",
+      "state": "tab-transition",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-43 005.jpeg"
+    },
+    {
+      "referenceId": "R053",
+      "semanticName": "쏠지갑·디지털자산 시작",
+      "screenFamily": "sol-wallet",
+      "state": "digital-assets-empty",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-43 006.jpeg"
+    },
+    {
+      "referenceId": "R054",
+      "semanticName": "쏠지갑·디지털자산 연결",
+      "screenFamily": "sol-wallet",
+      "state": "digital-assets-services",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-43 007.jpeg"
+    },
+    {
+      "referenceId": "R055",
+      "semanticName": "쏠지갑·디지털자산 NFT",
+      "screenFamily": "sol-wallet",
+      "state": "nft-section",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-43 008.jpeg"
+    },
+    {
+      "referenceId": "R056",
+      "semanticName": "가상자산 가이드 첫 장",
+      "screenFamily": "digital-assets",
+      "state": "guide-intro",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-43 009.jpeg"
+    },
+    {
+      "referenceId": "R057",
+      "semanticName": "가상자산 홈",
+      "screenFamily": "digital-assets",
+      "state": "home",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-43 010.jpeg"
+    },
+    {
+      "referenceId": "R058",
+      "semanticName": "가상자산 퀴즈",
+      "screenFamily": "digital-assets",
+      "state": "quiz",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-43 011.jpeg"
+    },
+    {
+      "referenceId": "R059",
+      "semanticName": "가상자산 인기 순위",
+      "screenFamily": "digital-assets",
+      "state": "ranking",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-44 012.jpeg"
+    },
+    {
+      "referenceId": "R060",
+      "semanticName": "가상자산 바로가기 시트",
+      "screenFamily": "digital-assets",
+      "state": "shortcut-sheet",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-44 013.jpeg"
+    },
+    {
+      "referenceId": "R061",
+      "semanticName": "가상자산 안내",
+      "screenFamily": "digital-assets",
+      "state": "information",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-44 014.jpeg"
+    },
+    {
+      "referenceId": "R062",
+      "semanticName": "가상자산 보유 없음",
+      "screenFamily": "digital-assets",
+      "state": "zero-balance",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "KakaoTalk_Photo_2026-10-18-09-04-44 015.jpeg"
+    },
+    {
+      "referenceId": "R063",
+      "semanticName": "새소식 목록",
+      "screenFamily": "news",
+      "state": "list",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "news.jpeg"
+    },
+    {
+      "referenceId": "R064",
+      "semanticName": "홈 팝업 알림",
+      "screenFamily": "home",
+      "state": "special-popup",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "special-popup.jpeg"
+    },
+    {
+      "referenceId": "R065",
+      "semanticName": "내 자산·입출금 상세",
+      "screenFamily": "assets",
+      "state": "account-detail",
+      "classification": "reference-replica",
+      "duplicateOf": null,
+      "sourcePath": "내자산-자산상세.jpeg"
+    },
+    {
+      "referenceId": "R066",
+      "semanticName": "내 자산·기타 자산 상세",
+      "screenFamily": "assets",
+      "state": "other-assets",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "내자산-자산상세2.jpeg"
+    },
+    {
+      "referenceId": "R067",
+      "semanticName": "홈 화면 목업",
+      "screenFamily": "home",
+      "state": "marketing-mockup",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "스크린샷 2026-10-18 오전 8.28.54.png"
+    },
+    {
+      "referenceId": "R068",
+      "semanticName": "금융·연결된 계좌와 이체 버튼",
+      "screenFamily": "finance",
+      "state": "linked-account",
+      "classification": "reference-replica",
+      "duplicateOf": null,
+      "sourcePath": "additional/KakaoTalk_Photo_2026-10-18-10-03-04 001.jpeg"
+    },
+    {
+      "referenceId": "R069",
+      "semanticName": "이체·받는 분과 최근 계좌",
+      "screenFamily": "transfer",
+      "state": "recipient-recent",
+      "classification": "reference-replica",
+      "duplicateOf": null,
+      "sourcePath": "additional/KakaoTalk_Photo_2026-10-18-10-03-04 002.jpeg"
+    },
+    {
+      "referenceId": "R070",
+      "semanticName": "이체·내 계좌 목록",
+      "screenFamily": "transfer",
+      "state": "recipient-my-accounts",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "additional/KakaoTalk_Photo_2026-10-18-10-03-04 003.jpeg"
+    },
+    {
+      "referenceId": "R071",
+      "semanticName": "이체·금액 입력 패드",
+      "screenFamily": "transfer",
+      "state": "amount-keypad",
+      "classification": "reference-replica",
+      "duplicateOf": null,
+      "sourcePath": "additional/KakaoTalk_Photo_2026-10-18-10-03-04 004.jpeg"
+    },
+    {
+      "referenceId": "R072",
+      "semanticName": "이체·보내기 확인",
+      "screenFamily": "transfer",
+      "state": "confirmation",
+      "classification": "reference-replica",
+      "duplicateOf": null,
+      "sourcePath": "additional/KakaoTalk_Photo_2026-10-18-10-03-05 005.jpeg"
+    },
+    {
+      "referenceId": "R073",
+      "semanticName": "자주쓰는 계좌 편집",
+      "screenFamily": "transfer",
+      "state": "favorites-edit",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "additional/KakaoTalk_Photo_2026-10-18-10-03-05 006.jpeg"
+    },
+    {
+      "referenceId": "R074",
+      "semanticName": "간편비밀번호·6자리 숫자 패드",
+      "screenFamily": "authentication",
+      "state": "simple-password-pad",
+      "classification": "component-evidence",
+      "duplicateOf": null,
+      "sourcePath": "additional/스크린샷 2026-10-18 오전 10.00.39.png"
+    }
+  ]
+}

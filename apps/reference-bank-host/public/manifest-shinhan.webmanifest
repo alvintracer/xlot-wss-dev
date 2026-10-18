@@ -1,0 +1,15 @@
+{
+  "id": "/shinhan/app",
+  "name": "신한 슈퍼쏠 개발 미리보기",
+  "short_name": "슈퍼쏠 미리보기",
+  "description": "신한 슈퍼쏠 내 쏠지갑 개발 미리보기",
+  "start_url": "/shinhan/app",
+  "scope": "/shinhan/",
+  "display": "standalone",
+  "background_color": "#F0F3FA",
+  "theme_color": "#F0F3FA",
+  "icons": [
+    { "src": "icons/shinhan-super-sol-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/shinhan-super-sol-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

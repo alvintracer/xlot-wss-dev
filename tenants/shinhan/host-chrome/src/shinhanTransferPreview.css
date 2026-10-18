@@ -1,0 +1,85 @@
+.shinhan-transfer { display: flex; height: 100%; min-height: 0; flex-direction: column; padding-bottom: 35px; background: #fff; color: var(--shinhan-ink); }
+.shinhan-transfer[data-stage='amount'] { padding-bottom: 68px; }
+.shinhan-transfer[data-stage='confirm'], .shinhan-transfer[data-stage='favorites'] { padding-bottom: 53px; }
+.shinhan-transfer button { cursor: pointer; }
+.shinhan-transfer button:focus-visible { outline: 2px solid var(--shinhan-blue); outline-offset: -2px; }
+.shinhan-transfer .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.shinhan-transfer__header { display: grid; height: 57px; flex: 0 0 57px; grid-template-columns: 44px minmax(0,1fr) 44px; align-items: center; padding: 0 15px; }
+.shinhan-transfer__header > button { display: grid; width: 44px; height: 44px; place-items: center; padding: 0; border: 0; background: none; color: var(--shinhan-ink); }
+.shinhan-transfer__header > div { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; font-size: 15px; font-weight: 700; }
+.shinhan-transfer__header > div > button { padding: 5px 0; border: 0; background: none; color: var(--shinhan-ink); font-size: 15px; font-weight: 700; white-space: nowrap; }
+.shinhan-transfer__header > div > strong { justify-self: start; margin-right: auto; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shinhan-transfer[data-stage='favorites'] .shinhan-transfer__header { grid-template-columns: 30px minmax(0,1fr) 44px; }
+.shinhan-transfer__scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; scrollbar-width: none; }
+.shinhan-transfer__scroll::-webkit-scrollbar { display: none; }
+.shinhan-transfer__recipient-intro { display: flex; min-height: 57px; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 12px 20px 0; }
+.shinhan-transfer__recipient-intro h2 { margin: 0; font-size: 25px; font-weight: 800; letter-spacing: -.045em; line-height: 1.3; white-space: nowrap; }
+.shinhan-transfer__recipient-intro button { display: grid; width: 41px; height: 41px; flex: 0 0 41px; place-items: center; margin-top: -6px; border: 0; border-radius: 12px; background: #f6f8fc; color: var(--shinhan-text); }
+.shinhan-transfer__account-entry { display: flex; height: 49px; align-items: center; margin: 1px 20px 0; padding: 0 12px 0 16px; border: 1px solid #d1d6e0; border-radius: 12px; }
+.shinhan-transfer__account-entry:focus-within { border-color: var(--shinhan-blue); }
+.shinhan-transfer__account-entry input { width: 100%; min-width: 0; height: 100%; border: 0; outline: 0; background: none; color: var(--shinhan-ink); font: inherit; font-size: 17px; }
+.shinhan-transfer__account-entry input::placeholder { color: #9aa3b3; }
+.shinhan-transfer__account-entry button { display: grid; width: 35px; height: 35px; flex: 0 0 35px; place-items: center; border: 0; background: none; color: var(--shinhan-ink); }
+.shinhan-transfer__account-entry button:disabled { opacity: .75; cursor: default; }
+.shinhan-transfer__recent-link { display: flex; width: calc(100% - 40px); min-height: 70px; align-items: center; gap: 2px; margin: 0 20px; padding: 0; border: 0; background: none; color: var(--shinhan-ink); font-size: 15px; text-align: left; }
+.shinhan-transfer__recent-link strong { color: var(--shinhan-blue); font-weight: 700; }
+.shinhan-transfer__recent-link svg { margin-left: 3px; }
+.shinhan-transfer__section-list { padding: 10px 20px 25px; border-top: 10px solid var(--shinhan-canvas); }
+.shinhan-transfer__section-head { display: flex; height: 48px; align-items: center; gap: 8px; }
+.shinhan-transfer__section-head strong { font-size: 16px; font-weight: 700; }
+.shinhan-transfer__section-head > button:not(.shinhan-transfer__section-count) { padding: 5px 7px; border: 0; border-radius: 8px; background: #f2f4f8; color: var(--shinhan-ink); font-size: 12px; font-weight: 700; }
+.shinhan-transfer__section-count { display: inline-flex; min-width: 67px; height: 30px; align-items: center; justify-content: center; gap: 6px; margin-left: auto; padding: 0 9px; border: 1px solid #e2e6ed; border-radius: 99px; background: #fff; color: var(--shinhan-text); font-size: 13px; }
+.shinhan-transfer__section-head:not(:first-child) { border-top: 1px solid #f1f3f7; }
+.shinhan-transfer__person { display: flex; width: 100%; min-height: 78px; align-items: center; gap: 11px; padding: 0; border: 0; background: none; color: var(--shinhan-ink); text-align: left; }
+.shinhan-transfer__person > span:nth-child(2), .shinhan-transfer__favorite-card > div > span:nth-child(2) { display: grid; min-width: 0; gap: 4px; }
+.shinhan-transfer__person strong, .shinhan-transfer__favorite-card strong { font-size: 16px; font-weight: 700; }
+.shinhan-transfer__person small, .shinhan-transfer__favorite-card small { overflow: hidden; color: var(--shinhan-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.shinhan-transfer__person > svg { flex: 0 0 auto; margin-left: auto; color: var(--shinhan-muted); }
+.shinhan-transfer__bank-mark { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border-radius: 50%; background: #079c7a; color: #fff; font-family: system-ui,sans-serif; font-size: 21px; font-weight: 800; }
+.shinhan-transfer__favorites { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 0 20px; }
+.shinhan-transfer__favorites-count { display: flex; height: 65px; align-items: center; gap: 4px; font-size: 16px; font-weight: 700; }
+.shinhan-transfer__favorites-count strong { color: var(--shinhan-blue); }
+.shinhan-transfer__favorites-count button { margin-left: auto; padding: 4px; border: 0; background: none; color: var(--shinhan-muted); font-size: 13px; }
+.shinhan-transfer__favorite-card { overflow: hidden; border-radius: 13px; background: var(--shinhan-canvas); }
+.shinhan-transfer__favorite-card > div { display: flex; min-height: 91px; align-items: center; gap: 10px; padding: 13px 16px; }
+.shinhan-transfer__favorite-card > div > button { margin-left: auto; border: 0; background: none; color: var(--shinhan-ink); }
+.shinhan-transfer__favorite-card > button { display: flex; width: 100%; height: 47px; align-items: center; justify-content: space-between; padding: 0 16px; border: 0; border-top: 1px solid #e1e6f0; background: none; color: var(--shinhan-ink); text-align: left; }
+.shinhan-transfer__favorite-card > button[aria-expanded='true'] svg { transform: rotate(180deg); }
+.shinhan-transfer__favorite-card > p { margin: 0; padding: 0 16px 16px; color: var(--shinhan-muted); font-size: 13px; }
+.shinhan-transfer__favorites > p { color: var(--shinhan-muted); font-size: 14px; }
+.shinhan-transfer__source { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 17px; }
+.shinhan-transfer__source strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shinhan-transfer__source span { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; color: var(--shinhan-text); }
+.shinhan-transfer__amount-main { min-height: 0; flex: 1 1 auto; padding: 23px 20px 0; }
+.shinhan-transfer__destination { display: grid; gap: 7px; margin-top: 18px; }
+.shinhan-transfer__destination strong { font-size: 18px; }
+.shinhan-transfer__destination small { color: var(--shinhan-muted); font-size: 13px; }
+.shinhan-transfer__amount-prompt { display: grid; justify-items: center; gap: 9px; margin-top: 25px; text-align: center; }
+.shinhan-transfer__amount-prompt strong { color: #8a95a9; font-size: clamp(24px,7vw,30px); font-weight: 800; letter-spacing: -.035em; }
+.shinhan-transfer__amount-prompt strong.has-amount { color: var(--shinhan-ink); }
+.shinhan-transfer__amount-prompt small { color: var(--shinhan-muted); font-size: 13px; }
+.shinhan-transfer__amount-prompt u { color: var(--shinhan-text); text-underline-offset: 2px; }
+.shinhan-transfer__amount-bottom { padding: 0 20px; }
+.shinhan-transfer__quick { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 7px; }
+.shinhan-transfer__quick button { height: 32px; padding: 0; border: 0; border-radius: 99px; background: #f0f3f9; color: var(--shinhan-text); font-size: 13px; font-weight: 700; }
+.shinhan-transfer__number-pad { display: grid; height: 236px; grid-template-columns: repeat(3,minmax(0,1fr)); grid-template-rows: repeat(4,1fr); margin: 10px 0 5px; }
+.shinhan-transfer__number-pad button { padding: 0; border: 0; background: none; color: var(--shinhan-ink); font-size: 26px; }
+.shinhan-transfer__number-pad button:active { border-radius: 13px; background: var(--shinhan-blue-soft); }
+.shinhan-transfer__delete { font-size: 29px; }
+.shinhan-transfer__primary { display: grid; width: 100%; height: 56px; place-items: center; border: 0; border-radius: 15px; background: var(--shinhan-blue); color: #fff; font-size: 17px; font-weight: 800; }
+.shinhan-transfer__primary:disabled { background: #f0f3f9; color: #9aa5b6; cursor: default; }
+.shinhan-transfer__confirm { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 38px 20px 22px; }
+.shinhan-transfer__confirm-icon { display: grid; width: 48px; height: 48px; place-items: center; margin: 3px auto 18px; border: 1px solid #dce5f2; border-radius: 50%; background: linear-gradient(145deg,#4db2f7,var(--shinhan-blue)); color: #fff; font-size: 31px; font-weight: 800; }
+.shinhan-transfer__confirm h2 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.04em; line-height: 1.28; text-align: center; word-break: keep-all; }
+.shinhan-transfer__confirm > p { margin: 17px 0 28px; color: var(--shinhan-muted); font-size: 15px; text-align: center; }
+.shinhan-transfer__warning { display: flex; min-height: 56px; align-items: center; gap: 9px; padding: 11px 14px; border-radius: 16px; background: #fff6ed; color: var(--shinhan-text); font-size: 14px; font-weight: 700; word-break: keep-all; }
+.shinhan-transfer__warning svg { flex: 0 0 auto; color: #f39021; }
+.shinhan-transfer__confirm dl { margin: 15px 0 0; padding: 15px 14px; border-radius: 15px; background: #f7f9fd; }
+.shinhan-transfer__confirm dl > div { display: flex; min-height: 33px; align-items: center; justify-content: space-between; gap: 7px; }
+.shinhan-transfer__confirm dt { flex: 0 0 auto; color: var(--shinhan-muted); font-size: 13px; }
+.shinhan-transfer__confirm dd { display: inline-flex; min-width: 0; align-items: center; gap: 3px; margin: 0; overflow: hidden; color: var(--shinhan-text); font-size: 13px; font-weight: 700; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.shinhan-transfer__footer { flex: 0 0 auto; padding: 12px 20px 10px; background: #fff; }
+.shinhan-transfer__footer--split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.shinhan-transfer__footer--split button { height: 56px; border: 0; border-radius: 15px; background: var(--shinhan-blue-soft); color: var(--shinhan-blue); font-size: 17px; font-weight: 800; }
+.shinhan-transfer__footer--split button:last-child { background: var(--shinhan-blue); color: #fff; }
+@media (max-width: 359px) { .shinhan-transfer__recipient-intro h2 { font-size: 22px; } .shinhan-transfer__amount-main { padding-top: 19px; } .shinhan-transfer__amount-prompt { margin-top: 25px; } .shinhan-transfer__number-pad { height: 215px; } .shinhan-transfer__confirm h2 { font-size: 23px; } .shinhan-transfer__confirm > p { margin-bottom: 15px; } }

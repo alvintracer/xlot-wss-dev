@@ -118,6 +118,8 @@ export interface TenantManifest {
     rootNavigationOwner: 'host' | 'wss';
     safeAreaOwner: 'host' | 'wss';
     secureKeypadLayout?: 'four-column' | 'three-column';
+    previewKeypadKeys?: string[];
+    nativeAuthRedirectUri?: string;
     navigation: {
       rootEntry: 'host-tabs' | 'wallet-tabs' | 'direct';
       focusedFlow: 'hide-host-chrome' | 'keep-host-chrome';
@@ -1455,6 +1457,17 @@ export function assertTenantManifest(value: TenantManifest): TenantManifest {
   if (value.schemaVersion !== 1) throw new Error('Unsupported tenant manifest version.');
   if (!value.tenantId || !value.walletName) throw new Error('Tenant identity is incomplete.');
   if (!value.presentation.profileId || !value.presentation.guideVersion) throw new Error('Tenant presentation metadata is incomplete.');
+  if (value.presentation.nativeAuthRedirectUri
+    && !/^com\.tookwss\.[a-z][a-z0-9]*:\/\/auth$/.test(value.presentation.nativeAuthRedirectUri)) {
+    throw new Error('Invalid native authentication redirect URI.');
+  }
+  if (value.presentation.previewKeypadKeys) {
+    const keys = value.presentation.previewKeypadKeys;
+    if (value.environment === 'production' || keys.length !== 12
+      || new Set(keys).size !== 12 || !['0','1','2','3','4','5','6','7','8','9','clear','delete'].every((key) => keys.includes(key))) {
+      throw new Error('Invalid development preview keypad.');
+    }
+  }
   if (value.identity.onboardingMode !== 'institution-first' && value.identity.onboardingMode !== 'phone-first') {
     throw new Error('Unsupported identity onboarding mode.');
   }
