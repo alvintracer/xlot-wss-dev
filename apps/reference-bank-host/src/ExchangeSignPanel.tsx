@@ -93,7 +93,7 @@ export function ExchangeSignPanel({ exchangeName, identityBinding = false, walle
       {step === 'review' ? <>
         <h2 id="host-exchange-sign-title">월렛 연결을 승인할까요?</h2>
         <p className="host-exchange-sign-intro">{walletLabel}의 소유 확인 메시지에 서명해요.</p>
-        <div className="host-exchange-sign-message"><span>서명할 내용</span>{challengeHeading ? <strong>{challengeHeading}</strong> : null}<p>{challengeBody}</p></div>
+        <div className="host-exchange-sign-message">{identityBinding ? <><span>확인할 내용</span><strong>{walletLabel} · 신한 DID 연결</strong><p>지갑을 직접 관리하는지 확인하는 일회성 서명이에요. 자산은 이동하지 않아요.</p></> : <><span>서명할 내용</span>{challengeHeading ? <strong>{challengeHeading}</strong> : null}<p>{challengeBody}</p></>}</div>
         <p className="host-exchange-sign-safe"><ShieldCheck size={17} />서명은 이 기기에서 처리해요.</p>
         {error ? <p className="host-exchange-sign-error" role="alert">{error}</p> : null}
         <div className="host-exchange-sign-actions"><button type="button" disabled={busy} onClick={onCancel}>취소</button><button type="button" disabled={busy} onClick={onReviewApprove}>{busy ? '확인하고 있어요' : '서명 승인'}</button></div>

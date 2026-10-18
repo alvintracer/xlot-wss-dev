@@ -37,7 +37,7 @@
 .shinhan-wallet-tabs button[aria-current='page'] { color: var(--shinhan-ink); font-weight: 800; }
 .shinhan-wallet-tabs button[aria-current='page']::after { position: absolute; right: 20%; bottom: 0; left: 20%; height: 2px; border-radius: 2px; background: var(--shinhan-ink); content: ''; }
 .shinhan-wallet-tabs button:focus-visible { outline: 2px solid var(--shinhan-blue); outline-offset: -2px; }
-.shinhan-wallet-presentation .kw-wallet-home:has(.shinhan-wallet-tabs[data-active='identity']) > :not(.shinhan-wallet-home-head):not(.shinhan-identity-home) { display: none; }
+.shinhan-wallet-presentation .kw-wallet-home:has(.shinhan-wallet-tabs[data-active='identity']) > :not(.shinhan-wallet-home-head):not(.shinhan-identity-home):not(.shinhan-identity):not(.shinhan-identity-home__sheet) { display: none; }
 .shinhan-wallet-presentation .kw-wallet-home:has(.shinhan-wallet-tabs[data-active='assets']) > .shinhan-identity-home { display: none; }
 .shinhan-wallet-presentation .kw-card { box-shadow: var(--shinhan-card-shadow); }
 .shinhan-wallet-presentation .kw-wallet-card-visual { border-radius: 18px; background: linear-gradient(135deg, #2d8af4, #0649f6); }

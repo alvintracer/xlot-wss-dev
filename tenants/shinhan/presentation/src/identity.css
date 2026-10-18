@@ -6,7 +6,7 @@
 .shinhan-identity__header { display: grid; min-height: 55px; flex: 0 0 55px; grid-template-columns: 42px minmax(0,1fr) 42px; align-items: center; padding: 0 12px; background: transparent; }
 .shinhan-identity__header strong { margin-left: 2px; font-size: 19px; font-weight: 800; text-align: left; }
 .shinhan-identity__header button { display: grid; width: 42px; height: 42px; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--shinhan-ink); }
-.shinhan-identity__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 17px 20px 24px; scrollbar-width: none; }
+.shinhan-identity__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px 20px 30px; scrollbar-width: none; }
 .shinhan-identity__scroll::-webkit-scrollbar { display: none; }
 .shinhan-identity__page { min-height: 100%; animation: shinhan-identity-page-enter 260ms cubic-bezier(.22,.68,.28,1) both; }
 @keyframes shinhan-identity-page-enter { from { transform: translateX(15px); opacity: .68; } to { transform: translateX(0); opacity: 1; } }
@@ -30,10 +30,11 @@
 .shinhan-identity__security-row strong { font-size: 13px; }
 .shinhan-identity__security-row small { color: var(--shinhan-muted); font-size: 11px; line-height: 1.5; }
 .shinhan-identity__security-row > svg { color: var(--shinhan-blue); }
-.shinhan-identity__complete-icon { display: grid; width: 62px; height: 62px; place-items: center; margin: 42px 0 21px; border-radius: 50%; background: #176cf2; color: #fff; box-shadow: 0 8px 20px rgb(5 101 245 / 16%); }
+.shinhan-identity__complete-icon { display: grid; width: 62px; height: 62px; place-items: center; margin: 42px 0 29px; border-radius: 50%; background: #176cf2; color: #fff; box-shadow: 0 8px 20px rgb(5 101 245 / 16%); }
 .shinhan-identity__security-row--issued { margin-top: 20px; }
 .shinhan-identity h2 { margin: 0; font-size: 23px; font-weight: 800; letter-spacing: -.035em; line-height: 1.38; }
-.shinhan-identity__lead { margin: 10px 0 23px; color: var(--shinhan-text); font-size: 13px; line-height: 1.65; }
+.shinhan-identity__lead { margin: 16px 0 30px; color: var(--shinhan-text); font-size: 13px; line-height: 1.65; }
+.shinhan-identity__page > h2:first-child { margin-top: 16px; }
 .shinhan-identity__card, .shinhan-identity__result { padding: 18px; border-radius: 20px; background: #fff; box-shadow: var(--shinhan-card-shadow); }
 .shinhan-identity__row { display: flex; min-height: 64px; align-items: center; gap: 12px; border-top: 1px solid var(--shinhan-divider); }
 .shinhan-identity__row:first-child { border-top: 0; }
@@ -71,10 +72,10 @@
 .shinhan-identity__carrier-options button[aria-pressed='true'] { color: var(--shinhan-blue); font-weight: 700; }
 .shinhan-identity__carrier-options button svg { color: var(--shinhan-blue); }
 @keyframes shinhan-carrier-rise { from { transform: translateY(18px); opacity: .75; } to { transform: translateY(0); opacity: 1; } }
-.shinhan-identity__note { margin: 13px 0 0; color: var(--shinhan-muted); font-size: 12px; line-height: 1.55; }
+.shinhan-identity__note { margin: 22px 0 0; color: var(--shinhan-muted); font-size: 12px; line-height: 1.55; }
 .shinhan-identity__id-card { position: relative; overflow: hidden; min-height: 222px; padding: 19px 21px 18px; border: 1px solid rgb(255 255 255 / 31%); border-radius: 23px; background: radial-gradient(circle at 90% 10%, rgb(161 211 255 / 38%), transparent 43%), linear-gradient(145deg, #116ce8 0%, #1b7ef8 58%, #37a4f4 100%); color: #fff; box-shadow: 0 12px 29px rgb(20 74 160 / 20%); }
 .shinhan-identity__id-card::after { position: absolute; right: -42px; bottom: -88px; width: 190px; height: 190px; border: 1px solid rgb(255 255 255 / 15%); border-radius: 50%; content: ''; pointer-events: none; }
-.shinhan-identity__id-card::before { position: absolute; right: 13px; top: 48px; color: rgb(255 255 255 / 9%); content: 'S'; font-family: system-ui,sans-serif; font-size: 210px; font-style: italic; font-weight: 900; line-height: 1; pointer-events: none; }
+.shinhan-identity__id-card::before { position: absolute; right: -32px; top: 29px; width: 214px; height: 214px; background: url('../assets/preview/bank-mark-preview.png') center / contain no-repeat; opacity: .14; content: ''; pointer-events: none; }
 .shinhan-identity__id-card-top { display: flex; align-items: center; gap: 8px; }
 .shinhan-identity__id-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 9px; background: #fff; color: #0c64e9; font-family: system-ui,sans-serif; font-size: 18px; font-weight: 800; }
 .shinhan-identity__id-mark img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }

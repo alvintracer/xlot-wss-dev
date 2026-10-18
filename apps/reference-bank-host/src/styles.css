@@ -287,3 +287,63 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
   .host-page--app-only.host-page--session-ready .phone { height: var(--host-visible-height, 100dvh); min-height: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .radio-row span, .host-feedback, .host-password-strength__track > span { transition: none; } .spin, .host-security-spinner { animation: none; } }
+
+/* The Shinhan host owns secure input and signing screens. Keep its treatment
+   scoped to the presentation profile so other tenants retain their own UI. */
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-layer {
+  --host-password-safe: #0565f5;
+  color: #172132;
+}
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-header { min-height: 55px; flex-basis: 55px; border-bottom-color: #edf0f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-header > span { font-size: 17px; font-weight: 800; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-content { padding: 35px 20px 30px; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-content h2,
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-vault-panel h3 { color: #172132; font-size: 23px; line-height: 1.42; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-content > p:not(.host-security-kicker, .host-security-error),
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-vault-panel p:not(.host-security-kicker, .host-security-error) { margin-top: 17px; color: #748093; font-size: 13px; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-notice,
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-warning { border: 1px solid #e6ecf7; background: #f7f9fe; color: #5f6d83; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] :is(.host-security-notice,.host-security-warning) svg { color: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-seed-word { border-color: #e3eaf5; background: #f8faff; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-seed-confirmation input:focus,
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-secure-import-field :is(input,textarea):focus { border-bottom: 2px solid #0565f5; box-shadow: 0 3px 0 rgb(5 101 245 / 10%); }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-password-strength[data-level='safe'] .host-password-strength__track > span { background: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-password-strength { --host-password-safe: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-vault-factor-pairs label { border-color: #dce6fa; border-radius: 12px; background: #fff; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-vault-factor-pairs input { accent-color: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-dots span { border-color: #cbd8ee; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-dots span.is-filled { border-color: #0565f5; background: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-footer { border-top-color: #edf0f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-footer button { border-radius: 11px; font-family: ShinhanPreviewNanumSquareAC, 'Apple SD Gothic Neo', sans-serif; font-weight: 700; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-secondary { background: #f0f2f6; color: #394459; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-header button:focus-visible,
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-footer button:focus-visible,
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-check input:focus-visible { outline-color: #9dc5ff; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-recovery-secret { border-color: #dce6fa; background: #f8faff; color: #172132; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-recovery-secret:focus-visible,
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] :is(.host-vault-recovery-options button,.host-vault-skip-local,.host-vault-factor-pairs input):focus-visible { outline-color: #9dc5ff; }
+
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-backdrop { align-items: stretch; background: #fff; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign { display: flex; max-width: none; max-height: none; flex-direction: column; min-height: 100%; padding: 55px 20px max(20px,env(safe-area-inset-bottom)); border-radius: 0; box-shadow: none; color: #172132; font-family: ShinhanPreviewNanumSquareAC, 'Apple SD Gothic Neo', sans-serif; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-close { top: 10px; right: 14px; background: #f4f7fc; color: #172132; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-icon { margin-bottom: 25px; background: #e8f0ff url('../../../tenants/shinhan/presentation/assets/preview/bank-mark-preview.png') center / 32px no-repeat; color: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-icon svg { display: none; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-kicker { margin-bottom: 12px; color: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign h2 { font-size: 23px; line-height: 1.42; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-intro { margin: 16px 0 29px; color: #748093; font-size: 13px; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-message { border-color: #e1e8f4; background: #f8faff; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-message :is(span,p) { color: #5f6d83; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-safe { color: #748093; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-actions { margin-top: auto; padding-top: 28px; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-actions button { border-radius: 11px; font-family: inherit; font-weight: 700; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-actions button:first-child { background: #f0f2f6; color: #394459; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-actions button:last-child { background: #0565f5; color: #fff; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-preview-prompt { display: none; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-entry { display: flex; flex: 1; flex-direction: column; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-inline { margin-top: auto; border-top-color: #edf0f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-keypad button { color: #172132; font-family: inherit; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-keypad button:active { background: #eaf0fe; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-erase { color: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-hint { color: #748093; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-spinner { border-color: #d5e0f2; border-top-color: #0565f5; }

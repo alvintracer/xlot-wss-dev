@@ -12,10 +12,12 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 public class MainActivity extends BridgeActivity {
     private static final int DEFAULT_TOP_COLOR = Color.rgb(240, 243, 250);
     private static final int DEFAULT_BOTTOM_COLOR = Color.rgb(240, 243, 250);
+    private static final int SPLASH_BLUE = Color.rgb(7, 57, 250);
     private View navigationBarBackdrop;
     private int navigationBarInset;
 
@@ -29,6 +31,7 @@ public class MainActivity extends BridgeActivity {
             ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.BOTTOM
         ));
         setSystemBarSurfaces(DEFAULT_TOP_COLOR, DEFAULT_BOTTOM_COLOR);
+        showLaunchSplash(content);
 
         // Preserve the Shinhan palette when the device is in dark mode.
         android.webkit.WebView webView = getBridge().getWebView();
@@ -64,6 +67,23 @@ public class MainActivity extends BridgeActivity {
                 WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), false);
             }
         }
+    }
+
+    private void showLaunchSplash(FrameLayout content) {
+        ImageView splash = new ImageView(this);
+        splash.setImageResource(R.drawable.shinhan_splash_full);
+        splash.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        splash.setBackgroundColor(SPLASH_BLUE);
+        content.addView(splash, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+        setSystemBarSurfaces(SPLASH_BLUE, SPLASH_BLUE);
+        splash.postDelayed(() -> {
+            content.removeView(splash);
+            if (getWindow().getStatusBarColor() == SPLASH_BLUE) {
+                setSystemBarSurfaces(DEFAULT_TOP_COLOR, DEFAULT_BOTTOM_COLOR);
+            }
+        }, 1400);
     }
 
     public void setSystemBarSurfaces(int topColor, int bottomColor) {

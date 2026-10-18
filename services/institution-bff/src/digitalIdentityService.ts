@@ -124,12 +124,11 @@ export class DevelopmentDigitalIdentityService {
   async summary(session: Session, credentialId: string): Promise<DigitalIdentitySummary> {
     const { row, source } = await this.#credential(session, credentialId);
     const wallets = await this.#sql<{ wallet_id: string; label: string; address_display: string }[]>`
-      SELECT binding.wallet_id, wallet.label, account.address_display
+      SELECT binding.wallet_id, wallet.label, binding.address_normalized AS address_display
       FROM wss_dev_identity_wallet_bindings binding
       JOIN wss_wallets wallet ON wallet.tenant_id = binding.tenant_id AND wallet.id = binding.wallet_id
-      JOIN wss_wallet_accounts account ON account.tenant_id = wallet.tenant_id AND account.wallet_id = wallet.id
       WHERE binding.tenant_id = ${session.tenantId} AND binding.credential_id = ${credentialId}
-        AND binding.revoked_at IS NULL AND wallet.status = 'active' AND account.address_group_id = 'evm'
+        AND binding.revoked_at IS NULL AND wallet.status = 'active'
     `;
     return {
       credentialId: row.id, holderDid: row.holder_did, issuerDid: row.issuer_did,
