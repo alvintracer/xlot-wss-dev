@@ -158,6 +158,7 @@ export class DevelopmentDigitalIdentityService {
         type: ['VerifiableCredential', 'TookDevIdentityCredential'],
         issuer: issuer.did, validFrom: issuedAt.toISOString(), validUntil: expiresAt.toISOString(),
         credentialSubject: { id: holderDid, identityCommitment: identityProof.commitment,
+          identityProofScheme: 'noir-ultrahonk-v1',
           claimTypes: ['name', 'birthDate'],
           phonePossessionVerifiedAt: source.phoneVerifiedAt,
           nameAssurance: 'SELF_ASSERTED', birthDateAssurance: 'SELF_ASSERTED' },
@@ -262,6 +263,7 @@ export class DevelopmentDigitalIdentityService {
       || parsed.payload.sub !== row.holder_did || parsed.payload.jti !== credentialId
       || !vc || vc.assurance !== 'DEV_ASSUMED' || vc.productionEligible !== false
       || subject?.id !== row.holder_did || typeof subject.identityCommitment !== 'string'
+      || subject.identityProofScheme !== 'noir-ultrahonk-v1'
       || !Array.isArray(subject.claimTypes) || !subject.claimTypes.includes('name') || !subject.claimTypes.includes('birthDate')
       || typeof parsed.payload.nbf !== 'number' || typeof parsed.payload.exp !== 'number'
       || parsed.payload.nbf > Date.now() / 1000 || parsed.payload.exp <= Date.now() / 1000
@@ -272,7 +274,7 @@ export class DevelopmentDigitalIdentityService {
     let validHolder = false;
     try { validHolder = verify(null, Buffer.from(challenge.challenge), publicKeyFromDid(row.holder_did), Buffer.from(holderSignature, 'base64url')); } catch { /* invalid holder signature */ }
     if (!validHolder) throw new DigitalIdentityError('holder_signature_invalid');
-    if (!verifyIdentityEqualityProof({ credentialId, nonce: challengeId,
+    if (!await verifyIdentityEqualityProof({ credentialId, nonce: challengeId,
       commitment: subject.identityCommitment, expectedName, expectedBirthDate, proof })) {
       throw new DigitalIdentityError('identity_claims_do_not_match');
     }

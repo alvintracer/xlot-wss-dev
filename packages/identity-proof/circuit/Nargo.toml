@@ -1,0 +1,7 @@
+[package]
+name = "identity_equality"
+type = "bin"
+authors = ["Took WSS"]
+compiler_version = ">=1.0.0-beta.20"
+
+[dependencies]

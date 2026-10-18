@@ -105,7 +105,7 @@ try {
   if (JSON.stringify(vcPayload).includes('테스트사용자') || JSON.stringify(vcPayload).includes('1990-04-18')) {
     throw new Error('The presentation credential contains raw name or birth date.');
   }
-  const proof = createIdentityEqualityProof({ credentialId, nonce: challenge.data.challengeId as string,
+  const proof = await createIdentityEqualityProof({ credentialId, nonce: challenge.data.challengeId as string,
     commitment: vcPayload.vc.credentialSubject.identityCommitment, opening,
     expectedName: summary.name, expectedBirthDate: summary.birthDate });
   const verified = await api(`${path}/presentations`, sessionToken, {
@@ -113,7 +113,7 @@ try {
     expectedName: summary.name, expectedBirthDate: summary.birthDate, proof,
   });
   if (verified.status !== 200 || verified.data.verified !== true || verified.data.claimsMatched !== true) {
-    throw new Error('Signed credential and private equality proof verification failed.');
+    throw new Error(`Signed credential and private equality proof verification failed: ${verified.status} ${JSON.stringify(verified.data)}`);
   }
   const replay = await api(`${path}/presentations`, sessionToken, {
     challengeId: challenge.data.challengeId, credential, holderSignature,
@@ -123,7 +123,7 @@ try {
 
   const badChallenge = await api(`${path}/presentation-challenges`, sessionToken, {});
   const badSignature = sign(null, Buffer.from(badChallenge.data.message as string), holder.privateKey).toString('base64url');
-  const badProof = createIdentityEqualityProof({ credentialId, nonce: badChallenge.data.challengeId as string,
+  const badProof = await createIdentityEqualityProof({ credentialId, nonce: badChallenge.data.challengeId as string,
     commitment: vcPayload.vc.credentialSubject.identityCommitment, opening,
     expectedName: summary.name, expectedBirthDate: summary.birthDate });
   const tampered = await api(`${path}/presentations`, sessionToken, {

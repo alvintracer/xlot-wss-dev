@@ -1,101 +1,145 @@
-import { secp256k1, hashToCurve } from '@noble/curves/secp256k1';
 import { sha256 } from '@noble/hashes/sha256';
+import { blake2s } from '@noble/hashes/blake2s';
+import { Noir } from '@noir-lang/noir_js';
+import { Barretenberg, UltraHonkBackend } from '@aztec/bb.js';
+import circuit from './generated/identity_equality.json';
 
-// Development-only proof of equality against an issuer-signed Pedersen
-// commitment. This protocol needs independent review before production use.
-const order = secp256k1.CURVE.n;
-const Point = secp256k1.ProjectivePoint;
-const generator = hashToCurve(new TextEncoder().encode('Took WSS identity opening generator v1')) as unknown as InstanceType<typeof Point>;
 const encoder = new TextEncoder();
+const PROOF_SCHEME = 'noir-ultrahonk-v1' as const;
+const compiledCircuit = circuit as unknown as ConstructorParameters<typeof Noir>[0];
 
 export interface IdentityEqualityProof {
-  announcement: string;
-  response: string;
+  scheme: typeof PROOF_SCHEME;
+  proof: string;
+  publicInputs: string[];
 }
 
-function bytesToNumber(bytes: Uint8Array): bigint {
-  let value = 0n;
-  for (const byte of bytes) value = (value << 8n) + BigInt(byte);
-  return value;
+function nameDigest(value: string): Uint8Array {
+  const name = value.trim().normalize('NFC');
+  if (!name || name.length > 80) throw new Error('identity_name_invalid');
+  return sha256(encoder.encode(JSON.stringify(['took-wss-name-v2', name])));
 }
 
-function scalarHex(value: bigint): string { return value.toString(16).padStart(64, '0'); }
-function pointMultiply(point: InstanceType<typeof Point>, scalar: bigint) {
-  return scalar === 0n ? Point.ZERO : point.multiply(scalar);
+function dateBytes(value: string): Uint8Array {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(parsed.getTime())
+    || parsed.toISOString().slice(0, 10) !== value) {
+    throw new Error('identity_birth_date_invalid');
+  }
+  return encoder.encode(value);
 }
-function normalizeName(value: string): string {
-  const result = value.trim().normalize('NFC');
-  if (!result || result.length > 80) throw new Error('identity_name_invalid');
+
+function hex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function fromHex(value: string, length: number): Uint8Array {
+  if (!new RegExp(`^[0-9a-f]{${length * 2}}$`, 'i').test(value)) throw new Error('identity_opening_invalid');
+  return Uint8Array.from(value.match(/../g)!, (byte) => parseInt(byte, 16));
+}
+
+function nonceBytes(value: string): Uint8Array {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error('identity_challenge_invalid');
+  }
+  return fromHex(value.replaceAll('-', ''), 16);
+}
+
+function concat(...parts: Uint8Array[]): Uint8Array {
+  const result = new Uint8Array(parts.reduce((size, part) => size + part.length, 0));
+  let offset = 0;
+  for (const part of parts) { result.set(part, offset); offset += part.length; }
   return result;
 }
-function normalizeBirthDate(value: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error('identity_birth_date_invalid');
-  return value;
+
+function commitmentBytes(name: string, birthDate: string, salt: Uint8Array): Uint8Array {
+  return blake2s(concat(Uint8Array.of(1), nameDigest(name), dateBytes(birthDate), salt));
 }
-function claimScalar(name: string, birthDate: string): bigint {
-  return bytesToNumber(sha256(encoder.encode(JSON.stringify([
-    'took-wss-identity-name-birth-v1', normalizeName(name), normalizeBirthDate(birthDate),
-  ])))) % order;
+
+function bindingBytes(commitment: Uint8Array, nonce: Uint8Array): Uint8Array {
+  return blake2s(concat(Uint8Array.of(2), commitment, nonce));
 }
-function randomScalar(): bigint {
-  for (;;) {
-    const bytes = crypto.getRandomValues(new Uint8Array(32));
-    const value = bytesToNumber(bytes);
-    bytes.fill(0);
-    if (value > 0n && value < order) return value;
-  }
+
+function claimDigest(name: string, birthDate: string, nonce: Uint8Array): Uint8Array {
+  return blake2s(concat(Uint8Array.of(3), nameDigest(name), dateBytes(birthDate), nonce));
 }
-function challengeScalar(input: { credentialId: string; nonce: string; commitment: string; expectedName: string; expectedBirthDate: string; announcement: string }): bigint {
-  return bytesToNumber(sha256(encoder.encode(JSON.stringify([
-    'took-wss-identity-equality-proof-v1', input.credentialId, input.nonce,
-    input.commitment, normalizeName(input.expectedName), normalizeBirthDate(input.expectedBirthDate), input.announcement,
-  ])))) % order;
+
+function expectedPublicInputs(name: string, birthDate: string, commitment: Uint8Array, nonce: Uint8Array): bigint[] {
+  return [...claimDigest(name, birthDate, nonce), ...commitment, ...nonce, ...bindingBytes(commitment, nonce)].map(BigInt);
+}
+
+function base64url(bytes: Uint8Array): string {
+  if (typeof Buffer !== 'undefined') return Buffer.from(bytes).toString('base64url');
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function fromBase64url(value: string): Uint8Array {
+  if (!/^[A-Za-z0-9_-]+$/.test(value) || value.length > 100_000) throw new Error('identity_proof_invalid');
+  if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(value, 'base64url'));
+  return Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), (char) => char.charCodeAt(0));
 }
 
 export function createIdentityCommitment(name: string, birthDate: string) {
-  const opening = randomScalar();
-  const point = pointMultiply(Point.BASE, claimScalar(name, birthDate)).add(generator.multiply(opening));
-  return { commitment: point.toHex(true), opening: scalarHex(opening) };
+  const salt = crypto.getRandomValues(new Uint8Array(32));
+  const commitment = hex(commitmentBytes(name, birthDate, salt));
+  const opening = hex(salt);
+  salt.fill(0);
+  return { commitment, opening };
 }
 
-export function createIdentityEqualityProof(input: {
+export async function createIdentityEqualityProof(input: {
   credentialId: string;
   nonce: string;
   commitment: string;
   opening: string;
   expectedName: string;
   expectedBirthDate: string;
-}): IdentityEqualityProof {
-  if (!/^[0-9a-f]{64}$/i.test(input.opening)) throw new Error('identity_opening_invalid');
-  const opening = BigInt(`0x${input.opening}`);
-  if (opening <= 0n || opening >= order) throw new Error('identity_opening_invalid');
-  const commitment = Point.fromHex(input.commitment);
-  const expectedPoint = pointMultiply(Point.BASE, claimScalar(input.expectedName, input.expectedBirthDate))
-    .add(generator.multiply(opening));
-  if (!commitment.equals(expectedPoint)) throw new Error('identity_claims_do_not_match');
-  const ephemeral = randomScalar();
-  const announcement = generator.multiply(ephemeral).toHex(true);
-  const challenge = challengeScalar({ ...input, announcement });
-  return { announcement, response: scalarHex((ephemeral + challenge * opening) % order) };
+}): Promise<IdentityEqualityProof> {
+  const salt = fromHex(input.opening, 32);
+  const commitment = fromHex(input.commitment, 32);
+  if (hex(commitmentBytes(input.expectedName, input.expectedBirthDate, salt)) !== input.commitment.toLowerCase()) {
+    throw new Error('identity_claims_do_not_match');
+  }
+  const nameHash = nameDigest(input.expectedName);
+  const birth = dateBytes(input.expectedBirthDate);
+  const nonce = nonceBytes(input.nonce);
+  const noir = new Noir(compiledCircuit);
+  const api = await Barretenberg.new();
+  const backend = new UltraHonkBackend(circuit.bytecode, api);
+  try {
+    const { witness } = await noir.execute({
+      name_hash: [...nameHash], birth_date: [...birth], salt: [...salt],
+      expected_claim_digest: [...claimDigest(input.expectedName, input.expectedBirthDate, nonce)],
+      commitment: [...commitment], challenge: [...nonce],
+    });
+    const result = await backend.generateProof(witness);
+    return { scheme: PROOF_SCHEME, proof: base64url(result.proof), publicInputs: result.publicInputs };
+  } finally {
+    salt.fill(0);
+    await api.destroy();
+  }
 }
 
-export function verifyIdentityEqualityProof(input: {
+export async function verifyIdentityEqualityProof(input: {
   credentialId: string;
   nonce: string;
   commitment: string;
   expectedName: string;
   expectedBirthDate: string;
   proof: IdentityEqualityProof;
-}): boolean {
+}): Promise<boolean> {
   try {
-    if (!/^[0-9a-f]{64}$/i.test(input.proof.response)) return false;
-    const response = BigInt(`0x${input.proof.response}`);
-    if (response >= order) return false;
-    const commitment = Point.fromHex(input.commitment);
-    const announcement = Point.fromHex(input.proof.announcement);
-    const expected = pointMultiply(Point.BASE, claimScalar(input.expectedName, input.expectedBirthDate));
-    const target = commitment.subtract(expected);
-    const challenge = challengeScalar({ ...input, announcement: input.proof.announcement });
-    return pointMultiply(generator, response).equals(announcement.add(pointMultiply(target, challenge)));
+    if (input.proof?.scheme !== PROOF_SCHEME || !Array.isArray(input.proof.publicInputs)) return false;
+    const commitment = fromHex(input.commitment, 32);
+    const expected = expectedPublicInputs(input.expectedName, input.expectedBirthDate, commitment, nonceBytes(input.nonce));
+    if (input.proof.publicInputs.length !== expected.length
+      || input.proof.publicInputs.some((value, index) => BigInt(value) !== expected[index])) return false;
+    const api = await Barretenberg.new();
+    const backend = new UltraHonkBackend(circuit.bytecode, api);
+    try {
+      return await backend.verifyProof({ proof: fromBase64url(input.proof.proof), publicInputs: input.proof.publicInputs });
+    } finally { await api.destroy(); }
   } catch { return false; }
 }

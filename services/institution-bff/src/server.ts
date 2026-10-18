@@ -186,13 +186,13 @@ function isSessionAuthenticationError(message: string): boolean {
     || message === 'Session issued in the future.';
 }
 
-async function readJson(request: IncomingMessage): Promise<unknown> {
+async function readJson(request: IncomingMessage, maxBytes = 16_384): Promise<unknown> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     size += buffer.length;
-    if (size > 16_384) throw new Error('Request body too large.');
+    if (size > maxBytes) throw new Error('Request body too large.');
     chunks.push(buffer);
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
@@ -1135,7 +1135,7 @@ export async function handleBffRequest(request: IncomingMessage, response: Serve
         return;
       }
       if (request.method !== 'POST') throw new DigitalIdentityError('identity_method_invalid', 405);
-      const body = action === 'presentation-challenges' ? {} : await readJson(request);
+      const body = action === 'presentation-challenges' ? {} : await readJson(request, action === 'presentations' ? 65_536 : 16_384);
       if (!isRecord(body)) throw new DigitalIdentityError('identity_request_invalid');
       if (action === 'wallet-challenges' && typeof body.walletId === 'string') {
         sendJson(response, 201, await service.walletChallenge(session, credentialId, body.walletId));
@@ -1154,11 +1154,14 @@ export async function handleBffRequest(request: IncomingMessage, response: Serve
         && typeof body.credential === 'string' && typeof body.holderSignature === 'string'
         && typeof body.expectedName === 'string' && body.expectedName.length <= 80
         && typeof body.expectedBirthDate === 'string'
-        && isRecord(body.proof) && typeof body.proof.announcement === 'string'
-        && typeof body.proof.response === 'string') {
+        && isRecord(body.proof) && body.proof.scheme === 'noir-ultrahonk-v1'
+        && typeof body.proof.proof === 'string' && body.proof.proof.length <= 100_000
+        && Array.isArray(body.proof.publicInputs) && body.proof.publicInputs.length === 112
+        && body.proof.publicInputs.every((value) => typeof value === 'string' && /^0x[0-9a-f]{64}$/i.test(value))) {
         sendJson(response, 200, await service.verifyPresentation(session, credentialId, body.challengeId,
           body.credential, body.holderSignature, body.expectedName, body.expectedBirthDate,
-          { announcement: body.proof.announcement, response: body.proof.response }));
+          { scheme: 'noir-ultrahonk-v1', proof: body.proof.proof,
+            publicInputs: body.proof.publicInputs as string[] }));
         return;
       }
       throw new DigitalIdentityError('identity_request_invalid');

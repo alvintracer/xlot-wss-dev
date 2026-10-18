@@ -3,10 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./browser": "./src/browser.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "compile": "node scripts/compile.mjs"
+  },
   "dependencies": {
-    "@noble/curves": "1.2.0",
-    "@noble/hashes": "1.3.2"
+    "@aztec/bb.js": "5.2.1",
+    "@noble/hashes": "1.3.2",
+    "@noir-lang/acvm_js": "1.0.0-rc.5",
+    "@noir-lang/noirc_abi": "1.0.0-rc.5",
+    "@noir-lang/noir_js": "1.0.0-rc.5"
+  },
+  "devDependencies": {
+    "@noir-lang/noir_wasm": "1.0.0-rc.5"
   }
 }

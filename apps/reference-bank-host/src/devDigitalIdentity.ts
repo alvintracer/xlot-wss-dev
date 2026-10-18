@@ -1,5 +1,4 @@
 import { ed25519DidKey, type DigitalIdentityHostRequest, type DigitalIdentityHostResult, type DigitalIdentitySummary } from '@took-wss/contracts';
-import { createIdentityEqualityProof } from '@took-wss/identity-proof';
 
 interface VaultEntry {
   scope: string;
@@ -17,6 +16,15 @@ function openVault(): Promise<IDBDatabase> {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(new Error('identity_vault_unavailable'));
   });
+}
+
+function usesCurrentProofScheme(credential: string): boolean {
+  try {
+    const payload = JSON.parse(atob(credential.split('.')[1]!.replace(/-/g, '+').replace(/_/g, '/'))) as {
+      vc?: { credentialSubject?: { identityProofScheme?: string } };
+    };
+    return payload.vc?.credentialSubject?.identityProofScheme === 'noir-ultrahonk-v1';
+  } catch { return false; }
 }
 
 async function readVault(scope: string): Promise<VaultEntry | null> {
@@ -89,6 +97,10 @@ export async function handleDevDigitalIdentity(input: {
     if (request.action === 'status') {
       const entry = await readVault(scope);
       if (!entry?.credentialId || !entry.credential) return { ...base, ok: true, summary: null };
+      if (!usesCurrentProofScheme(entry.credential)) {
+        await writeVault({ scope, holderKey: entry.holderKey, holderDid: entry.holderDid });
+        return { ...base, ok: true, summary: null };
+      }
       let summary: DigitalIdentitySummary;
       try {
         summary = await api<DigitalIdentitySummary>(bffUrl, sessionToken,
@@ -133,7 +145,8 @@ export async function handleDevDigitalIdentity(input: {
       };
       const commitment = payload.vc?.credentialSubject?.identityCommitment;
       if (!commitment) throw new Error('credential_invalid');
-      const proof = createIdentityEqualityProof({ credentialId: entry.credentialId,
+      const { createIdentityEqualityProof } = await import('@took-wss/identity-proof/browser');
+      const proof = await createIdentityEqualityProof({ credentialId: entry.credentialId,
         nonce: challenge.challengeId, commitment, opening: entry.opening,
         expectedName: summary.name, expectedBirthDate: summary.birthDate });
       const verified = await api<{ verified: boolean }>(bffUrl, sessionToken, `${path}/presentations`, 'POST',
