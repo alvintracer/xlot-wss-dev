@@ -18,15 +18,16 @@
 .shinhan-live-preview__balance { display: block; margin: 25px 0 17px; font-size: 26px; line-height: 1.3; }
 .shinhan-live-preview__transfer { width: 100%; min-height: 45px; border: 0; border-radius: 11px; background: #eaf0fe; color: #0565f5; font: inherit; font-weight: 700; }
 .shinhan-live-preview__dots { display: flex; min-height: 48px; align-items: center; justify-content: center; gap: 7px; margin: 4px 0 8px; }
-.shinhan-live-preview__dots button { display: grid; width: 38px; height: 38px; place-items: center; padding: 0; border: 0; background: transparent; color: #748093; cursor: pointer; }
-.shinhan-live-preview__dots .shinhan-live-preview__dot { width: 16px; height: 38px; }
-.shinhan-live-preview__dot::before { display: block; width: 8px; height: 8px; border-radius: 99px; background: #b8c2d3; content: ''; }
-.shinhan-live-preview__dot[aria-current='true']::before { width: 20px; background: #6c7890; }
-.shinhan-live-preview__retirement { display: flex; width: 100%; min-height: 90px; align-items: center; justify-content: space-between; gap: 4px; padding: 8px 9px 8px 18px; border: 0; background: transparent; color: #394459; text-align: left; }
+.shinhan-live-preview__dots button { display: grid; width: 40px; height: 40px; place-items: center; padding: 0; border: 0; background: transparent; color: #748093; cursor: pointer; }
+.shinhan-live-preview__dots button > svg { width: 25px; height: 25px; }
+.shinhan-live-preview__dots .shinhan-live-preview__dot { width: 18px; height: 40px; }
+.shinhan-live-preview__dot::before { display: block; width: 10px; height: 10px; border-radius: 99px; background: #b8c2d3; content: ''; }
+.shinhan-live-preview__dot[aria-current='true']::before { width: 22px; background: #6c7890; }
+.shinhan-live-preview__retirement { display: flex; width: 100%; min-height: 90px; align-items: center; justify-content: space-between; gap: 0; padding: 8px 8px 8px 9px; border: 0; background: transparent; color: #394459; text-align: left; }
 .shinhan-live-preview__retirement > span { display: grid; min-width: 0; gap: 10px; }
-.shinhan-live-preview__retirement strong { font-size: 16px; line-height: 1.4; word-break: keep-all; }
+.shinhan-live-preview__retirement strong { font-size: 15px; line-height: 1.4; letter-spacing: -.035em; word-break: keep-all; }
 .shinhan-live-preview__retirement small { display: flex; align-items: center; color: #0565f5; font-size: 13px; font-weight: 700; }
-.shinhan-live-preview__retirement img { width: 118px; height: 79px; flex: 0 0 118px; object-fit: contain; }
+.shinhan-live-preview__retirement img { width: 105px; height: 79px; flex: 0 0 105px; object-fit: contain; }
 .shinhan-live-preview__flow, .shinhan-live-preview__sheet { position: absolute; z-index: 20; inset: 0; background: #fff; }
 .shinhan-live-preview__sheet { display: flex; flex-direction: column; gap: 16px; align-items: center; justify-content: center; padding: 24px; }
 .shinhan-live-preview__sheet > button:first-child { position: absolute; top: 12px; right: 12px; border: 0; background: none; }
