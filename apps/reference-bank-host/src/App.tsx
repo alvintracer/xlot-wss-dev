@@ -47,10 +47,11 @@ import { handleNativeDeviceRequest, isTrustedNativeDeviceRequest, type ExchangeP
 import { ExchangeSignLoading, ExchangeSignPanel } from './ExchangeSignPanel';
 import { HostAppSettings } from './HostAppSettings';
 import { PreviewKeypadProvider } from './PreviewKeypadContext';
-import { biometricPinEnabled, readBiometricPin } from './nativeBiometricPin';
+import { authorizeDigitalIdentityBiometric, biometricPinEnabled, readBiometricPin } from './nativeBiometricPin';
 import { computedHexColor, setNativeSystemBarSurface } from './nativeSystemBars';
 import { handleDevDigitalIdentity } from './devDigitalIdentity';
 import type { DigitalIdentityHostRequest } from '@took-wss/contracts';
+import { ShinhanSimplePasswordPreview } from '@took-wss/tenant-shinhan-host-chrome/simple-password-preview';
 
 const publicPreviewEnabled = import.meta.env.VITE_WSS_PUBLIC_PREVIEW === 'true';
 const previewTenant = import.meta.env.VITE_WSS_PREVIEW_TENANT || 'kiwoom';
@@ -97,6 +98,7 @@ function tenantOption(manifest: TenantManifest, landing?: {
     institutionName: manifest.institutionName,
     institutionLabel: manifest.brand.logoText,
     presentationProfileId: manifest.presentation.profileId,
+    identityCredentialMode: manifest.identity.digitalCredential,
     secureKeypadLayout: manifest.presentation.secureKeypadLayout ?? 'four-column',
     previewKeypadKeys: manifest.presentation.previewKeypadKeys,
     nativeAuthRedirectUri: manifest.presentation.nativeAuthRedirectUri,
@@ -310,6 +312,9 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
   const [keyAdapter, setKeyAdapter] = useState<KeyAdapterId>(tenantOptions[previewTenant as TenantId].defaultAdapter);
   const [hostTab, setHostTab] = useState(() => getHostChromeProfile(tenantOptions[previewTenant as TenantId].presentationProfileId).initialTab);
   const [appSettingsOpen, setAppSettingsOpen] = useState(false);
+  const [identityPinRequest, setIdentityPinRequest] = useState<{ resolve: (approved: boolean) => void } | null>(null);
+  const identityPersonCheck = useRef<{ token: string; expiresAt: number } | null>(null);
+  const identityAuthorization = useRef<{ token: string; expiresAt: number } | null>(null);
   const [appBiometricEnabled, setAppBiometricEnabled] = useState(false);
   const [session, setSession] = useState<CreateSessionResponse | null>(null);
   const [walletScreenReady, setWalletScreenReady] = useState(false);
@@ -403,7 +408,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
   useEffect(() => {
     if (!appOnlyPreview) return;
     const phone = stageRef.current?.querySelector('.phone') ?? null;
-    const whiteSurface = shellMode === 'focus' || appSettingsOpen || securityCeremony !== null || recipientPicker !== null || pendingExchangeSign !== null || checkingExchangeSign;
+    const whiteSurface = shellMode === 'focus' || appSettingsOpen || identityPinRequest !== null || securityCeremony !== null || recipientPicker !== null || pendingExchangeSign !== null || checkingExchangeSign;
     const loadingSurface = !walletScreenReady || status === 'error';
     const canvas = tenantOptions[tenantId].loadingCanvas;
     const topColor = whiteSurface ? '#ffffff' : loadingSurface ? canvas
@@ -411,7 +416,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
     const bottomColor = whiteSurface ? '#ffffff' : loadingSurface ? canvas
       : computedHexColor(phone?.querySelector(':scope > nav') ?? null, canvas);
     void setNativeSystemBarSurface(topColor, bottomColor).catch(() => undefined);
-  }, [appSettingsOpen, checkingExchangeSign, hostTab, pendingExchangeSign, recipientPicker, securityCeremony, shellMode, status, tenantId, walletScreenReady]);
+  }, [appSettingsOpen, checkingExchangeSign, hostTab, identityPinRequest, pendingExchangeSign, recipientPicker, securityCeremony, shellMode, status, tenantId, walletScreenReady]);
 
   useEffect(() => {
     if (!appOnlyPreview) return;
@@ -1400,8 +1405,16 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
     showSecurityCeremony({ ...active, vaultMode: 'ready' });
   }, [showSecurityCeremony, tenantId]);
 
+  const resetIdentityApproval = () => {
+    identityPinRequest?.resolve(false);
+    setIdentityPinRequest(null);
+    identityPersonCheck.current = null;
+    identityAuthorization.current = null;
+  };
+
   const selectTenant = (nextTenant: TenantId) => {
     cancelSecurityCeremony();
+    resetIdentityApproval();
     setTenantId(nextTenant);
     setHostTab(getHostChromeProfile(tenantOptions[nextTenant].presentationProfileId).initialTab);
     setKeyAdapter(tenantOptions[nextTenant].defaultAdapter);
@@ -1417,6 +1430,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
 
   const selectKeyAdapter = (nextAdapter: KeyAdapterId) => {
     cancelSecurityCeremony();
+    resetIdentityApproval();
     setKeyAdapter(nextAdapter);
     setSession(null);
     setCustomerName(null);
@@ -1467,6 +1481,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
 
   const createSession = async () => {
     cancelSecurityCeremony();
+    resetIdentityApproval();
     sessionTokenRef.current = null;
     setSession(null);
     setCustomerName(null);
@@ -1675,11 +1690,72 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
         || !event.data || event.data.type !== 'took-wss:digital-identity-request'
         || event.data.protocolVersion !== 1 || typeof event.data.requestId !== 'string'
         || !/^[0-9a-f-]{36}$/i.test(event.data.requestId)
-        || !['status', 'issue', 'bind-wallet', 'verify'].includes(event.data.action)
+        || !['status', 'verify-person', 'authorize', 'issue', 'bind-wallet', 'verify', 'open-biometric-settings'].includes(event.data.action)
         || (event.data.walletId !== undefined && typeof event.data.walletId !== 'string')) return;
       const token = sessionTokenRef.current;
       if (!token) return;
       const request = event.data as DigitalIdentityHostRequest;
+      const respond = (result: Partial<import('@took-wss/contracts').DigitalIdentityHostResult>) => frame.contentWindow?.postMessage({
+        type: 'took-wss:digital-identity-result', protocolVersion: 1, requestId: request.requestId, ok: false, ...result,
+      }, walletOrigin);
+      if (import.meta.env.PROD || !tenantOptions[tenantId].identityCredentialMode) {
+        respond({ error: 'identity_unavailable' });
+        return;
+      }
+      if (request.action === 'verify-person') {
+        window.setTimeout(() => {
+          identityPersonCheck.current = { token, expiresAt: Date.now() + 10 * 60_000 };
+          respond({ ok: true });
+        }, 750);
+        return;
+      }
+      if (request.action === 'open-biometric-settings') {
+        setAppSettingsOpen(true);
+        respond({ ok: true });
+        return;
+      }
+      if (request.action === 'authorize') {
+        void (async () => {
+          try {
+            const scope = appPinScope(tenantId, token);
+            if (await biometricPinEnabled(scope)) {
+              await authorizeDigitalIdentityBiometric(scope);
+              identityAuthorization.current = { token, expiresAt: Date.now() + 120_000 };
+              respond({ ok: true, authorizationMethod: 'biometric' });
+            } else {
+              const approved = await new Promise<boolean>((resolve) => setIdentityPinRequest({ resolve }));
+              if (approved) identityAuthorization.current = { token, expiresAt: Date.now() + 120_000 };
+              respond(approved ? { ok: true, authorizationMethod: 'simple-password-preview' } : { error: 'authorization_cancelled' });
+            }
+          } catch { respond({ error: 'authorization_cancelled' }); }
+        })();
+        return;
+      }
+      if (request.action === 'status') {
+        void biometricPinEnabled(appPinScope(tenantId, token)).then((enabled) => {
+          void handleDevDigitalIdentity({ request, tenantId, customerRef: previewCustomerRef,
+            sessionToken: token, bffUrl,
+            signWallet: ({ walletId, address, message }) => onPersonalSign({ exchange: 'identity', walletId, address, message }),
+          }).then((result) => respond({ ...result, biometricEnabled: enabled }));
+        });
+        return;
+      }
+      if (request.action === 'issue' || request.action === 'verify') {
+        const grant = identityAuthorization.current;
+        if (!grant || grant.token !== token || grant.expiresAt < Date.now()) {
+          respond({ error: 'identity_authorization_required' });
+          return;
+        }
+        if (request.action === 'issue') {
+          const person = identityPersonCheck.current;
+          if (!person || person.token !== token || person.expiresAt < Date.now()) {
+            respond({ error: 'identity_host_check_required' });
+            return;
+          }
+          identityPersonCheck.current = null;
+        }
+        identityAuthorization.current = null;
+      }
       void handleDevDigitalIdentity({ request, tenantId, customerRef: previewCustomerRef,
         sessionToken: token, bffUrl,
         signWallet: ({ walletId, address, message }) => onPersonalSign({ exchange: 'identity', walletId, address, message }),
@@ -1820,6 +1896,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
         <div
           className={`phone ${showRootChrome ? 'phone--root' : 'phone--focus'}`}
           data-host-chrome={tenantOptions[tenantId].presentationProfileId}
+          data-wallet-entry-motion={hostChrome.walletEntryMotion}
           data-shell-mode={shellMode}
           data-host-tab={hostTab}
         >
@@ -1841,6 +1918,11 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
             )
           )}
           {showRootChrome ? <HostNavigation onAction={setHostFeedback} activeTab={hostTab} onSelectTab={setHostTab} /> : null}
+          {identityPinRequest ? <div className="shinhan-host-identity-pin"><ShinhanSimplePasswordPreview
+            variant="certificate"
+            prompt="신한 DID에 사용할 비밀번호 6자리를 입력해주세요"
+            onClose={() => { identityPinRequest.resolve(false); setIdentityPinRequest(null); }}
+            onComplete={() => { identityPinRequest.resolve(true); setIdentityPinRequest(null); }} /></div> : null}
           {appSettingsOpen ? <HostAppSettings scope={session ? appPinScope(tenantId, session.sessionToken) : null}
             keypadLayout={tenantOptions[tenantId].secureKeypadLayout}
             hasPin={session ? hasAppPin(appPinScope(tenantId, session.sessionToken)) : false}

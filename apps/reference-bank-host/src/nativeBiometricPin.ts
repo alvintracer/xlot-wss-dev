@@ -42,3 +42,13 @@ export async function readBiometricPin(scope: string): Promise<string> {
   if (!/^\d{6}$/.test(result.value) || !await verifyAppPin(scope, result.value)) throw new Error('biometric_pin_invalid');
   return result.value;
 }
+
+/** Native-only DID authorization. The PIN remains in the Host and is never returned to the WebView. */
+export async function authorizeDigitalIdentityBiometric(scope: string): Promise<void> {
+  if (!await biometricPinAvailable()) throw new Error('biometric_unavailable');
+  const result = await NativeBiometric.getSecureData({
+    key: storageKey(scope), title: '신한 DID 인증', subtitle: '생체인증으로 본인 여부를 확인해 주세요',
+    reason: '내 디지털 신원인증을 안전하게 사용해요',
+  });
+  if (!/^\d{6}$/.test(result.value) || !await verifyAppPin(scope, result.value)) throw new Error('biometric_pin_invalid');
+}

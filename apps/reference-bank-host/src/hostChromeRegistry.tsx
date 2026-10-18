@@ -22,6 +22,7 @@ export interface HostChromeProfile {
   Preview?: ComponentType<HostChromeProps>;
   initialTab: string;
   walletTab: string;
+  walletEntryMotion?: 'slide-from-right';
 }
 
 function GenericHostHeader() {
@@ -88,6 +89,7 @@ const hostChromeProfiles: Readonly<Record<string, HostChromeProfile>> = {
     Preview: ShinhanHostPreview,
     initialTab: 'finance:bank',
     walletTab: 'wallet',
+    walletEntryMotion: 'slide-from-right',
   },
 };
 

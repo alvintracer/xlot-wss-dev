@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import type { ProvisionWalletResponse, WalletHomePayload, WalletPresentationProps } from '@took-wss/contracts';
-import { CreateWalletFlow } from './CreateWalletFlow';
+import { CreateWalletFlow, type DigitalIdentityFlowProps } from './CreateWalletFlow';
 import { InstitutionPhoneClaimFlow } from './InstitutionPhoneClaimFlow';
 import { ProviderReconnectDialog } from './ProviderReconnectDialog';
 import { WalletHome } from './WalletHome';
@@ -10,8 +10,9 @@ import { clearPwaWalletCreationResume, readPwaWalletCreationResume } from './pwa
 import './styles.css';
 
 export type { ReadyWalletSummaryProps } from './WalletHome';
+export type { DigitalIdentityFlowProps } from './CreateWalletFlow';
 
-export default function KiwoomWalletPresentation(props: WalletPresentationProps & { HomeSummary?: ComponentType<ReadyWalletSummaryProps>; HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; wallets: import('@took-wss/contracts').WalletProfileSummary[]; onFocusedOverlayChange: (focused: boolean) => void }>; onScanPhysicalCard?: () => Promise<import('@took-wss/contracts').PhysicalCardInfo | null>; onCancelPhysicalCardScan?: () => Promise<void> }) {
+export default function KiwoomWalletPresentation(props: WalletPresentationProps & { HomeSummary?: ComponentType<ReadyWalletSummaryProps>; HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; wallets: import('@took-wss/contracts').WalletProfileSummary[]; onFocusedOverlayChange: (focused: boolean) => void }>; DigitalIdentityFlow?: ComponentType<DigitalIdentityFlowProps>; onScanPhysicalCard?: () => Promise<import('@took-wss/contracts').PhysicalCardInfo | null>; onCancelPhysicalCardScan?: () => Promise<void> }) {
   const rootRef = useRef<HTMLElement>(null);
   useFocusedFieldVisibility(rootRef);
   const [initialResume] = useState(() => props.pwaOAuthRedirect && props.identity.status === 'established'
@@ -140,6 +141,7 @@ export default function KiwoomWalletPresentation(props: WalletPresentationProps 
           onCreatePhoneChallenge={props.onCreatePhoneChallenge}
           onVerifyPhoneChallenge={props.onVerifyPhoneChallenge}
           onDigitalIdentityRequest={props.onDigitalIdentityRequest}
+          DigitalIdentityFlow={props.DigitalIdentityFlow}
           onProvision={props.onProvisionWallet}
           onComplete={completeProvisioning}
         />

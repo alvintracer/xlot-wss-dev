@@ -1,4 +1,4 @@
-.shinhan-identity { position: relative; display: flex; width: 100%; height: 100%; min-height: 0; flex-direction: column; background: linear-gradient(180deg, #dce8ff 0%, #edf3ff 34%, #fff 78%); color: var(--shinhan-ink); font-family: var(--shinhan-font); word-break: keep-all; overflow-wrap: normal; text-wrap: wrap; }
+.shinhan-identity { position: relative; display: flex; width: 100%; height: 100%; min-height: 0; flex-direction: column; background: #fff; color: var(--shinhan-ink); font-family: var(--shinhan-font); word-break: keep-all; overflow-wrap: normal; text-wrap: wrap; }
 .shinhan-identity * { box-sizing: border-box; }
 .shinhan-identity button { font: inherit; cursor: pointer; }
 .shinhan-identity button:focus-visible, .shinhan-identity input:focus-visible { outline: 2px solid var(--shinhan-blue); outline-offset: 2px; }
@@ -8,9 +8,30 @@
 .shinhan-identity__header button { display: grid; width: 42px; height: 42px; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--shinhan-ink); }
 .shinhan-identity__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 17px 20px 24px; scrollbar-width: none; }
 .shinhan-identity__scroll::-webkit-scrollbar { display: none; }
+.shinhan-identity__page { min-height: 100%; animation: shinhan-identity-page-enter 260ms cubic-bezier(.22,.68,.28,1) both; }
+@keyframes shinhan-identity-page-enter { from { transform: translateX(15px); opacity: .68; } to { transform: translateX(0); opacity: 1; } }
 .shinhan-identity__progress { height: 3px; margin: 0 0 28px; border-radius: 99px; background: #dce6fa; overflow: hidden; }
 .shinhan-identity__progress span { display: block; height: 100%; border-radius: inherit; background: var(--shinhan-blue); transition: width 240ms ease; }
 .shinhan-identity__hero-icon { display: grid; width: 56px; height: 56px; place-items: center; margin: 0 0 19px; border-radius: 19px; background: #e4edff; color: var(--shinhan-blue); }
+.shinhan-identity__symbol { display: grid; width: 76px; height: 76px; place-items: center; margin: 18px 0 28px; border-radius: 24px; background: linear-gradient(145deg, #0596ff, #0754ee); box-shadow: 0 11px 25px rgb(5 101 245 / 20%); color: #fff; font-family: system-ui, sans-serif; font-size: 45px; font-style: italic; font-weight: 800; }
+.shinhan-identity__symbol img { display: block; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.shinhan-identity__step-list { display: grid; gap: 0; margin-top: 33px; }
+.shinhan-identity__step-list > div { display: grid; min-height: 72px; grid-template-columns: 30px 1fr; grid-template-rows: 26px 23px; column-gap: 11px; align-content: center; border-bottom: 1px solid #eef0f4; }
+.shinhan-identity__step-list > div > span { display: grid; width: 24px; height: 24px; grid-row: span 2; place-items: center; border-radius: 50%; background: #eaf0fe; color: var(--shinhan-blue); font-size: 12px; font-weight: 800; }
+.shinhan-identity__step-list strong { font-size: 15px; font-weight: 700; }
+.shinhan-identity__step-list small { color: var(--shinhan-muted); font-size: 12px; }
+.shinhan-identity__host-card { display: flex; min-height: 100px; align-items: center; gap: 14px; margin-top: 29px; padding: 18px; border: 1px solid #dce3ed; border-radius: 15px; color: var(--shinhan-blue); }
+.shinhan-identity__host-card > div { display: grid; flex: 1; gap: 5px; color: var(--shinhan-ink); }
+.shinhan-identity__host-card strong { font-size: 15px; }
+.shinhan-identity__host-card span { color: var(--shinhan-muted); font-size: 12px; }
+.shinhan-identity__security-row { display: flex; min-height: 92px; align-items: center; gap: 12px; margin-top: 28px; padding: 16px; border: 1px solid #dce3ed; border-radius: 15px; background: #fff; }
+.shinhan-identity__security-row > span { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 13px; background: #eaf0fe; color: var(--shinhan-blue); }
+.shinhan-identity__security-row > div { display: grid; flex: 1; gap: 5px; }
+.shinhan-identity__security-row strong { font-size: 13px; }
+.shinhan-identity__security-row small { color: var(--shinhan-muted); font-size: 11px; line-height: 1.5; }
+.shinhan-identity__security-row > svg { color: var(--shinhan-blue); }
+.shinhan-identity__complete-icon { display: grid; width: 62px; height: 62px; place-items: center; margin: 42px 0 21px; border-radius: 50%; background: #176cf2; color: #fff; box-shadow: 0 8px 20px rgb(5 101 245 / 16%); }
+.shinhan-identity__security-row--issued { margin-top: 20px; }
 .shinhan-identity h2 { margin: 0; font-size: 23px; font-weight: 800; letter-spacing: -.035em; line-height: 1.38; }
 .shinhan-identity__lead { margin: 10px 0 23px; color: var(--shinhan-text); font-size: 13px; line-height: 1.65; }
 .shinhan-identity__card, .shinhan-identity__result { padding: 18px; border-radius: 20px; background: #fff; box-shadow: var(--shinhan-card-shadow); }
@@ -51,10 +72,12 @@
 .shinhan-identity__carrier-options button svg { color: var(--shinhan-blue); }
 @keyframes shinhan-carrier-rise { from { transform: translateY(18px); opacity: .75; } to { transform: translateY(0); opacity: 1; } }
 .shinhan-identity__note { margin: 13px 0 0; color: var(--shinhan-muted); font-size: 12px; line-height: 1.55; }
-.shinhan-identity__id-card { position: relative; overflow: hidden; min-height: 222px; padding: 19px 21px 18px; border: 1px solid rgb(255 255 255 / 31%); border-radius: 23px; background: radial-gradient(circle at 90% 10%, rgb(161 211 255 / 38%), transparent 43%), linear-gradient(133deg, #0d78f4 0%, #0959dc 58%, #354dd4 100%); color: #fff; box-shadow: 0 12px 29px rgb(20 74 160 / 20%); }
+.shinhan-identity__id-card { position: relative; overflow: hidden; min-height: 222px; padding: 19px 21px 18px; border: 1px solid rgb(255 255 255 / 31%); border-radius: 23px; background: radial-gradient(circle at 90% 10%, rgb(161 211 255 / 38%), transparent 43%), linear-gradient(145deg, #116ce8 0%, #1b7ef8 58%, #37a4f4 100%); color: #fff; box-shadow: 0 12px 29px rgb(20 74 160 / 20%); }
 .shinhan-identity__id-card::after { position: absolute; right: -42px; bottom: -88px; width: 190px; height: 190px; border: 1px solid rgb(255 255 255 / 15%); border-radius: 50%; content: ''; pointer-events: none; }
+.shinhan-identity__id-card::before { position: absolute; right: 13px; top: 48px; color: rgb(255 255 255 / 9%); content: 'S'; font-family: system-ui,sans-serif; font-size: 210px; font-style: italic; font-weight: 900; line-height: 1; pointer-events: none; }
 .shinhan-identity__id-card-top { display: flex; align-items: center; gap: 8px; }
 .shinhan-identity__id-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 9px; background: #fff; color: #0c64e9; font-family: system-ui,sans-serif; font-size: 18px; font-weight: 800; }
+.shinhan-identity__id-mark img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .shinhan-identity__id-card-top strong { font-family: system-ui,sans-serif; font-size: 12px; font-weight: 700; letter-spacing: .035em; }
 .shinhan-identity__id-card-top > span:last-child { margin-left: auto; padding: 5px 8px; border: 1px solid rgb(255 255 255 / 29%); border-radius: 99px; background: rgb(255 255 255 / 13%); font-size: 10px; font-weight: 700; }
 .shinhan-identity__id-card-person { display: flex; align-items: center; gap: 14px; margin: 24px 0 21px; }
@@ -91,15 +114,47 @@
 .shinhan-identity__button--secondary { min-height: 43px; background: #f0f5ff; color: var(--shinhan-blue); }
 @media (prefers-reduced-motion: reduce) { .shinhan-identity__progress span { transition-duration: 0ms; } .shinhan-identity__carrier-sheet { animation: none; } }
 
-.shinhan-live-identity-entry { display: flex; width: calc(100% - 40px); min-height: 72px; align-items: center; gap: 12px; margin: 18px 20px 0; padding: 12px 14px; border: 0; border-radius: 18px; background: #fff; color: var(--shinhan-ink); text-align: left; box-shadow: var(--shinhan-card-shadow); }
+.shinhan-identity-home { padding: 20px 20px 32px; background: var(--shinhan-canvas); }
+.shinhan-identity-home h2 { margin: 5px 0 15px; font-size: 18px; font-weight: 800; }
+.shinhan-identity-home h2:not(:first-child) { margin-top: 31px; }
+.shinhan-live-identity-entry { display: flex; width: 100%; min-height: 80px; align-items: center; gap: 12px; margin: 0 0 10px; padding: 13px 16px; border: 0; border-radius: 18px; background: linear-gradient(110deg, #f7faff, #eaf1ff); color: var(--shinhan-ink); text-align: left; box-shadow: var(--shinhan-card-shadow); }
 .shinhan-live-identity-entry__icon { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 14px; background: #edf3ff; color: var(--shinhan-blue); }
 .shinhan-live-identity-entry > span:nth-child(2) { display: grid; min-width: 0; flex: 1 1 auto; gap: 4px; }
 .shinhan-live-identity-entry strong { font-size: 14px; font-weight: 800; }
 .shinhan-live-identity-entry small { color: var(--shinhan-muted); font-size: 11px; line-height: 1.4; }
 .shinhan-live-identity-entry > svg { flex: 0 0 auto; color: #7d8da8; }
+.shinhan-identity-home__row { display: flex; width: 100%; min-height: 80px; align-items: center; gap: 12px; padding: 13px 16px; border: 0; border-radius: 18px; background: #fff; color: var(--shinhan-ink); text-align: left; box-shadow: var(--shinhan-card-shadow); }
+.shinhan-identity-home__icon { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 12px; background: #f1f4f9; color: #3676d6; }
+.shinhan-identity-home__row > span:nth-child(2) { display: grid; flex: 1; gap: 4px; }
+.shinhan-identity-home__row strong { font-size: 14px; }
+.shinhan-identity-home__row small { color: var(--shinhan-muted); font-size: 11px; }
+.shinhan-identity-home__row > svg { color: #8d98a9; }
+.shinhan-identity-home__pay { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.shinhan-identity-home__pay button { display: grid; min-height: 138px; align-content: center; justify-items: start; gap: 5px; padding: 17px; border: 0; border-radius: 18px; background: linear-gradient(140deg, #7365ed, #534bd5); color: #fff; text-align: left; box-shadow: var(--shinhan-card-shadow); }
+.shinhan-identity-home__pay button + button { background: linear-gradient(140deg, #273f75, #1d2f59); }
+.shinhan-identity-home__pay-mark { font-family: system-ui,sans-serif; font-size: 28px; font-style: italic; font-weight: 900; }
+.shinhan-identity-home__pay-mark { font-size: 24px; letter-spacing: -.08em; }
+.shinhan-identity-home__pay strong { font-size: 15px; }
+.shinhan-identity-home__pay small { color: rgb(255 255 255 / 75%); font-size: 11px; }
+.shinhan-identity-home__menu { overflow: hidden; border-radius: 18px; background: #fff; box-shadow: var(--shinhan-card-shadow); }
+.shinhan-identity-home__menu button { display: flex; width: 100%; min-height: 65px; align-items: center; gap: 13px; padding: 8px 15px; border: 0; border-top: 1px solid var(--shinhan-divider); background: transparent; color: var(--shinhan-ink); text-align: left; }
+.shinhan-identity-home__menu button:first-child { border-top: 0; }
+.shinhan-identity-home__menu strong { flex: 1; font-size: 13px; font-weight: 700; }
+.shinhan-identity-home button { cursor: pointer; }
+.shinhan-identity-home button:focus-visible { outline: 2px solid var(--shinhan-blue); outline-offset: -2px; }
+.shinhan-identity-home__sheet { position: fixed; z-index: 30; inset: 0; display: flex; flex-direction: column; background: #fff; animation: shinhan-identity-page-enter 260ms cubic-bezier(.22,.68,.28,1) both; }
+.shinhan-identity-home__sheet header { display: grid; min-height: 56px; grid-template-columns: 42px 1fr 42px; align-items: center; gap: 8px; padding: 0 12px; }
+.shinhan-identity-home__sheet header strong { font-size: 18px; }
+.shinhan-identity-home__sheet header button { display: grid; width: 42px; height: 42px; place-items: center; border: 0; background: transparent; }
+.shinhan-identity-home__sheet > div { flex: 1; padding: 39px 20px; }
+.shinhan-identity-home__sheet > div .shinhan-identity-home__icon { width: 54px; height: 54px; }
+.shinhan-identity-home__sheet h2 { margin: 24px 0 8px; font-size: 23px; }
+.shinhan-identity-home__sheet p { color: var(--shinhan-muted); font-size: 13px; line-height: 1.65; }
+.shinhan-identity-home__sheet footer { padding: 12px 20px 16px; }
+.shinhan-identity-home__sheet footer button { width: 100%; min-height: 49px; border: 0; border-radius: 11px; background: var(--shinhan-blue); color: #fff; font-size: 14px; font-weight: 700; }
 .shinhan-identity--live { position: fixed; z-index: 30; inset: 0; height: 100%; max-height: 100dvh; }
 .shinhan-live-identity-loading { display: grid; min-height: 240px; place-content: center; justify-items: center; gap: 14px; color: var(--shinhan-muted); font-size: 13px; }
 .shinhan-live-identity-spinner { display: block; width: 32px; height: 32px; border: 3px solid #dde5f1; border-top-color: #7488a8; border-radius: 50%; animation: shinhan-live-identity-spin 900ms linear infinite; }
 .shinhan-live-identity-error { margin: 20px 0 0; color: #c32943; font-size: 12px; line-height: 1.5; }
 @keyframes shinhan-live-identity-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .shinhan-live-identity-spinner { animation-duration: 2.5s; } }
+@media (prefers-reduced-motion: reduce) { .shinhan-live-identity-spinner { animation-duration: 2.5s; } .shinhan-identity__page { animation: none; } }

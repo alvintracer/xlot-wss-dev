@@ -9,7 +9,7 @@ import {
   Wallet,
   X,
 } from '@phosphor-icons/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { normalizeWalletLabel, suggestWalletLabel } from '@took-wss/contracts';
 import type {
   HostAuthenticationResult,
@@ -51,7 +51,15 @@ type CreateFlowStep =
   | 'provisioning';
 type SarWalletSource = 'new' | 'import-mnemonic' | 'import-private-key';
 
+export interface DigitalIdentityFlowProps {
+  name: string;
+  onClose: () => void;
+  onContinue: () => void;
+  onRequest: (action: DigitalIdentityHostAction, walletId?: string) => Promise<DigitalIdentityHostResult>;
+}
+
 interface CreateWalletFlowProps {
+  DigitalIdentityFlow?: ComponentType<DigitalIdentityFlowProps>;
   initialKeyAdapter: KeyAdapterId;
   manifest: TenantManifest;
   mode: 'initial' | 'add';
@@ -161,6 +169,7 @@ export function CreateWalletFlow({
   onCreatePhoneChallenge,
   onVerifyPhoneChallenge,
   onDigitalIdentityRequest,
+  DigitalIdentityFlow,
   onProvision,
   onComplete,
 }: CreateWalletFlowProps) {
@@ -414,6 +423,8 @@ export function CreateWalletFlow({
   }
 
   if (step === 'digital-identity') {
+    if (DigitalIdentityFlow && onDigitalIdentityRequest) return <DigitalIdentityFlow name={name.trim()} onClose={onClose}
+      onContinue={() => setStep(nextAfterIdentity)} onRequest={onDigitalIdentityRequest} />;
     return <FlowShell title="디지털 신원인증" step={stepNumber} totalSteps={totalSteps} onClose={onClose}
       footer={<button className="kw-button" type="button" disabled={!digitalIdentityConsent || busy} aria-busy={busy}
         onClick={() => { void (async () => {

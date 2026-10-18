@@ -1,10 +1,15 @@
 import { ArrowClockwise, CaretDown, Eye, EyeSlash, Plus } from '@phosphor-icons/react';
 import type { ReadyWalletSummaryProps } from '@took-wss/tenant-kiwoom-presentation';
+import { useShinhanWalletTabs } from './ShinhanWalletTabs';
 
 export function ShinhanWalletSummary({ walletHome, balanceHidden, onToggleBalance, onOpenWalletSelector, onAddWallet, onShowAction, onRefreshWallet }: ReadyWalletSummaryProps) {
+  const { tab, setTab } = useShinhanWalletTabs();
   const total = walletHome.totalFiat?.display ?? '—';
   const detail = walletHome.totalFiat?.stale ? '금액을 업데이트하고 있어요' : !walletHome.totalFiat ? '금액 정보를 확인할 수 없어요' : walletHome.assets.length === 0 ? '보유 자산이 없어요' : `보유 자산 ${walletHome.assets.length}개`;
-  return <section className="shinhan-wallet-summary" aria-label="내 지갑 자산 요약">
+  return <div className="shinhan-wallet-home-head"><nav className="shinhan-wallet-tabs" aria-label="쏠지갑 메뉴" data-active={tab}>
+    <button type="button" aria-current={tab === 'identity' ? 'page' : undefined} onClick={() => setTab('identity')}>신원·결제</button>
+    <button type="button" aria-current={tab === 'assets' ? 'page' : undefined} onClick={() => setTab('assets')}>디지털자산</button>
+  </nav>{tab === 'assets' ? <section className="shinhan-wallet-summary" aria-label="내 지갑 자산 요약">
     <div className="shinhan-wallet-summary__head">
       <button className="shinhan-wallet-summary__selector" type="button" onClick={onOpenWalletSelector}>
         <span>{walletHome.wallet.label}</span><CaretDown size={18} aria-hidden="true" />
@@ -28,5 +33,5 @@ export function ShinhanWalletSummary({ walletHome, balanceHidden, onToggleBalanc
       <button type="button" onClick={() => onShowAction('send')}>보내기</button>
       <button type="button" onClick={() => onShowAction('exchange')}>바꾸기</button>
     </div>
-  </section>;
+  </section> : null}</div>;
 }
