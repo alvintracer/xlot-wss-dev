@@ -1,5 +1,6 @@
 @import '@took-wss/ops-ui/tokens.css';
 @import '../../../tenants/shinhan/presentation/src/styles.css';
+@import '../../../tenants/shinhan/presentation/src/identity.css';
 @import '../../../tenants/shinhan/host-chrome/src/styles.css';
 
 * { box-sizing: border-box; }
@@ -94,16 +95,9 @@ button { font: inherit; }
 .shinhan-review-wallet__badge { display: grid; width: 43px; height: 43px; place-items: center; border-radius: 14px; background: #0864ee; color: #fff; font-size: 27px; font-weight: 800; }
 .shinhan-review-wallet__intro strong { font-size: 20px; font-weight: 700; }
 .shinhan-review-wallet__intro p { margin: 6px 0 0; color: var(--shinhan-muted); font-size: 13px; }
-.shinhan-review-wallet__tabs { display: grid; min-height: 50px; grid-template-columns: 1fr 1fr; align-items: center; border-bottom: 1px solid #e7eaf0; color: var(--shinhan-muted); font-size: 17px; text-align: center; }
-.shinhan-review-wallet__tabs button { height: 100%; border: 0; background: transparent; color: var(--shinhan-muted); font: inherit; font-weight: 700; cursor: pointer; }
-.shinhan-review-wallet__tabs strong { display: grid; height: 100%; align-items: center; border-bottom: 2px solid #7b8494; color: var(--shinhan-ink); font-weight: 700; }
-.shinhan-review-wallet__canvas { min-height: 100%; padding: 24px 0 55px; background: var(--shinhan-canvas); }
-.shinhan-review-identity-entry { display: flex; width: calc(100% - 40px); min-height: 75px; align-items: center; gap: 11px; margin: 0 20px 12px; padding: 13px 17px; border: 0; border-radius: var(--shinhan-card-radius); background: #fff; color: var(--shinhan-ink); font: inherit; text-align: left; cursor: pointer; box-shadow: var(--shinhan-card-shadow); }
-.shinhan-review-identity-entry__icon { display: grid; width: 41px; height: 41px; flex: 0 0 41px; place-items: center; border-radius: 13px; background: var(--shinhan-blue-soft); color: var(--shinhan-blue); }
-.shinhan-review-identity-entry > span:nth-child(2) { display: grid; min-width: 0; flex: 1 1 auto; gap: 5px; }
-.shinhan-review-identity-entry strong { font-size: 14px; font-weight: 700; }
-.shinhan-review-identity-entry small { color: var(--shinhan-muted); font-size: 11px; line-height: 1.4; }
-.shinhan-review-identity-entry > svg { flex: 0 0 auto; color: var(--shinhan-muted); }
+.shinhan-review-wallet__canvas { min-height: 100%; padding: 0 0 55px; background: var(--shinhan-canvas); }
+.shinhan-review-wallet__canvas > .shinhan-identity-home { min-height: calc(100% - 51px); }
+.shinhan-review-wallet__canvas > .shinhan-review-holdings { margin-top: 14px; }
 .shinhan-review-holdings, .shinhan-review-activity { margin: 0 20px 12px; padding: 20px; border-radius: var(--shinhan-card-radius); background: #fff; box-shadow: var(--shinhan-card-shadow); }
 .shinhan-review-holdings h2, .shinhan-review-activity h2 { margin: 0 0 12px; font-size: 17px; font-weight: 700; }
 .shinhan-review-holdings > div { display: grid; min-height: 59px; grid-template-columns: 30px minmax(0,1fr) auto; align-items: center; gap: 10px; border-top: 1px solid var(--shinhan-divider); }
