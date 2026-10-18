@@ -144,27 +144,25 @@
 .shinhan-identity-home__heading { display: flex; align-items: center; gap: 7px; margin-bottom: 16px; }
 .shinhan-identity-home__heading h2 { margin: 0; color: var(--shinhan-ink); font-size: 19px; font-weight: 800; }
 .shinhan-identity-home__heading button { display: grid; width: 28px; height: 28px; place-items: center; padding: 0; border: 0; background: transparent; color: #8893a6; }
-.shinhan-live-identity-entry { display: flex; width: 100%; min-height: 73px; align-items: center; gap: 12px; margin: 0 0 10px; padding: 12px 15px; border: 0; border-radius: 21px; background: #fff; color: var(--shinhan-ink); text-align: left; box-shadow: 0 6px 18px rgb(34 55 90 / 5%); }
-.shinhan-live-identity-entry__icon { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 14px; background: #edf3ff; color: var(--shinhan-blue); }
-.shinhan-live-identity-entry > span:nth-child(2) { display: grid; min-width: 0; flex: 1 1 auto; gap: 4px; }
-.shinhan-live-identity-entry strong { font-size: 14px; font-weight: 800; }
-.shinhan-live-identity-entry small { color: var(--shinhan-muted); font-size: 11px; line-height: 1.4; }
-.shinhan-live-identity-entry > svg { flex: 0 0 auto; color: #7d8da8; }
+.shinhan-identity-home__credential { display: block; width: 100%; padding: 13px 14px 14px; border: 0; border-radius: 22px; background: #fff; color: var(--shinhan-ink); text-align: left; box-shadow: 0 7px 19px rgb(34 55 90 / 6%); }
+.shinhan-identity-home__credential--did { margin-bottom: 10px; }
+.shinhan-identity-home__credential-row { display: flex; min-height: 44px; align-items: center; gap: 12px; }
+.shinhan-identity-home__credential-visual { display: grid; width: 34px; height: 42px; flex: 0 0 34px; place-items: center; }
+.shinhan-identity-home__credential-visual img { display: block; object-fit: contain; }
+.shinhan-identity-home__credential--did .shinhan-identity-home__credential-visual img { width: 54px; height: 54px; max-width: none; }
+.shinhan-identity-home__credential--mobile .shinhan-identity-home__credential-visual img { width: 22px; height: 34px; }
+.shinhan-identity-home__credential-row strong { min-width: 0; flex: 1; font-size: 16px; font-weight: 800; }
+.shinhan-identity-home__credential-action { display: grid; min-width: 43px; min-height: 31px; place-items: center; padding: 0 8px; border: 0; border-radius: 9px; background: #eaf1ff; color: var(--shinhan-blue); font-size: 13px; font-weight: 700; }
+.shinhan-identity-home__credential-note { display: block; margin: 8px 0 0; padding: 11px 7px; border-radius: 11px; background: #f6f8fc; color: #566175; font-size: 12px; font-weight: 700; line-height: 1.4; text-align: center; word-break: keep-all; overflow-wrap: normal; }
+.shinhan-identity-home__credential-note small { display: block; margin-top: 2px; color: #758298; font-size: 11px; font-weight: 700; }
 .shinhan-identity-home__icon { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 12px; background: #f1f4f9; color: #3676d6; }
-.shinhan-identity-home__mobile-id { padding: 13px 14px 14px; border-radius: 22px; background: #fff; box-shadow: 0 7px 19px rgb(34 55 90 / 6%); }
-.shinhan-identity-home__mobile-id-row { display: flex; min-height: 44px; align-items: center; gap: 12px; }
-.shinhan-identity-home__mobile-id-row img { display: block; width: 27px; height: 42px; flex: 0 0 27px; object-fit: contain; }
-.shinhan-identity-home__mobile-id-row strong { min-width: 0; flex: 1; color: var(--shinhan-ink); font-size: 16px; font-weight: 800; }
-.shinhan-identity-home__mobile-id-row button { min-width: 43px; min-height: 31px; border: 0; border-radius: 9px; background: #eaf1ff; color: var(--shinhan-blue); font-size: 13px; font-weight: 700; }
-.shinhan-identity-home__mobile-id p { margin: 8px 0 0; padding: 11px 7px; border-radius: 11px; background: #f6f8fc; color: #566175; font-size: 12px; font-weight: 700; line-height: 1.35; text-align: center; }
 .shinhan-identity-home__pay { overflow: hidden; margin-top: 38px; padding: 7px 7px 0; border-radius: 27px 27px 0 0; background: #34435c; box-shadow: 0 13px 26px rgb(26 45 80 / 13%); }
 .shinhan-identity-home__pay-row { display: grid; min-height: 89px; grid-template-columns: 44px minmax(0, 1fr) 56px; align-items: center; gap: 10px; padding: 15px 15px; }
 .shinhan-identity-home__pay-row--easy { border-radius: 21px 21px 0 0; background: #fff; color: #121e33; }
 .shinhan-identity-home__pay-row--sol { min-height: 98px; border-radius: 21px 21px 0 0; background: linear-gradient(180deg, #7175fe, #7879ff); color: #fff; }
 .shinhan-identity-home__pay-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px; }
 .shinhan-identity-home__pay-icon img { display: block; width: 42px; height: 42px; object-fit: contain; }
-.shinhan-identity-home__pay-icon--sol img { border-radius: 10px; }
-.shinhan-identity-home__pay-icon--wallet { background: linear-gradient(145deg, #fff, #d8e7fb); color: #1867ba; box-shadow: 0 2px 5px rgb(7 33 90 / 20%); }
+.shinhan-identity-home__pay-icon--sol img, .shinhan-identity-home__pay-icon--wallet img { width: 52px; height: 52px; max-width: none; }
 .shinhan-identity-home__pay-copy { display: grid; min-width: 0; gap: 4px; }
 .shinhan-identity-home__pay-copy strong { font-size: 16px; font-weight: 800; line-height: 1.25; }
 .shinhan-identity-home__pay-copy small { font-size: 11px; line-height: 1.35; word-break: keep-all; overflow-wrap: normal; }

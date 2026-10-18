@@ -1,8 +1,9 @@
-import { ArrowClockwise, CaretRight, ShieldCheck } from '@phosphor-icons/react';
+import { ArrowClockwise } from '@phosphor-icons/react';
 import type { Ref } from 'react';
 import { ShinhanPaymentDeck } from './ShinhanPaymentDeck';
 
 const icons = {
+  did: new URL('../assets/derived/identity-payment/did-credential.png', import.meta.url).href,
   mobileId: new URL('../assets/supplied/identity-payment/icon_mobile_id.png', import.meta.url).href,
   govCertificate: new URL('../assets/supplied/identity-payment/icon_gov_certificate.png', import.meta.url).href,
   bankCertificate: new URL('../assets/supplied/identity-payment/icon_bank_certificate.png', import.meta.url).href,
@@ -62,12 +63,11 @@ export function ShinhanIdentityHome({ connectedWalletCount, identityButtonRef, o
     <section className="shinhan-identity-home__top" aria-label="신분과 결제">
       <div className="shinhan-identity-home__top-inner">
         <div className="shinhan-identity-home__heading"><h2>신분/증명</h2><button type="button" aria-label="신분/증명 새로고침" onClick={onRefresh}><ArrowClockwise size={20} aria-hidden="true" /></button></div>
-        <button ref={identityButtonRef} className="shinhan-live-identity-entry" type="button" onClick={onIdentity}>
-          <span className="shinhan-live-identity-entry__icon"><ShieldCheck size={25} weight="duotone" aria-hidden="true" /></span>
-          <span><strong>신한 DID</strong><small>{connectedWalletCount !== null ? `내 디지털 신원인증 · 연결된 지갑 ${connectedWalletCount}개` : '내 디지털 신원인증 만들기'}</small></span>
-          <CaretRight size={20} aria-hidden="true" />
+        <button ref={identityButtonRef} className="shinhan-identity-home__credential shinhan-identity-home__credential--did" type="button" onClick={onIdentity}>
+          <span className="shinhan-identity-home__credential-row"><span className="shinhan-identity-home__credential-visual"><img src={icons.did} alt="" /></span><strong>신한 DID</strong><span className="shinhan-identity-home__credential-action">{connectedWalletCount !== null ? '확인' : '발급'}</span></span>
+          <span className="shinhan-identity-home__credential-note"><span>공개 없이 증명만, 내 디지털 신원인증</span><small>{connectedWalletCount !== null ? `연결된 지갑 ${connectedWalletCount}개` : '발급하고 지갑에 연결해요'}</small></span>
         </button>
-        <div className="shinhan-identity-home__mobile-id"><div className="shinhan-identity-home__mobile-id-row"><img src={icons.mobileId} alt="" /><strong>모바일 신분증</strong><button type="button" onClick={() => onAuxiliary('모바일 신분증')}>가입</button></div><p>실물 신분증처럼 그대로 사용해요!</p></div>
+        <div className="shinhan-identity-home__credential shinhan-identity-home__credential--mobile"><div className="shinhan-identity-home__credential-row"><span className="shinhan-identity-home__credential-visual"><img src={icons.mobileId} alt="" /></span><strong>모바일 신분증</strong><button className="shinhan-identity-home__credential-action" type="button" onClick={() => onAuxiliary('모바일 신분증')}>가입</button></div><p className="shinhan-identity-home__credential-note">실물 신분증처럼 그대로 사용해요!</p></div>
         <ShinhanPaymentDeck onEasy={() => onAuxiliary('쏠편한 결제')} onSolPay={() => onAuxiliary('SOL Pay 결제')} onWalletCard={onWalletCard} onWalletPos={onWalletPos} />
       </div>
     </section>
