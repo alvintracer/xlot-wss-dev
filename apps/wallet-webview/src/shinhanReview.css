@@ -91,10 +91,6 @@ button { font: inherit; }
 .shinhan-review-vault h2 { margin: 0 0 20px; color: var(--shinhan-text); font-size: 16px; }
 .shinhan-review-vault button { width: 100%; min-height: 41px; border: 0; border-radius: 10px; background: var(--shinhan-blue-soft); color: var(--shinhan-blue); font-size: 14px; font-weight: 700; }
 .shinhan-review-wallet { height: 100%; overflow-y: auto; background: #fff; scrollbar-width: none; }
-.shinhan-review-wallet__intro { display: flex; min-height: 87px; align-items: flex-start; gap: 13px; padding: 18px 20px 0; }
-.shinhan-review-wallet__badge { display: grid; width: 43px; height: 43px; place-items: center; border-radius: 14px; background: #0864ee; color: #fff; font-size: 27px; font-weight: 800; }
-.shinhan-review-wallet__intro strong { font-size: 20px; font-weight: 700; }
-.shinhan-review-wallet__intro p { margin: 6px 0 0; color: var(--shinhan-muted); font-size: 13px; }
 .shinhan-review-wallet__canvas { min-height: 100%; padding: 0 0 55px; background: var(--shinhan-canvas); }
 .shinhan-review-wallet__canvas > .shinhan-identity-home { min-height: calc(100% - 51px); }
 .shinhan-review-wallet__canvas > .shinhan-review-holdings { margin-top: 14px; }

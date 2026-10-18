@@ -32,6 +32,11 @@
 .shinhan-wallet-presentation .kw-flow-screen .kw-field-button strong { font-size: 16px; font-weight: 500; }
 .shinhan-wallet-presentation .kw-flow-screen .kw-field-button svg { right: 12px; bottom: 18px; }
 .shinhan-wallet-home-head { width: 100%; }
+.shinhan-wallet-profile { display: flex; min-height: 98px; align-items: center; gap: 13px; padding: 10px 20px 13px; background: #fff; }
+.shinhan-wallet-profile img { display: block; width: 44px; height: 49px; flex: 0 0 44px; object-fit: contain; }
+.shinhan-wallet-profile span { display: grid; min-width: 0; gap: 5px; }
+.shinhan-wallet-profile strong { overflow: hidden; color: #263447; font-size: 19px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.shinhan-wallet-profile small { color: #68758b; font-size: 13px; line-height: 1.3; }
 .shinhan-wallet-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); height: 51px; padding: 0 20px; background: #fff; }
 .shinhan-wallet-tabs button { position: relative; border: 0; background: transparent; color: #6c7688; font-size: 16px; font-weight: 700; cursor: pointer; }
 .shinhan-wallet-tabs button[aria-current='page'] { color: var(--shinhan-ink); font-weight: 800; }

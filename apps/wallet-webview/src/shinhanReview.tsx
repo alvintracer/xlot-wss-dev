@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ArrowClockwise, CaretRight, CreditCard, FileText, FolderOpen, IdentificationCard, Receipt, ShieldCheck, X } from '@phosphor-icons/react';
+import { ArrowClockwise, CaretRight, X } from '@phosphor-icons/react';
 import type { ReadyWalletHomePayload, WalletProfileSummary } from '@took-wss/contracts';
 import { ShinhanHostHeader, ShinhanHostNavigation, type ShinhanFinanceTab, type ShinhanRootTab } from '../../../tenants/shinhan/host-chrome/src';
 import { ShinhanSimplePasswordPreview } from '@took-wss/tenant-shinhan-host-chrome/simple-password-preview';
 import { ShinhanWalletSummary } from '../../../tenants/shinhan/presentation/src/ShinhanWalletSummary';
-import { ShinhanPaymentDeck } from '../../../tenants/shinhan/presentation/src/ShinhanPaymentDeck';
+import { ShinhanIdentityHome } from '../../../tenants/shinhan/presentation/src/ShinhanIdentityHome';
 import { ShinhanWalletTabsContext, type ShinhanWalletTab } from '../../../tenants/shinhan/presentation/src/ShinhanWalletTabs';
 import { ShinhanTransferPreview, type ShinhanTransferStage } from '@took-wss/tenant-shinhan-host-chrome/transfer-preview';
 import { ShinhanIdentityPreview, type ShinhanIdentityRecord } from './ShinhanIdentityPreview';
@@ -60,18 +60,8 @@ function ExchangeScene({ loading, onRefresh, onStart }: { loading: boolean; onRe
 function WalletScene({ hidden, identityRecord, onToggleBalance, onSheet, onIdentity }: { hidden: boolean; identityRecord: ShinhanIdentityRecord | null; onToggleBalance: () => void; onSheet: (name: string) => void; onIdentity: () => void }) {
   const [tab, setTab] = useState<ShinhanWalletTab>('identity');
   return <ShinhanWalletTabsContext.Provider value={{ tab, setTab }}><div className="shinhan-review-wallet" data-testid="shinhan-wallet-scene">
-    <div className="shinhan-review-wallet__intro"><span className="shinhan-review-wallet__badge">S</span><div><strong>내 지갑</strong><p>자산을 한곳에서 확인해요.</p></div></div>
     <div className="shinhan-review-wallet__canvas"><ShinhanWalletSummary walletHome={reviewHome} balanceHidden={hidden} onToggleBalance={onToggleBalance} onOpenWalletSelector={() => onSheet('지갑 선택')} onAddWallet={() => onSheet('지갑 추가')} onSelectWallet={async () => {}} onShowAction={(action) => onSheet(action === 'receive' ? '받기' : action === 'send' ? '보내기' : '바꾸기')} onRefreshWallet={() => onSheet('새로고침')} onNavigate={() => {}} />
-      {tab === 'identity' ? <div className="shinhan-identity-home">
-        <h2>신분/증명</h2>
-        <button className="shinhan-live-identity-entry" type="button" onClick={onIdentity}><span className="shinhan-live-identity-entry__icon"><ShieldCheck size={24} weight="duotone" aria-hidden="true" /></span><span><strong>신한 DID</strong><small>{identityRecord ? `내 디지털 신원인증 · 연결된 지갑 ${identityRecord.connectedWallets.length}개` : '내 디지털 신원인증 만들기'}</small></span><CaretRight size={20} aria-hidden="true" /></button>
-        <button className="shinhan-identity-home__row" type="button" onClick={() => onSheet('모바일 신분증')}><span className="shinhan-identity-home__icon"><IdentificationCard size={23} weight="duotone" aria-hidden="true" /></span><span><strong>모바일 신분증</strong><small>신분증을 간편하게 확인해요</small></span><CaretRight size={18} aria-hidden="true" /></button>
-        <ShinhanPaymentDeck onEasy={() => onSheet('쏠편한 결제')} onSolPay={() => onSheet('SOL Pay 결제')} onWalletCard={() => onSheet('월렛 카드')} onWalletPos={() => onSheet('월렛 POS')} />
-        <h2>전자문서 지갑</h2>
-        <div className="shinhan-identity-home__menu">{[
-          { label: '증명서 보관함', Icon: FolderOpen }, { label: '전자증명서', Icon: FileText }, { label: '받은 문서', Icon: Receipt }, { label: '결제 내역', Icon: CreditCard },
-        ].map(({ label, Icon }) => <button key={label} type="button" onClick={() => onSheet(label)}><span className="shinhan-identity-home__icon"><Icon size={21} aria-hidden="true" /></span><strong>{label}</strong><CaretRight size={17} aria-hidden="true" /></button>)}</div>
-      </div> : <>
+      {tab === 'identity' ? <ShinhanIdentityHome connectedWalletCount={identityRecord?.connectedWallets.length ?? null} onIdentity={onIdentity} onRefresh={() => onSheet('신분/증명 새로고침')} onAuxiliary={onSheet} onWalletCard={() => onSheet('월렛 카드')} onWalletPos={() => onSheet('월렛 POS')} /> : <>
         <section className="shinhan-review-holdings"><h2>보유 자산</h2><div><span className="shinhan-review-holdings__icon">A</span><span><strong>자산 A</strong><small>1.25개</small></span><b>{hidden ? '••••' : '180,000원'}</b></div><div><span className="shinhan-review-holdings__icon">B</span><span><strong>자산 B</strong><small>14개</small></span><b>{hidden ? '••••' : '100,000원'}</b></div></section>
         <section className="shinhan-review-activity"><h2>최근 내역</h2><p>아직 내역이 없어요.</p></section>
       </>}

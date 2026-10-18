@@ -1,4 +1,4 @@
-import { CaretLeft, House } from '@phosphor-icons/react';
+import { CaretLeft } from '@phosphor-icons/react';
 import './styles.css';
 export { ShinhanHostLoading } from './ShinhanHostLoading';
 
@@ -37,7 +37,7 @@ export function ShinhanHostHeader({ section, financeTab = 'bank', onFinanceTab, 
         {section === 'wallet' && onSettings ? <button type="button" aria-label="설정" onClick={onSettings}><img src={icon('icon_gear.png')} alt="" /></button> : null}
         {section === 'finance' ? <button type="button" aria-label="쏠지갑으로 이동" onClick={() => onAction?.('wallet')}><img src={icon('icon_wallet.png')} alt="" /></button> : null}
         <button type="button" aria-label={section === 'finance' ? '검색' : '홈'} onClick={() => onAction?.(section === 'finance' ? 'search' : 'home')}>
-          {section === 'finance' ? <img src={icon('icon_search.png')} alt="" /> : <House size={22} weight="regular" aria-hidden="true" />}
+          <img src={icon(section === 'finance' ? 'icon_search.png' : 'icon_home_outline.png')} alt="" />
         </button>
       </div>
     </div>

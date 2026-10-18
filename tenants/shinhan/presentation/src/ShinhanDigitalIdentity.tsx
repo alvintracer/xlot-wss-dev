@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { ArrowRight, CaretLeft, CaretRight, CheckCircle, CreditCard, FileText, Fingerprint, FolderOpen, IdentificationCard, LinkSimple, Receipt, ShieldCheck, UserCircle, Wallet, X } from '@phosphor-icons/react';
+import { ArrowRight, CaretLeft, CaretRight, CheckCircle, CreditCard, FileText, Fingerprint, IdentificationCard, LinkSimple, ShieldCheck, UserCircle, Wallet, X } from '@phosphor-icons/react';
 import type { DigitalIdentityHostAction, DigitalIdentityHostResult, DigitalIdentitySummary, WalletProfileSummary } from '@took-wss/contracts';
 import './identity.css';
 import { useShinhanWalletTabs } from './ShinhanWalletTabs';
 import { ShinhanWalletMark } from './ShinhanWalletMark';
-import { ShinhanPaymentDeck } from './ShinhanPaymentDeck';
+import { ShinhanIdentityHome, shinhanIdentityServiceIcon } from './ShinhanIdentityHome';
 
 const superSolLogo = new URL('../assets/preview/super-sol-app-mark.png', import.meta.url).href;
 
@@ -177,23 +177,16 @@ export function ShinhanDigitalIdentityEntry({ walletId, wallets, onFocusedOverla
   const linked = new Set(summary?.connectedWallets.map((wallet) => wallet.walletId) ?? []);
   const availableWallets = wallets.filter((wallet) => !linked.has(wallet.walletId));
   const selectedWallet = wallets.find((wallet) => wallet.walletId === selectedWalletId);
+  const auxiliaryIcon = auxiliarySheet ? shinhanIdentityServiceIcon(auxiliarySheet) : undefined;
+  const refreshHome = () => {
+    void onRequest('status').then((result) => {
+      if (result.ok) { setSummary(result.summary ?? null); setBiometricEnabled(Boolean(result.biometricEnabled)); }
+    }).catch(() => undefined);
+  };
 
   return <>
-    <div className="shinhan-identity-home">
-      <h2>신분/증명</h2>
-      <button ref={entryRef} className="shinhan-live-identity-entry" type="button" onClick={() => setOpen(true)}>
-        <span className="shinhan-live-identity-entry__icon"><ShieldCheck size={24} weight="duotone" aria-hidden="true" /></span>
-        <span><strong>신한 DID</strong><small>{summary ? `내 디지털 신원인증 · 연결된 지갑 ${linked.size}개` : '내 디지털 신원인증 만들기'}</small></span>
-        <CaretRight size={20} aria-hidden="true" />
-      </button>
-      <button className="shinhan-identity-home__row" type="button" onClick={() => showAuxiliary('모바일 신분증')}><span className="shinhan-identity-home__icon"><IdentificationCard size={23} weight="duotone" aria-hidden="true" /></span><span><strong>모바일 신분증</strong><small>신분증을 간편하게 확인해요</small></span><CaretRight size={18} aria-hidden="true" /></button>
-      <ShinhanPaymentDeck onEasy={() => showAuxiliary('쏠편한 결제')} onSolPay={() => showAuxiliary('SOL Pay 결제')} onWalletCard={() => openWalletPayment('card')} onWalletPos={() => openWalletPayment('pos')} />
-      <h2>전자문서 지갑</h2>
-      <div className="shinhan-identity-home__menu">{[
-        { label: '증명서 보관함', Icon: FolderOpen }, { label: '전자증명서', Icon: FileText }, { label: '받은 문서', Icon: Receipt }, { label: '결제 내역', Icon: CreditCard },
-      ].map(({ label, Icon }) => <button key={label} type="button" onClick={() => showAuxiliary(label)}><span className="shinhan-identity-home__icon"><Icon size={21} aria-hidden="true" /></span><strong>{label}</strong><CaretRight size={17} aria-hidden="true" /></button>)}</div>
-    </div>
-    {auxiliarySheet ? <section ref={auxiliaryRef} className="shinhan-identity-home__sheet" role="dialog" aria-modal="true" aria-label={auxiliarySheet} onKeyDown={onAuxiliaryKeyDown}><header><button type="button" aria-label="뒤로" onClick={closeAuxiliary}><CaretLeft size={23} aria-hidden="true" /></button><strong>{auxiliarySheet}</strong><button type="button" aria-label="닫기" onClick={closeAuxiliary}><X size={21} aria-hidden="true" /></button></header><div><span className="shinhan-identity-home__icon">{auxiliarySheet.includes('결제') ? <CreditCard size={27} aria-hidden="true" /> : <FileText size={27} aria-hidden="true" />}</span><h2>{auxiliarySheet}</h2><p>{auxiliarySheet === '모바일 신분증' ? '모바일 신분증은 슈퍼쏠에서 별도로 관리해요. 신한 DID의 연결된 지갑과 증명 정보는 위에서 확인할 수 있어요.' : auxiliarySheet.includes('결제') ? '이 결제 서비스는 슈퍼쏠에서 이용할 수 있어요.' : '전자문서는 슈퍼쏠에서 관리해요. 신한 DID 증명과 연결된 지갑은 위에서 확인할 수 있어요.'}</p></div><footer><button type="button" onClick={closeAuxiliary}>확인</button></footer></section> : null}
+    <ShinhanIdentityHome connectedWalletCount={summary ? linked.size : null} identityButtonRef={entryRef} onIdentity={() => setOpen(true)} onRefresh={refreshHome} onAuxiliary={showAuxiliary} onWalletCard={() => openWalletPayment('card')} onWalletPos={() => openWalletPayment('pos')} />
+    {auxiliarySheet ? <section ref={auxiliaryRef} className="shinhan-identity-home__sheet" role="dialog" aria-modal="true" aria-label={auxiliarySheet} onKeyDown={onAuxiliaryKeyDown}><header><button type="button" aria-label="뒤로" onClick={closeAuxiliary}><CaretLeft size={23} aria-hidden="true" /></button><strong>{auxiliarySheet}</strong><button type="button" aria-label="닫기" onClick={closeAuxiliary}><X size={21} aria-hidden="true" /></button></header><div><span className="shinhan-identity-home__icon">{auxiliaryIcon ? <img src={auxiliaryIcon} alt="" /> : auxiliarySheet.includes('결제') ? <CreditCard size={27} aria-hidden="true" /> : <FileText size={27} aria-hidden="true" />}</span><h2>{auxiliarySheet}</h2><p>{auxiliarySheet === '모바일 신분증' ? '모바일 신분증은 슈퍼쏠에서 별도로 관리해요. 신한 DID의 연결된 지갑과 증명 정보는 위에서 확인할 수 있어요.' : auxiliarySheet.includes('결제') ? '이 결제 서비스는 슈퍼쏠에서 이용할 수 있어요.' : '이 서비스는 슈퍼쏠에서 이용할 수 있어요.'}</p></div><footer><button type="button" onClick={closeAuxiliary}>확인</button></footer></section> : null}
     {open ? <section ref={dialogRef} className="shinhan-identity shinhan-identity--live" role="dialog" aria-modal="true" aria-label="내 디지털 신원인증" onKeyDown={onDialogKeyDown}>
       <header className="shinhan-identity__header"><button type="button" aria-label="뒤로" onClick={back}><CaretLeft size={24} aria-hidden="true" /></button><strong>내 신원인증</strong><button type="button" aria-label="닫기" onClick={close}><X size={21} aria-hidden="true" /></button></header>
       <div className="shinhan-identity__scroll" aria-live="polite"><div className="shinhan-identity__page" key={stage}>

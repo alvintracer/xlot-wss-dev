@@ -3,11 +3,13 @@ import type { ReadyWalletSummaryProps } from '@took-wss/tenant-kiwoom-presentati
 import { useShinhanWalletTabs } from './ShinhanWalletTabs';
 import { ShinhanWalletMark } from './ShinhanWalletMark';
 
+const levelIcon = new URL('../assets/supplied/identity-payment/icon_user_level_m.png', import.meta.url).href;
+
 export function ShinhanWalletSummary({ walletHome, balanceHidden, onToggleBalance, onOpenWalletSelector, onAddWallet, onShowAction, onRefreshWallet }: ReadyWalletSummaryProps) {
-  const { tab, setTab } = useShinhanWalletTabs();
+  const { tab, setTab, displayName } = useShinhanWalletTabs();
   const total = walletHome.totalFiat?.display ?? '—';
   const detail = walletHome.totalFiat?.stale ? '금액을 업데이트하고 있어요' : !walletHome.totalFiat ? '금액 정보를 확인할 수 없어요' : walletHome.assets.length === 0 ? '보유 자산이 없어요' : `보유 자산 ${walletHome.assets.length}개`;
-  return <div className="shinhan-wallet-home-head"><nav className="shinhan-wallet-tabs" aria-label="쏠지갑 메뉴" data-active={tab}>
+  return <div className="shinhan-wallet-home-head"><div className="shinhan-wallet-profile"><img src={levelIcon} alt="" /><span><strong>{displayName?.trim() ? `${displayName.trim()} 님` : '고객님'}</strong><small>이제 더 자주 만나요!</small></span></div><nav className="shinhan-wallet-tabs" aria-label="쏠지갑 메뉴" data-active={tab}>
     <button type="button" aria-current={tab === 'identity' ? 'page' : undefined} onClick={() => setTab('identity')}>신원·결제</button>
     <button type="button" aria-current={tab === 'assets' ? 'page' : undefined} onClick={() => setTab('assets')}>디지털자산</button>
   </nav>{tab === 'assets' ? <section className="shinhan-wallet-summary" aria-label="내 지갑 자산 요약">
