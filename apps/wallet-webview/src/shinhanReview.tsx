@@ -66,7 +66,6 @@ function WalletScene({ hidden, identityRecord, onToggleBalance, onSheet, onIdent
         <h2>신분/증명</h2>
         <button className="shinhan-live-identity-entry" type="button" onClick={onIdentity}><span className="shinhan-live-identity-entry__icon"><ShieldCheck size={24} weight="duotone" aria-hidden="true" /></span><span><strong>신한 DID</strong><small>{identityRecord ? `내 디지털 신원인증 · 연결된 지갑 ${identityRecord.connectedWallets.length}개` : '내 디지털 신원인증 만들기'}</small></span><CaretRight size={20} aria-hidden="true" /></button>
         <button className="shinhan-identity-home__row" type="button" onClick={() => onSheet('모바일 신분증')}><span className="shinhan-identity-home__icon"><IdentificationCard size={23} weight="duotone" aria-hidden="true" /></span><span><strong>모바일 신분증</strong><small>신분증을 간편하게 확인해요</small></span><CaretRight size={18} aria-hidden="true" /></button>
-        <h2>결제</h2>
         <ShinhanPaymentDeck onEasy={() => onSheet('쏠편한 결제')} onSolPay={() => onSheet('SOL Pay 결제')} onWalletCard={() => onSheet('월렛 카드')} onWalletPos={() => onSheet('월렛 POS')} />
         <h2>전자문서 지갑</h2>
         <div className="shinhan-identity-home__menu">{[

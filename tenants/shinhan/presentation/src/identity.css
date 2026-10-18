@@ -154,7 +154,7 @@
 .shinhan-identity-home__row strong { font-size: 14px; }
 .shinhan-identity-home__row small { color: var(--shinhan-muted); font-size: 11px; }
 .shinhan-identity-home__row > svg { color: #8d98a9; }
-.shinhan-identity-home__pay { overflow: hidden; padding: 7px 7px 0; border-radius: 27px 27px 0 0; background: #34435c; box-shadow: 0 13px 26px rgb(26 45 80 / 13%); }
+.shinhan-identity-home__pay { overflow: hidden; margin-top: 38px; padding: 7px 7px 0; border-radius: 27px 27px 0 0; background: #34435c; box-shadow: 0 13px 26px rgb(26 45 80 / 13%); }
 .shinhan-identity-home__pay-row { display: grid; min-height: 89px; grid-template-columns: 44px minmax(0, 1fr) 56px; align-items: center; gap: 10px; padding: 15px 15px; }
 .shinhan-identity-home__pay-row--easy { border-radius: 21px 21px 0 0; background: #fff; color: #121e33; }
 .shinhan-identity-home__pay-row--sol { min-height: 98px; border-radius: 21px 21px 0 0; background: linear-gradient(120deg, #7775fa, #686df3); color: #fff; }
@@ -169,7 +169,8 @@
 .shinhan-identity-home__pay-row--sol small, .shinhan-identity-home__pay-row--wallet small { color: rgb(255 255 255 / 85%); }
 .shinhan-identity-home__pay-row button { min-height: 35px; padding: 0 8px; border: 1px solid #d9dfe7; border-radius: 10px; background: #fff; color: #172238; font-size: 13px; font-weight: 800; }
 .shinhan-identity-home__pay-row--sol button, .shinhan-identity-home__pay-row--wallet button { border-color: rgb(255 255 255 / 50%); background: rgb(255 255 255 / 8%); color: #fff; }
-.shinhan-identity-home__pay-wallet { padding: 14px 10px 13px; color: #fff; }
+.shinhan-identity-home__pay-wallet { position: relative; margin-top: -8px; padding: 22px 10px 13px; border-radius: 18px 18px 0 0; background: #34435c; color: #fff; }
+.shinhan-identity-home__pay-wallet::before { position: absolute; top: 0; left: 50%; width: 66px; height: 16px; transform: translateX(-50%); border-radius: 0 0 33px 33px; background: #686df3; content: ''; pointer-events: none; }
 .shinhan-identity-home__pay-wallet-label { display: inline-block; margin: 0 0 11px 6px; padding: 5px 11px; border-radius: 6px; background: rgb(18 36 68 / 38%); font-size: 12px; font-weight: 700; }
 .shinhan-identity-home__pay-row--wallet { min-height: 78px; padding: 10px 8px; border-top: 1px solid rgb(255 255 255 / 13%); }
 .shinhan-identity-home__pay-row--wallet:first-of-type { border-top: 0; }

@@ -187,7 +187,6 @@ export function ShinhanDigitalIdentityEntry({ walletId, wallets, onFocusedOverla
         <CaretRight size={20} aria-hidden="true" />
       </button>
       <button className="shinhan-identity-home__row" type="button" onClick={() => showAuxiliary('모바일 신분증')}><span className="shinhan-identity-home__icon"><IdentificationCard size={23} weight="duotone" aria-hidden="true" /></span><span><strong>모바일 신분증</strong><small>신분증을 간편하게 확인해요</small></span><CaretRight size={18} aria-hidden="true" /></button>
-      <h2>결제</h2>
       <ShinhanPaymentDeck onEasy={() => showAuxiliary('쏠편한 결제')} onSolPay={() => showAuxiliary('SOL Pay 결제')} onWalletCard={() => openWalletPayment('card')} onWalletPos={() => openWalletPayment('pos')} />
       <h2>전자문서 지갑</h2>
       <div className="shinhan-identity-home__menu">{[
