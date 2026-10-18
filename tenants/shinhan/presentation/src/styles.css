@@ -40,7 +40,9 @@
 .shinhan-wallet-presentation .kw-wallet-home:has(.shinhan-wallet-tabs[data-active='identity']) > :not(.shinhan-wallet-home-head):not(.shinhan-identity-home):not(.shinhan-identity):not(.shinhan-identity-home__sheet) { display: none; }
 .shinhan-wallet-presentation .kw-wallet-home:has(.shinhan-wallet-tabs[data-active='assets']) > .shinhan-identity-home { display: none; }
 .shinhan-wallet-presentation .kw-card { box-shadow: var(--shinhan-card-shadow); }
-.shinhan-wallet-presentation .kw-wallet-card-visual { border-radius: 18px; background: linear-gradient(135deg, #2d8af4, #0649f6); }
+.shinhan-wallet-presentation .kw-wallet-card-visual { border-radius: 18px; background: linear-gradient(140deg, #126de9, #2388f4 64%, #3aa4f4); }
+.shinhan-wallet-presentation .kw-wallet-card-visual::before { position: absolute; right: -28px; bottom: -49px; width: 190px; height: 190px; background: url('../assets/preview/bank-mark-preview.png') center / contain no-repeat; opacity: .16; content: ''; pointer-events: none; }
+.shinhan-wallet-presentation .kw-wallet-card-visual__shine { display: none; }
 .shinhan-wallet-presentation .kw-payment-scan { background: var(--shinhan-blue-soft); color: var(--shinhan-blue); }
 .shinhan-wallet-presentation .kw-link { color: var(--shinhan-blue); }
 .shinhan-wallet-presentation .kw-sheet { border-radius: 22px 22px 0 0; box-shadow: 0 -8px 32px rgb(19 38 78 / 12%); }
@@ -57,15 +59,15 @@
 .shinhan-wallet-summary__selector span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shinhan-wallet-summary__tools { display: flex; gap: 2px; }
 .shinhan-wallet-summary__tools button, .shinhan-wallet-summary__selected button { display: grid; width: 35px; height: 35px; place-items: center; border: 0; border-radius: 10px; background: none; color: var(--shinhan-muted); }
-.shinhan-wallet-summary__eyebrow { margin: 24px 0 4px; color: var(--shinhan-muted); font-size: 12px; }
+.shinhan-wallet-presentation .kw-root .shinhan-wallet-summary__eyebrow { margin: 25px 0 8px; color: var(--shinhan-muted); font-size: 12px; }
 .shinhan-wallet-summary__amount { display: block; color: var(--shinhan-ink); font-size: clamp(25px, 7vw, 29px); font-weight: 800; letter-spacing: -.035em; line-height: 1.25; }
-.shinhan-wallet-summary__detail { margin: 5px 0 18px; color: var(--shinhan-muted); font-size: 12px; line-height: 1.5; }
-.shinhan-wallet-summary__selected { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 11px 8px 13px; border-radius: 13px; background: #f5f7fc; }
+.shinhan-wallet-presentation .kw-root .shinhan-wallet-summary__detail { margin: 9px 0 25px; color: var(--shinhan-muted); font-size: 12px; line-height: 1.5; }
+.shinhan-wallet-summary__selected { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 11px 10px 13px; border-radius: 13px; background: #f5f7fc; }
 .shinhan-wallet-summary__selected span { display: grid; min-width: 0; gap: 3px; }
 .shinhan-wallet-summary__selected small { color: var(--shinhan-muted); font-size: 11px; }
 .shinhan-wallet-summary__selected strong { overflow: hidden; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .shinhan-wallet-summary__selected button { flex: 0 0 35px; background: #fff; color: var(--shinhan-blue); }
-.shinhan-wallet-summary__actions { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 7px; margin-top: 18px; }
+.shinhan-wallet-summary__actions { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 7px; margin-top: 20px; }
 .shinhan-wallet-summary__actions button { min-height: 45px; border: 0; border-radius: var(--shinhan-control-radius); background: var(--shinhan-blue-soft); color: var(--shinhan-blue); font-size: 14px; font-weight: 700; }
 .shinhan-wallet-summary__actions button:first-child { background: var(--shinhan-blue); color: #fff; }
 .shinhan-wallet-summary button:focus-visible { outline: 2px solid var(--shinhan-blue); outline-offset: 2px; }
@@ -110,7 +112,7 @@
 .shinhan-wallet-presentation .kw-root .kw-transfer-footer .kw-button { min-height: 49px; border-radius: var(--shinhan-control-radius); background: var(--shinhan-blue); color: #fff; font-size: 14px; font-weight: 700; }
 .shinhan-wallet-presentation .kw-root .kw-transfer-footer .kw-button:disabled { background: #c7d7ee; }
 .shinhan-wallet-presentation .kw-root .kw-exchange-card { border: 1px solid #e5eaf4; border-radius: 18px; background: #fff; box-shadow: var(--shinhan-card-shadow); }
-.shinhan-wallet-presentation .kw-root .kw-transfer-flow[data-action='exchange'] .kw-transfer-scroll { background: var(--shinhan-canvas); }
+.shinhan-wallet-presentation .kw-root .kw-transfer-flow[data-action='exchange'] .kw-transfer-scroll { background: linear-gradient(180deg, #fff 0, #f8fbff 110px, #eff4fd 360px, var(--shinhan-canvas) 100%); }
 .shinhan-wallet-presentation .kw-root .kw-transfer-flow[data-action='exchange'] .kw-transfer-page { padding-top: 26px; }
 .shinhan-wallet-presentation .kw-root .kw-exchange-card--active { box-shadow: 0 0 0 1px rgb(5 101 245 / 20%), var(--shinhan-card-shadow); }
 .shinhan-wallet-presentation .kw-root .kw-exchange-reverse { border-color: var(--shinhan-blue-line); background: #fff; color: var(--shinhan-blue); box-shadow: var(--shinhan-card-shadow); }

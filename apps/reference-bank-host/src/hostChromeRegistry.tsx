@@ -6,7 +6,7 @@ import {
 } from '@took-wss/tenant-kiwoom-host-chrome';
 import { JbHostHeader, JbHostNavigation, JbHostPreview } from '@took-wss/tenant-jb-host-chrome';
 import { NamuHostHeader, NamuHostNavigation } from '@took-wss/tenant-namu-host-chrome';
-import { ShinhanHostHeader, ShinhanHostNavigation, type ShinhanFinanceTab, type ShinhanRootTab } from '@took-wss/tenant-shinhan-host-chrome';
+import { ShinhanHostHeader, ShinhanHostLoading, ShinhanHostNavigation, type ShinhanFinanceTab, type ShinhanRootTab } from '@took-wss/tenant-shinhan-host-chrome';
 import { ShinhanHostPreview } from './ShinhanHostPreview';
 import type { ComponentType } from 'react';
 
@@ -19,6 +19,7 @@ export interface HostChromeProps extends KiwoomHostChromeProps {
 export interface HostChromeProfile {
   Header: ComponentType<HostChromeProps>;
   Navigation: ComponentType<HostChromeProps>;
+  Loading?: ComponentType<{ phase: 'idle' | 'loading' | 'ready' }>;
   Preview?: ComponentType<HostChromeProps>;
   initialTab: string;
   walletTab: string;
@@ -86,6 +87,7 @@ const hostChromeProfiles: Readonly<Record<string, HostChromeProfile>> = {
   'shinhan-super-sol-preview-v1': {
     Header: ShinhanHeader,
     Navigation: ShinhanNavigation,
+    Loading: ShinhanHostLoading,
     Preview: ShinhanHostPreview,
     initialTab: 'finance:bank',
     walletTab: 'wallet',

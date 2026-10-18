@@ -369,6 +369,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
   const checkingExchangeSignRef = useRef(false);
   const exchangeSignActionsRef = useRef<{ approve: (pin: string) => Promise<void>; cancel: () => void } | null>(null);
   const sessionTokenRef = useRef<string | null>(null);
+  const sessionExpiresAtRef = useRef(0);
   const securityCeremonyRef = useRef<SecurityCeremony | null>(null);
   const sarPreparationInProgress = useRef(false);
   const autoStartAttempted = useRef(false);
@@ -385,6 +386,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
   const hostChrome = getHostChromeProfile(tenantOptions[tenantId].presentationProfileId);
   const HostHeader = hostChrome.Header;
   const HostNavigation = hostChrome.Navigation;
+  const HostLoading = hostChrome.Loading;
   const HostPreview = hostChrome.Preview;
   const showWallet = !HostPreview || hostTab === hostChrome.walletTab;
   const showRootChrome = shellMode === 'root' || tenantOptions[tenantId].focusedFlow === 'keep-host-chrome';
@@ -1426,6 +1428,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
     setWalletScreenReady(false);
     setCustomerName(null);
     sessionTokenRef.current = null;
+    sessionExpiresAtRef.current = 0;
     setEvents([]);
     setHostFeedback(null);
     setShellMode('root');
@@ -1439,6 +1442,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
     setSession(null);
     setCustomerName(null);
     sessionTokenRef.current = null;
+    sessionExpiresAtRef.current = 0;
     setEvents([]);
     setShellMode('root');
     setStatus('idle');
@@ -1487,6 +1491,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
     cancelSecurityCeremony();
     resetIdentityApproval();
     sessionTokenRef.current = null;
+    sessionExpiresAtRef.current = 0;
     setSession(null);
     setCustomerName(null);
     setStatus('loading');
@@ -1495,11 +1500,13 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
     try {
       const createdSession = await issueSession();
       sessionTokenRef.current = createdSession.sessionToken;
+      sessionExpiresAtRef.current = Date.parse(createdSession.expiresAt);
       setSession(createdSession);
       setStatus('ready');
     } catch {
       setSession(null);
       sessionTokenRef.current = null;
+      sessionExpiresAtRef.current = 0;
       setStatus('error');
     }
   };
@@ -1507,6 +1514,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
   const refreshSession = useCallback(async (): Promise<string | null> => {
     const renewed = await issueSession();
     sessionTokenRef.current = renewed.sessionToken;
+    sessionExpiresAtRef.current = Date.parse(renewed.expiresAt);
     return renewed.sessionToken;
   }, [issueSession]);
 
@@ -1696,8 +1704,6 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
         || !/^[0-9a-f-]{36}$/i.test(event.data.requestId)
         || !['status', 'verify-person', 'authorize', 'issue', 'bind-wallet', 'verify', 'open-biometric-settings'].includes(event.data.action)
         || (event.data.walletId !== undefined && typeof event.data.walletId !== 'string')) return;
-      const token = sessionTokenRef.current;
-      if (!token) return;
       const request = event.data as DigitalIdentityHostRequest;
       const respond = (result: Partial<import('@took-wss/contracts').DigitalIdentityHostResult>) => frame.contentWindow?.postMessage({
         type: 'took-wss:digital-identity-result', protocolVersion: 1, requestId: request.requestId, ok: false, ...result,
@@ -1706,64 +1712,76 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
         respond({ error: 'identity_unavailable' });
         return;
       }
-      if (request.action === 'verify-person') {
-        window.setTimeout(() => {
-          identityPersonCheck.current = { token, expiresAt: Date.now() + 10 * 60_000 };
-          respond({ ok: true });
-        }, 750);
-        return;
-      }
-      if (request.action === 'open-biometric-settings') {
-        setAppSettingsOpen(true);
-        respond({ ok: true });
-        return;
-      }
-      if (request.action === 'authorize') {
-        void (async () => {
+      void (async () => {
+        let token = sessionTokenRef.current;
+        if (!token) { respond({ error: 'identity_session_unavailable' }); return; }
+        // DID requests are handled by the Host, outside the wallet SDK's session refresh path.
+        if (sessionExpiresAtRef.current <= Date.now() + 180_000) {
           try {
-            const scope = appPinScope(tenantId, token);
-            if (await biometricPinEnabled(scope)) {
-              await authorizeDigitalIdentityBiometric(scope);
-              identityAuthorization.current = { token, expiresAt: Date.now() + 120_000 };
-              respond({ ok: true, authorizationMethod: 'biometric' });
-            } else {
-              const approved = await new Promise<boolean>((resolve) => setIdentityPinRequest({ resolve }));
-              if (approved) identityAuthorization.current = { token, expiresAt: Date.now() + 120_000 };
-              respond(approved ? { ok: true, authorizationMethod: 'simple-password-preview' } : { error: 'authorization_cancelled' });
-            }
-          } catch { respond({ error: 'authorization_cancelled' }); }
-        })();
-        return;
-      }
-      if (request.action === 'status') {
-        void biometricPinEnabled(appPinScope(tenantId, token)).then((enabled) => {
-          void handleDevDigitalIdentity({ request, tenantId, customerRef: previewCustomerRef,
-            sessionToken: token, bffUrl,
-            signWallet: ({ walletId, address, message }) => onPersonalSign({ exchange: 'identity', walletId, address, message }),
-          }).then((result) => respond({ ...result, biometricEnabled: enabled }));
-        });
-        return;
-      }
-      if (request.action === 'issue' || request.action === 'verify') {
-        const grant = identityAuthorization.current;
-        if (!grant || grant.token !== token || grant.expiresAt < Date.now()) {
-          respond({ error: 'identity_authorization_required' });
+            const renewed = await refreshSession();
+            if (!renewed) throw new Error('identity_session_unavailable');
+            token = renewed;
+          } catch { respond({ error: 'identity_session_unavailable' }); return; }
+        }
+        if (request.action === 'verify-person') {
+          window.setTimeout(() => {
+            identityPersonCheck.current = { token, expiresAt: Date.now() + 10 * 60_000 };
+            respond({ ok: true });
+          }, 750);
           return;
         }
-        if (request.action === 'issue') {
-          const person = identityPersonCheck.current;
-          if (!person || person.token !== token || person.expiresAt < Date.now()) {
-            respond({ error: 'identity_host_check_required' });
+        if (request.action === 'open-biometric-settings') {
+          setAppSettingsOpen(true);
+          respond({ ok: true });
+          return;
+        }
+        if (request.action === 'authorize') {
+          void (async () => {
+            try {
+              const scope = appPinScope(tenantId, token);
+              if (await biometricPinEnabled(scope)) {
+                await authorizeDigitalIdentityBiometric(scope);
+                identityAuthorization.current = { token, expiresAt: Date.now() + 120_000 };
+                respond({ ok: true, authorizationMethod: 'biometric' });
+              } else {
+                const approved = await new Promise<boolean>((resolve) => setIdentityPinRequest({ resolve }));
+                if (approved) identityAuthorization.current = { token, expiresAt: Date.now() + 120_000 };
+                respond(approved ? { ok: true, authorizationMethod: 'simple-password-preview' } : { error: 'authorization_cancelled' });
+              }
+            } catch { respond({ error: 'authorization_cancelled' }); }
+          })();
+          return;
+        }
+        if (request.action === 'status') {
+          void biometricPinEnabled(appPinScope(tenantId, token)).then((enabled) => {
+            void handleDevDigitalIdentity({ request, tenantId, customerRef: previewCustomerRef,
+              sessionToken: token, bffUrl,
+              signWallet: ({ walletId, address, message }) => onPersonalSign({ exchange: 'identity', walletId, address, message }),
+            }).then((result) => respond({ ...result, biometricEnabled: enabled }));
+          });
+          return;
+        }
+        if (request.action === 'issue' || request.action === 'verify') {
+          const grant = identityAuthorization.current;
+          if (!grant || grant.token !== token || grant.expiresAt < Date.now()) {
+            respond({ error: 'identity_authorization_required' });
             return;
           }
-          identityPersonCheck.current = null;
+          if (request.action === 'issue') {
+            const person = identityPersonCheck.current;
+            if (!person || person.token !== token || person.expiresAt < Date.now()) {
+              respond({ error: 'identity_host_check_required' });
+              return;
+            }
+            identityPersonCheck.current = null;
+          }
+          identityAuthorization.current = null;
         }
-        identityAuthorization.current = null;
-      }
-      void handleDevDigitalIdentity({ request, tenantId, customerRef: previewCustomerRef,
-        sessionToken: token, bffUrl,
-        signWallet: ({ walletId, address, message }) => onPersonalSign({ exchange: 'identity', walletId, address, message }),
-      }).then((result) => frame.contentWindow?.postMessage(result, walletOrigin));
+        void handleDevDigitalIdentity({ request, tenantId, customerRef: previewCustomerRef,
+          sessionToken: token, bffUrl,
+          signWallet: ({ walletId, address, message }) => onPersonalSign({ exchange: 'identity', walletId, address, message }),
+        }).then((result) => frame.contentWindow?.postMessage(result, walletOrigin));
+      })().catch(() => respond({ error: 'identity_unavailable' }));
     };
     window.addEventListener('message', onDigitalIdentityRequest);
     const client = new WssHostClient({
@@ -1933,17 +1951,19 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
             onBiometricChange={setAppBiometricEnabled}
             onClose={() => setAppSettingsOpen(false)} /> : null}
           {appOnlyPreview && (!walletScreenReady || status === 'error') ? (
-            <div className={`app-entry${status !== 'error' && tenantOptions[tenantId].loadingSplash ? ' app-entry--splash' : ''}`} role="status" aria-live="polite" style={{
+            <div className={`app-entry${status !== 'error' && !HostLoading && tenantOptions[tenantId].loadingSplash ? ' app-entry--splash' : ''}`} role="status" aria-live="polite" style={{
               '--app-loading-canvas': tenantOptions[tenantId].loadingCanvas,
               '--app-loading-ink': tenantOptions[tenantId].loadingInk,
               '--app-loading-primary': tenantOptions[tenantId].loadingPrimary,
               '--app-splash-background': tenantOptions[tenantId].loadingSplash?.background,
               '--app-splash-image': tenantOptions[tenantId].loadingSplash ? `url("${tenantOptions[tenantId].loadingSplash.image}")` : undefined,
             } as CSSProperties}>
-              <div className="app-entry-mark" aria-hidden="true"><LockKey size={28} weight="duotone" />{status !== 'error' ? <span className="app-entry-spinner" /> : null}</div>
-              <h1>{status === 'error' ? '지갑을 열지 못했어요' : resumingCreation ? '새 지갑을 생성하고 있어요' : '안전한 지갑을 준비하고 있어요'}</h1>
-              <p>{status === 'error' ? '연결 상태를 확인하고 다시 시도해 주세요.' : '잠시만 기다려 주세요.'}</p>
-              {status === 'error' ? <button type="button" onClick={() => void createSession()}>다시 시도</button> : null}
+              {status !== 'error' && HostLoading ? <HostLoading phase={status} /> : <>
+                <div className="app-entry-mark" aria-hidden="true"><LockKey size={28} weight="duotone" />{status !== 'error' ? <span className="app-entry-spinner" /> : null}</div>
+                <h1>{status === 'error' ? '지갑을 열지 못했어요' : resumingCreation ? '새 지갑을 생성하고 있어요' : '안전한 지갑을 준비하고 있어요'}</h1>
+                <p>{status === 'error' ? '연결 상태를 확인하고 다시 시도해 주세요.' : '잠시만 기다려 주세요.'}</p>
+                {status === 'error' ? <button type="button" onClick={() => void createSession()}>다시 시도</button> : null}
+              </>}
             </div>
           ) : null}
           {securityCeremony ? (

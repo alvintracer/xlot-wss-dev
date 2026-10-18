@@ -34,7 +34,7 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .phone { position: relative; display: grid; width: min(402px, 100%); height: min(850px, calc(100vh - 60px)); min-height: 620px; grid-template-rows: 30px var(--host-root-header-height, 52px) 1fr var(--host-root-nav-height, 62px); grid-template-columns: minmax(0, 1fr); overflow: hidden; border: 10px solid #17131c; border-radius: 43px; background: #fff; color: #17131c; box-shadow: 0 42px 90px rgb(22 10 31 / 34%); }
 .phone--focus { grid-template-rows: 30px 1fr; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] { --host-root-header-height: 113px; --host-root-nav-height: 82px; background: #f0f3fa; }
-.phone[data-host-chrome='shinhan-super-sol-preview-v1'][data-host-tab='wallet'] { --host-root-header-height: 56px; grid-template-rows: 30px 56px 1fr; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'][data-host-tab='wallet'] { --host-root-header-height: 56px; grid-template-rows: 30px 56px 1fr; background: #fff; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'].phone--focus { grid-template-rows: 30px 1fr; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1']:has(.shinhan-live-preview__flow) { grid-template-rows: 1fr; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1']:has(.shinhan-live-preview__flow) > .shinhan-host-header,
@@ -44,7 +44,6 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] > .shinhan-host-navigation { width: calc(100% - 32px); height: 66px; align-self: start; justify-self: center; margin-top: 6px; }
 .phone[data-wallet-entry-motion='slide-from-right'][data-host-tab='wallet'] > iframe,
 .phone[data-wallet-entry-motion='slide-from-right'][data-host-tab='wallet'] > .shinhan-host-header { animation: shinhan-wallet-enter 330ms cubic-bezier(.22,.68,.28,1) both; }
-.phone[data-wallet-entry-motion='slide-from-right'][data-host-tab='wallet'] > iframe { box-shadow: -12px 0 30px rgb(20 43 88 / 10%); }
 @keyframes shinhan-wallet-enter { from { transform: translateX(102%); } to { transform: translateX(0); } }
 .shinhan-host-identity-pin { position: absolute; z-index: 36; inset: 0; background: #fff; }
 @media (prefers-reduced-motion: reduce) { .phone[data-wallet-entry-motion='slide-from-right'][data-host-tab='wallet'] > iframe, .phone[data-wallet-entry-motion='slide-from-right'][data-host-tab='wallet'] > .shinhan-host-header { animation: none; } }

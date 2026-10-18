@@ -63,6 +63,16 @@ public class MainActivity extends BridgeActivity {
                     backdrop.height = bottom;
                     navigationBarBackdrop.setLayoutParams(backdrop);
                 }
+                // Match the WebView's image viewport so the splash artwork does not jump
+                // when the native image hands off to the web loading surface.
+                if (launchSplash != null) {
+                    FrameLayout.LayoutParams splashLayout = (FrameLayout.LayoutParams) launchSplash.getLayoutParams();
+                    if (splashLayout.topMargin != top || splashLayout.bottomMargin != bottom) {
+                        splashLayout.topMargin = top;
+                        splashLayout.bottomMargin = bottom;
+                        launchSplash.setLayoutParams(splashLayout);
+                    }
+                }
                 return insets;
             });
             ViewCompat.requestApplyInsets(webView);

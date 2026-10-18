@@ -1,5 +1,6 @@
 import { CaretLeft, House } from '@phosphor-icons/react';
 import './styles.css';
+export { ShinhanHostLoading } from './ShinhanHostLoading';
 
 export type ShinhanSection = 'finance' | 'exchange' | 'wallet' | 'home';
 export type ShinhanFinanceTab = 'bank' | 'card' | 'securities' | 'insurance';

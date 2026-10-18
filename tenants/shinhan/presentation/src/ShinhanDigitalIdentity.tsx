@@ -84,8 +84,12 @@ export function ShinhanDigitalIdentityEntry({ walletId, wallets, onFocusedOverla
       if (result.summary) setSummary(result.summary);
       if (action === 'verify' && !result.verified) throw new Error('credential_invalid');
       setStage(next);
-    } catch {
-      setError(action === 'bind-wallet' ? '지갑 연결을 확인하지 못했어요. 다시 시도해 주세요.'
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : '';
+      if (code === 'authorization_cancelled') return;
+      setError(code === 'identity_session_unavailable' || code === 'request_rejected'
+        ? '연결 시간이 지나 신원인증을 확인하지 못했어요. 다시 시도해 주세요.'
+        : action === 'bind-wallet' ? '지갑 연결을 확인하지 못했어요. 다시 시도해 주세요.'
         : action === 'issue' ? '디지털 ID를 발급하지 못했어요. 다시 시도해 주세요.'
           : '증명서를 확인하지 못했어요. 다시 시도해 주세요.');
     } finally { setBusy(false); }
