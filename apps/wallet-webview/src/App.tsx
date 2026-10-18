@@ -332,6 +332,7 @@ export function App() {
         onCreateRegistrationIntent={runtime.createRegistrationIntent}
         onCreatePhoneChallenge={runtime.createPhoneChallenge}
         onVerifyPhoneChallenge={runtime.verifyPhoneChallenge}
+        onDigitalIdentityRequest={runtime.requestDigitalIdentity}
         onProvisionWallet={runtime.provisionWallet}
         onSelectWallet={runtime.selectWallet}
         onRefreshWallet={runtime.refreshWallet}

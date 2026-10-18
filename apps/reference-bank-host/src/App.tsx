@@ -49,6 +49,8 @@ import { HostAppSettings } from './HostAppSettings';
 import { PreviewKeypadProvider } from './PreviewKeypadContext';
 import { biometricPinEnabled, readBiometricPin } from './nativeBiometricPin';
 import { computedHexColor, setNativeSystemBarSurface } from './nativeSystemBars';
+import { handleDevDigitalIdentity } from './devDigitalIdentity';
+import type { DigitalIdentityHostRequest } from '@took-wss/contracts';
 
 const publicPreviewEnabled = import.meta.env.VITE_WSS_PUBLIC_PREVIEW === 'true';
 const previewTenant = import.meta.env.VITE_WSS_PREVIEW_TENANT || 'kiwoom';
@@ -1668,6 +1670,22 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
       );
     };
     window.addEventListener('message', onNativeRequest);
+    const onDigitalIdentityRequest = (event: MessageEvent) => {
+      if (event.source !== frame.contentWindow || event.origin !== walletOrigin
+        || !event.data || event.data.type !== 'took-wss:digital-identity-request'
+        || event.data.protocolVersion !== 1 || typeof event.data.requestId !== 'string'
+        || !/^[0-9a-f-]{36}$/i.test(event.data.requestId)
+        || !['status', 'issue', 'bind-wallet', 'verify'].includes(event.data.action)
+        || (event.data.walletId !== undefined && typeof event.data.walletId !== 'string')) return;
+      const token = sessionTokenRef.current;
+      if (!token) return;
+      const request = event.data as DigitalIdentityHostRequest;
+      void handleDevDigitalIdentity({ request, tenantId, customerRef: previewCustomerRef,
+        sessionToken: token, bffUrl,
+        signWallet: ({ walletId, address, message }) => onPersonalSign({ exchange: 'identity', walletId, address, message }),
+      }).then((result) => frame.contentWindow?.postMessage(result, walletOrigin));
+    };
+    window.addEventListener('message', onDigitalIdentityRequest);
     const client = new WssHostClient({
       frame,
       walletOrigin,
@@ -1719,6 +1737,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
       disposed = true;
       if (appUrlListener) void appUrlListener.remove();
       window.removeEventListener('message', onNativeRequest);
+      window.removeEventListener('message', onDigitalIdentityRequest);
       exchangeSignActionsRef.current = null;
       client.stop();
     };
@@ -1880,7 +1899,8 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
           /> : null}
           {checkingExchangeSign ? <ExchangeSignLoading color={tenantOptions[tenantId].exchangeRouterBrand.color} /> : null}
           {pendingExchangeSign ? <ExchangeSignPanel
-            exchangeName={pendingExchangeSign.exchange === 'bithumb' ? '빗썸' : '코인원'}
+            exchangeName={pendingExchangeSign.exchange === 'identity' ? '쏠지갑' : pendingExchangeSign.exchange === 'bithumb' ? '빗썸' : '코인원'}
+            identityBinding={pendingExchangeSign.exchange === 'identity'}
             walletLabel={pendingExchangeSign.walletLabel}
             message={pendingExchangeSign.message}
             initialError={pendingExchangeSign.error}

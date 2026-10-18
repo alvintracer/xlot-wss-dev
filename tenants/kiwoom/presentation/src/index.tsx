@@ -11,7 +11,7 @@ import './styles.css';
 
 export type { ReadyWalletSummaryProps } from './WalletHome';
 
-export default function KiwoomWalletPresentation(props: WalletPresentationProps & { HomeSummary?: ComponentType<ReadyWalletSummaryProps>; HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; onFocusedOverlayChange: (focused: boolean) => void }>; onScanPhysicalCard?: () => Promise<import('@took-wss/contracts').PhysicalCardInfo | null>; onCancelPhysicalCardScan?: () => Promise<void> }) {
+export default function KiwoomWalletPresentation(props: WalletPresentationProps & { HomeSummary?: ComponentType<ReadyWalletSummaryProps>; HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; wallets: import('@took-wss/contracts').WalletProfileSummary[]; onFocusedOverlayChange: (focused: boolean) => void }>; onScanPhysicalCard?: () => Promise<import('@took-wss/contracts').PhysicalCardInfo | null>; onCancelPhysicalCardScan?: () => Promise<void> }) {
   const rootRef = useRef<HTMLElement>(null);
   useFocusedFieldVisibility(rootRef);
   const [initialResume] = useState(() => props.pwaOAuthRedirect && props.identity.status === 'established'
@@ -139,6 +139,7 @@ export default function KiwoomWalletPresentation(props: WalletPresentationProps 
           onCreateRegistrationIntent={props.onCreateRegistrationIntent}
           onCreatePhoneChallenge={props.onCreatePhoneChallenge}
           onVerifyPhoneChallenge={props.onVerifyPhoneChallenge}
+          onDigitalIdentityRequest={props.onDigitalIdentityRequest}
           onProvision={props.onProvisionWallet}
           onComplete={completeProvisioning}
         />

@@ -28,6 +28,8 @@ import type {
   VerifyPhoneChallengeRequest,
   VerifyPhoneChallengeResponse,
   WssIdentityState,
+  DigitalIdentityHostAction,
+  DigitalIdentityHostResult,
 } from '@took-wss/contracts';
 import { FlowShell } from './FlowShell';
 import { BusyButtonLabel } from './BusyButtonLabel';
@@ -36,6 +38,7 @@ import { clearPwaWalletCreationResume, savePwaWalletCreationResume } from './pwa
 type CreateFlowStep =
   | 'profile'
   | 'phone-code'
+  | 'digital-identity'
   | 'existing-wallets'
   | 'no-wallet-found'
   | 'key-adapter'
@@ -73,6 +76,7 @@ interface CreateWalletFlowProps {
   onCreateRegistrationIntent: (request: CreateRegistrationIntentRequest) => Promise<CreateRegistrationIntentResponse>;
   onCreatePhoneChallenge: (registrationIntentId: string) => Promise<CreatePhoneChallengeResponse>;
   onVerifyPhoneChallenge: (registrationIntentId: string, challengeId: string, request: VerifyPhoneChallengeRequest) => Promise<VerifyPhoneChallengeResponse>;
+  onDigitalIdentityRequest?: (action: DigitalIdentityHostAction, walletId?: string) => Promise<DigitalIdentityHostResult>;
   onProvision: (request: ProvisionWalletRequest) => Promise<ProvisionWalletResponse>;
   onComplete: (response: ProvisionWalletResponse, outcome: 'created' | 'loaded') => void;
 }
@@ -156,6 +160,7 @@ export function CreateWalletFlow({
   onCreateRegistrationIntent,
   onCreatePhoneChallenge,
   onVerifyPhoneChallenge,
+  onDigitalIdentityRequest,
   onProvision,
   onComplete,
 }: CreateWalletFlowProps) {
@@ -175,6 +180,8 @@ export function CreateWalletFlow({
   const [verificationCode, setVerificationCode] = useState('');
   const [developmentCode, setDevelopmentCode] = useState<string | null>(null);
   const [foundWallets, setFoundWallets] = useState<WalletProfileSummary[]>([]);
+  const [nextAfterIdentity, setNextAfterIdentity] = useState<CreateFlowStep>('key-adapter');
+  const [digitalIdentityConsent, setDigitalIdentityConsent] = useState(false);
   const [phoneCodeAction, setPhoneCodeAction] = useState<'verify' | 'resend' | null>(null);
   const [hostAuthorizationProof, setHostAuthorizationProof] = useState<string | null>(null);
   const [hostAuthorizationExpiresAt, setHostAuthorizationExpiresAt] = useState<string | null>(null);
@@ -200,12 +207,13 @@ export function CreateWalletFlow({
       onChange={(event) => setWalletLabel(event.target.value)} /></label>
     <p className="kw-wallet-name-hint" id="kw-wallet-name-hint" aria-live="polite">{validWalletLabel ? '원하는 이름으로 바꿀 수 있어요. 최대 30자' : '지갑 이름을 1~30자로 입력해 주세요.'}</p>
   </div>;
-  const identityOffset = requiresRegistration ? 2 : 0;
+  const identityOffset = requiresRegistration ? (manifest.identity.digitalCredential ? 3 : 2) : 0;
   const offset = canChooseAdapter ? 1 : 0;
   const authenticationStepCount = mode === 'initial' ? 0 : 1;
   const totalSteps = identityOffset + offset + authenticationStepCount + (isSar ? 4 : 2);
   const stepNumber = step === 'profile' ? 1
     : step === 'phone-code' ? 2
+      : step === 'digital-identity' ? 3
       : step === 'existing-wallets' || step === 'no-wallet-found' ? 3
       : step === 'key-adapter' ? identityOffset + 1
         : step === 'authentication' ? identityOffset + offset + 1
@@ -296,17 +304,15 @@ export function CreateWalletFlow({
     try {
       const result = await onVerifyPhoneChallenge(registrationIntentId, challengeId, { code: verificationCode });
       setDevelopmentCode(null);
-      if (result.existingWallets.length > 0) {
-        setFoundWallets(result.existingWallets);
-        setStep('existing-wallets');
-      } else if (entryIntent === 'recover') {
-        setStep('no-wallet-found');
-      } else if (entryIntent === 'import') {
-        setKeyAdapter('took-sar');
-        setStep('authentication');
-      } else {
-        setStep('key-adapter');
-      }
+      if (result.existingWallets.length > 0) setFoundWallets(result.existingWallets);
+      if (entryIntent === 'import') setKeyAdapter('took-sar');
+      const next: CreateFlowStep = result.existingWallets.length > 0 ? 'existing-wallets'
+        : entryIntent === 'recover' ? 'no-wallet-found'
+          : entryIntent === 'import' ? 'authentication' : 'key-adapter';
+      if (manifest.identity.digitalCredential) {
+        setNextAfterIdentity(next);
+        setStep('digital-identity');
+      } else setStep(next);
     } catch (verificationError) {
       const code = verificationError instanceof Error ? verificationError.message : '';
       setError(code === 'identity_details_mismatch' || code === 'identity_profile_mismatch'
@@ -405,6 +411,35 @@ export function CreateWalletFlow({
         {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
       </FlowShell>
     );
+  }
+
+  if (step === 'digital-identity') {
+    return <FlowShell title="디지털 신원인증" step={stepNumber} totalSteps={totalSteps} onClose={onClose}
+      footer={<button className="kw-button" type="button" disabled={!digitalIdentityConsent || busy} aria-busy={busy}
+        onClick={() => { void (async () => {
+          if (!onDigitalIdentityRequest) { setError('신원인증 연결을 확인해 주세요.'); return; }
+          setBusy(true); setError(null);
+          try {
+            const status = await onDigitalIdentityRequest('status');
+            if (!status.ok) throw new Error(status.error || 'identity_unavailable');
+            if (!status.summary) {
+              const issued = await onDigitalIdentityRequest('issue');
+              if (!issued.ok || !issued.summary) throw new Error(issued.error || 'identity_issue_failed');
+            }
+            setStep(nextAfterIdentity);
+          } catch { setError('디지털 신원인증을 준비하지 못했어요. 잠시 후 다시 시도해 주세요.'); }
+          finally { setBusy(false); }
+        })(); }}>{busy ? <BusyButtonLabel>신원인증을 준비하고 있어요</BusyButtonLabel> : '디지털 ID 발급하고 계속하기'}</button>}>
+      <div className="kw-flow-symbol" aria-hidden="true"><ShieldCheck weight="regular" /></div>
+      <h1 className="kw-flow-title">내 디지털 신원인증을 만들어요</h1>
+      <p className="kw-body kw-mt-12">확인한 휴대폰과 입력한 이름·생년월일로 디지털 ID를 만들고 이 기기에 보관해요.</p>
+      <div className="kw-flow-choice-list kw-mt-24">
+        <div className="kw-flow-choice"><span className="kw-flow-choice__icon"><ShieldCheck aria-hidden="true" /></span><span><strong>확인된 정보</strong><small>휴대폰 사용 여부</small></span></div>
+        <div className="kw-flow-choice"><span className="kw-flow-choice__icon"><Wallet aria-hidden="true" /></span><span><strong>입력한 정보</strong><small>이름과 생년월일 · 별도 실명확인 전</small></span></div>
+      </div>
+      <label className="kw-consent kw-mt-24"><input type="checkbox" checked={digitalIdentityConsent} onChange={(event) => setDigitalIdentityConsent(event.target.checked)} /><span>디지털 ID 발급과 이 기기 보관에 동의해요.</span></label>
+      {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
+    </FlowShell>;
   }
 
   if (step === 'existing-wallets') {

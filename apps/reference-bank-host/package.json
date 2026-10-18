@@ -18,6 +18,7 @@
     "@reown/walletkit": "^1.6.0",
     "@took-wss/contracts": "0.1.0",
     "@took-wss/host-sdk": "0.1.0",
+    "@took-wss/identity-proof": "0.1.0",
     "@took-wss/key-adapters": "0.1.0",
     "@took-wss/ops-ui": "0.1.0",
     "@took-wss/sar-key-core": "0.1.0",

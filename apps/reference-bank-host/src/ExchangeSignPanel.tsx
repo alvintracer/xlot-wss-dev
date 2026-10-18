@@ -5,6 +5,7 @@ import './ExchangeSignPanel.css';
 
 interface Props {
   exchangeName: string;
+  identityBinding?: boolean;
   walletLabel: string;
   message: string;
   initialError?: string;
@@ -35,7 +36,7 @@ export function ExchangeSignLoading({ color }: { color: string }) {
   </div>;
 }
 
-export function ExchangeSignPanel({ exchangeName, walletLabel, message, initialError, requiresPin, color, keypadLayout, onApprove, onBiometricApprove, onCancel }: Props) {
+export function ExchangeSignPanel({ exchangeName, identityBinding = false, walletLabel, message, initialError, requiresPin, color, keypadLayout, onApprove, onBiometricApprove, onCancel }: Props) {
   const [pin, setPin] = useState('');
   const [step, setStep] = useState<'review' | 'pin' | 'legacy'>('review');
   const [pinAttempt, setPinAttempt] = useState(0);
@@ -88,7 +89,7 @@ export function ExchangeSignPanel({ exchangeName, walletLabel, message, initialE
     <section className="host-exchange-sign" role="dialog" aria-modal="true" aria-labelledby="host-exchange-sign-title" onKeyDown={onKeyDown} style={{ '--exchange-sign-color': color } as CSSProperties}>
       <button ref={closeRef} className="host-exchange-sign-close" type="button" aria-label="취소" disabled={busy} onClick={onCancel}><X size={21} /></button>
       <div className="host-exchange-sign-icon"><LockKey size={27} weight="duotone" /></div>
-      <p className="host-exchange-sign-kicker">{exchangeName} 개인지갑 등록</p>
+      <p className="host-exchange-sign-kicker">{identityBinding ? '디지털 신원인증 · 지갑 연결' : `${exchangeName} 개인지갑 등록`}</p>
       {step === 'review' ? <>
         <h2 id="host-exchange-sign-title">월렛 연결을 승인할까요?</h2>
         <p className="host-exchange-sign-intro">{walletLabel}의 소유 확인 메시지에 서명해요.</p>

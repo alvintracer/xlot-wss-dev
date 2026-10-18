@@ -1,4 +1,7 @@
+import type { DigitalIdentityHostAction, DigitalIdentityHostRequest, DigitalIdentityHostResult } from './digitalIdentity.js';
+
 export const WSS_PROTOCOL_VERSION = 1 as const;
+export * from './digitalIdentity.js';
 
 export type WssModuleId =
   | 'wallet-home'
@@ -131,6 +134,7 @@ export interface TenantManifest {
     onboardingMode: IdentityOnboardingMode;
     phoneVerification: PhoneVerificationMode;
     consentVersion: string;
+    digitalCredential?: 'development-assumed';
   };
   enabledModules: WssModuleId[];
   keyManagement: {
@@ -764,6 +768,7 @@ export interface WalletPresentationProps {
   onCreateRegistrationIntent: (request: CreateRegistrationIntentRequest) => Promise<CreateRegistrationIntentResponse>;
   onCreatePhoneChallenge: (registrationIntentId: string) => Promise<CreatePhoneChallengeResponse>;
   onVerifyPhoneChallenge: (registrationIntentId: string, challengeId: string, request: VerifyPhoneChallengeRequest) => Promise<VerifyPhoneChallengeResponse>;
+  onDigitalIdentityRequest?: (action: DigitalIdentityHostAction, walletId?: string) => Promise<DigitalIdentityHostResult>;
   onProvisionWallet: (request: ProvisionWalletRequest) => Promise<ProvisionWalletResponse>;
   onSelectWallet: (walletId: string) => Promise<ReadyWalletHomePayload>;
   onRefreshWallet: (walletId: string) => Promise<ReadyWalletHomePayload>;
@@ -831,6 +836,7 @@ export type HostRecipientPickResult =
   | { status: 'selected'; kind: 'address' | 'phone'; value: string; label?: string };
 
 export type HostToWalletMessage =
+  | DigitalIdentityHostResult
   | {
       type: 'took-wss:init';
       protocolVersion: 1;
@@ -888,6 +894,7 @@ export type HostToWalletMessage =
     };
 
 export type WalletToHostMessage =
+  | DigitalIdentityHostRequest
   | { type: 'took-wss:ready'; protocolVersion: 1 }
   | { type: 'took-wss:bootstrapped'; protocolVersion: 1; tenantId: string; sessionId: string; displayName?: string }
   | { type: 'took-wss:identity-established'; protocolVersion: 1; displayName: string }
@@ -1055,6 +1062,11 @@ export function isWalletHomePayload(value: unknown): value is WalletHomePayload 
 export function isHostToWalletMessage(value: unknown): value is HostToWalletMessage {
   if (!isRecord(value)) return false;
   if (value.protocolVersion !== WSS_PROTOCOL_VERSION) return false;
+  if (value.type === 'took-wss:digital-identity-result') {
+    return typeof value.requestId === 'string' && typeof value.ok === 'boolean'
+      && (value.error === undefined || typeof value.error === 'string')
+      && (value.verified === undefined || typeof value.verified === 'boolean');
+  }
   if (value.type === 'took-wss:init') {
     return typeof value.sessionToken === 'string'
       && value.sessionToken.length > 20
@@ -1117,6 +1129,10 @@ export function isHostToWalletMessage(value: unknown): value is HostToWalletMess
 
 export function isWalletToHostMessage(value: unknown): value is WalletToHostMessage {
   if (!isRecord(value) || value.protocolVersion !== WSS_PROTOCOL_VERSION || typeof value.type !== 'string') return false;
+  if (value.type === 'took-wss:digital-identity-request') return typeof value.requestId === 'string'
+    && /^[0-9a-f-]{36}$/i.test(value.requestId)
+    && (value.action === 'status' || value.action === 'issue' || value.action === 'bind-wallet' || value.action === 'verify')
+    && (value.walletId === undefined || typeof value.walletId === 'string');
   if (value.type === 'took-wss:ready') return true;
   if (value.type === 'took-wss:bootstrapped') return typeof value.tenantId === 'string' && typeof value.sessionId === 'string'
     && (value.displayName === undefined || typeof value.displayName === 'string');

@@ -46,6 +46,8 @@ import {
   type WssRuntimeBootstrap,
   type VerifyPhoneChallengeRequest,
   type VerifyPhoneChallengeResponse,
+  type DigitalIdentityHostAction,
+  type DigitalIdentityHostResult,
 } from '@took-wss/contracts';
 
 type RuntimeState =
@@ -73,6 +75,7 @@ type RuntimeResult = RuntimeState & {
   createRegistrationIntent: (request: CreateRegistrationIntentRequest) => Promise<CreateRegistrationIntentResponse>;
   createPhoneChallenge: (registrationIntentId: string) => Promise<CreatePhoneChallengeResponse>;
   verifyPhoneChallenge: (registrationIntentId: string, challengeId: string, request: VerifyPhoneChallengeRequest) => Promise<VerifyPhoneChallengeResponse>;
+  requestDigitalIdentity: (action: DigitalIdentityHostAction, walletId?: string) => Promise<DigitalIdentityHostResult>;
   createThirdwebProof: (address: string, existingWalletId?: string) => Promise<{
     address: string; challenge: string; signature: string;
   }>;
@@ -182,6 +185,10 @@ export function useWssRuntime(): RuntimeResult {
     resolve: (result: HostRecipientPickResult) => void;
     timeout: number;
   }>());
+  const pendingDigitalIdentity = useRef(new Map<string, {
+    resolve: (result: DigitalIdentityHostResult) => void;
+    timeout: number;
+  }>());
 
   useEffect(() => {
     const parentOrigin = referrerOrigin();
@@ -194,6 +201,14 @@ export function useWssRuntime(): RuntimeResult {
     let cancelled = false;
     const receive = async (event: MessageEvent<unknown>) => {
       if (event.source !== window.parent || event.origin !== parentOrigin || !isHostToWalletMessage(event.data)) return;
+      if (event.data.type === 'took-wss:digital-identity-result') {
+        const pending = pendingDigitalIdentity.current.get(event.data.requestId);
+        if (!pending) return;
+        window.clearTimeout(pending.timeout);
+        pendingDigitalIdentity.current.delete(event.data.requestId);
+        pending.resolve(event.data);
+        return;
+      }
       if (event.data.type === 'took-wss:session-refresh-result') {
         const pending = pendingSessionRefresh.current.get(event.data.requestId);
         if (!pending) return;
@@ -351,6 +366,12 @@ export function useWssRuntime(): RuntimeResult {
         pending.resolve({ status: 'cancelled' });
       }
       pendingRecipientPicks.current.clear();
+      for (const pending of pendingDigitalIdentity.current.values()) {
+        window.clearTimeout(pending.timeout);
+        pending.resolve({ type: 'took-wss:digital-identity-result', protocolVersion: 1,
+          requestId: '', ok: false, error: 'identity_host_unavailable' });
+      }
+      pendingDigitalIdentity.current.clear();
       window.removeEventListener('message', receive);
     };
   }, []);
@@ -422,6 +443,21 @@ export function useWssRuntime(): RuntimeResult {
         requestId,
         purpose,
       });
+    });
+  }, []);
+
+  const requestDigitalIdentity = useCallback((action: DigitalIdentityHostAction, walletId?: string): Promise<DigitalIdentityHostResult> => {
+    if (!hostOrigin.current) return Promise.reject(new Error('identity_host_unavailable'));
+    const requestId = crypto.randomUUID();
+    return new Promise((resolve) => {
+      const timeout = window.setTimeout(() => {
+        pendingDigitalIdentity.current.delete(requestId);
+        resolve({ type: 'took-wss:digital-identity-result', protocolVersion: 1, requestId,
+          ok: false, error: 'identity_request_timeout' });
+      }, 120_000);
+      pendingDigitalIdentity.current.set(requestId, { resolve, timeout });
+      postToHost(hostOrigin.current!, { type: 'took-wss:digital-identity-request', protocolVersion: 1,
+        requestId, action, ...(walletId ? { walletId } : {}) });
     });
   }, []);
 
@@ -1144,6 +1180,7 @@ export function useWssRuntime(): RuntimeResult {
     createRegistrationIntent,
     createPhoneChallenge,
     verifyPhoneChallenge,
+    requestDigitalIdentity,
     createThirdwebProof,
     provisionWallet,
     selectWallet,

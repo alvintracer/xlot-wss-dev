@@ -60,7 +60,7 @@ function tenantIconDataUrl(file: string): Promise<string> {
   return loading;
 }
 
-export interface ExchangePersonalSignRequest { exchange: ExchangeId; walletId: string; address: string; message: string }
+export interface ExchangePersonalSignRequest { exchange: ExchangeId | 'identity'; walletId: string; address: string; message: string }
 
 async function openExchange(exchangeId: ExchangeId, walletId: string, address: string, walletLabel: string,
   brand: ExchangeRouterBrand, onPersonalSign?: (request: ExchangePersonalSignRequest) => Promise<string>): Promise<void> {

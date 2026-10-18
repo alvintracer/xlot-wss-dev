@@ -26,6 +26,7 @@
     "verify:kiwoom-wallet": "node scripts/verify-kiwoom-wallet-flow.mjs",
     "verify:secure-sar": "node scripts/verify-secure-sar-ceremony.mjs",
     "verify:secure-import": "node --env-file-if-exists=.env.local scripts/verify-secure-wallet-import.mjs",
+    "verify:shinhan-identity": "node --env-file-if-exists=.env.local --import tsx scripts/verify-shinhan-digital-identity.ts",
     "verify:studio": "node scripts/verify-studio-policy.mjs",
     "verify": "npm run verify:host && npm run verify:studio",
     "typecheck": "npm run typecheck --workspaces --if-present",

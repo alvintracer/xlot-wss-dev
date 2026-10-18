@@ -47,6 +47,7 @@ import { assertOwnedWalletAddress, verifyOwnedWalletDestination } from './ownedW
 import { publicTransferPreparationError } from './transferErrors.js';
 import { publicWalletProvisioningError } from './walletProvisioningErrors.js';
 import { WalletRemovalError, WalletRenameError } from './databaseWalletProvider.js';
+import { DevelopmentDigitalIdentityService, DigitalIdentityError } from './digitalIdentityService.js';
 import { issueThirdwebWalletChallenge, thirdwebClientIdForTenant, verifyThirdwebWalletProof } from './thirdwebProvider.js';
 import {
   SarVaultError,
@@ -81,6 +82,8 @@ const subjectHashSecret = requiredEnvironment('WSS_SUBJECT_HASH_SECRET', 'local-
 const institutionApiKey = requiredEnvironment('WSS_INSTITUTION_API_KEY', 'local-wss-development-only');
 const configuredWalletUrl = process.env.WSS_WALLET_URL?.trim();
 const previewAccessCode = process.env.WSS_PREVIEW_ACCESS_CODE?.trim() || '';
+const devDigitalIdentity = !isProduction && process.env.DATABASE_URL
+  ? new DevelopmentDigitalIdentityService(process.env.DATABASE_URL) : null;
 if (isDevelopmentPreview && previewAccessCode.length < 12) {
   throw new Error('WSS_PREVIEW_ACCESS_CODE must contain at least 12 characters in development-preview mode.');
 }
@@ -951,6 +954,15 @@ async function identityContext(request: IncomingMessage) {
   return { session: sessionFromClaims(claims), manifest, provider };
 }
 
+function digitalIdentityContext(request: IncomingMessage) {
+  const claims = verifySessionToken(bearerToken(request), sessionSecret);
+  const manifest = tenants.get(claims.tenantId);
+  if (!devDigitalIdentity || manifest?.identity.digitalCredential !== 'development-assumed') {
+    throw new DigitalIdentityError('digital_identity_unavailable', 503);
+  }
+  return { session: sessionFromClaims(claims), service: devDigitalIdentity };
+}
+
 async function handleCreateRegistrationIntent(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const context = await identityContext(request);
   const result = await context.provider.createRegistrationIntent({
@@ -1103,6 +1115,53 @@ export async function handleBffRequest(request: IncomingMessage, response: Serve
     if (request.method === 'POST' && url.pathname === '/v1/registration/intents') {
       await handleCreateRegistrationIntent(request, response);
       return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/digital-identity/credentials') {
+      const { session, service } = digitalIdentityContext(request);
+      const body = await readJson(request);
+      if (!isRecord(body) || typeof body.holderDid !== 'string' || body.accepted !== true) {
+        throw new DigitalIdentityError('credential_request_invalid');
+      }
+      sendJson(response, 201, await service.issue(session, body.holderDid, body.accepted));
+      return;
+    }
+    const identityCredentialMatch = url.pathname.match(/^\/v1\/digital-identity\/credentials\/([0-9a-f-]{36})(?:\/(wallet-challenges|wallet-bindings|presentation-challenges|presentations))?$/i);
+    if (identityCredentialMatch) {
+      const { session, service } = digitalIdentityContext(request);
+      const credentialId = identityCredentialMatch[1]!;
+      const action = identityCredentialMatch[2];
+      if (request.method === 'GET' && !action) {
+        sendJson(response, 200, await service.summary(session, credentialId));
+        return;
+      }
+      if (request.method !== 'POST') throw new DigitalIdentityError('identity_method_invalid', 405);
+      const body = action === 'presentation-challenges' ? {} : await readJson(request);
+      if (!isRecord(body)) throw new DigitalIdentityError('identity_request_invalid');
+      if (action === 'wallet-challenges' && typeof body.walletId === 'string') {
+        sendJson(response, 201, await service.walletChallenge(session, credentialId, body.walletId));
+        return;
+      }
+      if (action === 'wallet-bindings' && typeof body.challengeId === 'string'
+        && typeof body.walletSignature === 'string' && typeof body.holderSignature === 'string') {
+        sendJson(response, 200, await service.bindWallet(session, credentialId, body.challengeId, body.walletSignature, body.holderSignature));
+        return;
+      }
+      if (action === 'presentation-challenges') {
+        sendJson(response, 201, await service.presentationChallenge(session, credentialId));
+        return;
+      }
+      if (action === 'presentations' && typeof body.challengeId === 'string'
+        && typeof body.credential === 'string' && typeof body.holderSignature === 'string'
+        && typeof body.expectedName === 'string' && body.expectedName.length <= 80
+        && typeof body.expectedBirthDate === 'string'
+        && isRecord(body.proof) && typeof body.proof.announcement === 'string'
+        && typeof body.proof.response === 'string') {
+        sendJson(response, 200, await service.verifyPresentation(session, credentialId, body.challengeId,
+          body.credential, body.holderSignature, body.expectedName, body.expectedBirthDate,
+          { announcement: body.proof.announcement, response: body.proof.response }));
+        return;
+      }
+      throw new DigitalIdentityError('identity_request_invalid');
     }
     const challengeMatch = url.pathname.match(/^\/v1\/registration\/intents\/([^/]+)\/challenges$/);
     if (request.method === 'POST' && challengeMatch) {
@@ -1422,6 +1481,10 @@ export async function handleBffRequest(request: IncomingMessage, response: Serve
           : error.code.includes('required') || error.code.includes('policy_mismatch') ? 403
             : 400;
       sendJson(response, status, { error: error.code });
+      return;
+    }
+    if (error instanceof DigitalIdentityError) {
+      sendJson(response, error.status, { error: error.code });
       return;
     }
     if (error instanceof WalletRemovalError) {

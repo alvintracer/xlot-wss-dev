@@ -1639,7 +1639,7 @@ export function WalletActionSheet(props: WalletActionSheetProps) {
 
   return (
     <div className="kw-transfer-layer" ref={layerRef}>
-      <section className="kw-transfer-flow" role="dialog" aria-modal="true" aria-labelledby="kw-wallet-action-title">
+      <section className="kw-transfer-flow" data-action={ownTransfer ? 'send' : props.mode} role="dialog" aria-modal="true" aria-labelledby="kw-wallet-action-title">
         {ownTransfer ? <SendFlow {...props} wallet={ownTransfer.source.wallet}
           receiveAssets={ownTransfer.source.receiveAssets} networks={ownTransfer.source.networks}
           initialAssetId={ownTransfer.assetId} initialOwnDestination={ownTransfer.destination} />

@@ -30,6 +30,7 @@ export const shinhanManifest = assertTenantManifest({
   identity: {
     ...kiwoomManifest.identity,
     consentVersion: 'shinhan-wallet-preview-v1',
+    digitalCredential: 'development-assumed',
   },
 } satisfies TenantManifest);
 

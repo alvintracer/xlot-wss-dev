@@ -28,6 +28,7 @@ import type {
   WalletAssetView,
   WalletHomePayload,
   WalletPaymentRequest,
+  WalletProfileSummary,
 } from '@took-wss/contracts';
 import { WalletActionSheet, type WalletActionMode } from './WalletActionSheet';
 import { WalletPayments } from './WalletPayments';
@@ -45,7 +46,7 @@ interface WalletHomeProps {
   onListPaymentRequests: (walletId: string) => Promise<WalletPaymentRequest[]>;
   onListSpentPayments: (walletId: string) => Promise<WalletPaymentRequest[]>;
   HomeSummary?: ComponentType<ReadyWalletSummaryProps>;
-  HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; onFocusedOverlayChange: (focused: boolean) => void }>;
+  HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; wallets: WalletProfileSummary[]; onFocusedOverlayChange: (focused: boolean) => void }>;
   onScanPhysicalCard?: () => Promise<import('@took-wss/contracts').PhysicalCardInfo | null>;
   onCancelPhysicalCardScan?: () => Promise<void>;
   hostCapabilities: HostCapabilities;
@@ -250,7 +251,7 @@ function ReadyWallet({
   onListPaymentRequests: WalletHomeProps['onListPaymentRequests'];
   onListSpentPayments: WalletHomeProps['onListSpentPayments'];
   HomeSummary?: ComponentType<ReadyWalletSummaryProps>;
-  HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; onFocusedOverlayChange: (focused: boolean) => void }>;
+  HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; wallets: WalletProfileSummary[]; onFocusedOverlayChange: (focused: boolean) => void }>;
   onScanPhysicalCard?: WalletHomeProps['onScanPhysicalCard'];
   onCancelPhysicalCardScan?: WalletHomeProps['onCancelPhysicalCardScan'];
   hostCapabilities: HostCapabilities;
@@ -474,7 +475,7 @@ function ReadyWallet({
         onCancelPhysicalCardScan={onCancelPhysicalCardScan}
       />
 
-      {HomeServices ? <HomeServices walletId={walletHome.wallet.walletId} walletLabel={walletHome.wallet.label} walletAddress={walletHome.networks.find((network) => network.addressGroupId === 'evm' && network.addressStatus === 'ready')?.address} onFocusedOverlayChange={onFocusedOverlayChange} /> : null}
+      {HomeServices ? <HomeServices walletId={walletHome.wallet.walletId} walletLabel={walletHome.wallet.label} walletAddress={walletHome.networks.find((network) => network.addressGroupId === 'evm' && network.addressStatus === 'ready')?.address} wallets={walletHome.wallets} onFocusedOverlayChange={onFocusedOverlayChange} /> : null}
 
       <section className="kw-card kw-transfer-activity" aria-labelledby="kw-transfer-activity-title">
         <div className="kw-transfer-activity__heading">

@@ -1,0 +1,92 @@
+.shinhan-identity { position: relative; display: flex; width: 100%; height: 100%; min-height: 0; flex-direction: column; background: linear-gradient(180deg, #dce8ff 0%, #edf3ff 34%, #fff 78%); color: var(--shinhan-ink); font-family: var(--shinhan-font); word-break: keep-all; overflow-wrap: normal; text-wrap: wrap; }
+.shinhan-identity * { box-sizing: border-box; }
+.shinhan-identity button { font: inherit; cursor: pointer; }
+.shinhan-identity button:focus-visible, .shinhan-identity input:focus-visible { outline: 2px solid var(--shinhan-blue); outline-offset: 2px; }
+.shinhan-identity[data-sheet-open='true'] .shinhan-identity__scroll { overflow: hidden; }
+.shinhan-identity__header { display: grid; min-height: 55px; flex: 0 0 55px; grid-template-columns: 42px minmax(0,1fr) 42px; align-items: center; padding: 0 12px; background: transparent; }
+.shinhan-identity__header strong { margin-left: 2px; font-size: 19px; font-weight: 800; text-align: left; }
+.shinhan-identity__header button { display: grid; width: 42px; height: 42px; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--shinhan-ink); }
+.shinhan-identity__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 17px 20px 24px; scrollbar-width: none; }
+.shinhan-identity__scroll::-webkit-scrollbar { display: none; }
+.shinhan-identity__progress { height: 3px; margin: 0 0 28px; border-radius: 99px; background: #dce6fa; overflow: hidden; }
+.shinhan-identity__progress span { display: block; height: 100%; border-radius: inherit; background: var(--shinhan-blue); transition: width 240ms ease; }
+.shinhan-identity__hero-icon { display: grid; width: 56px; height: 56px; place-items: center; margin: 0 0 19px; border-radius: 19px; background: #e4edff; color: var(--shinhan-blue); }
+.shinhan-identity h2 { margin: 0; font-size: 23px; font-weight: 800; letter-spacing: -.035em; line-height: 1.38; }
+.shinhan-identity__lead { margin: 10px 0 23px; color: var(--shinhan-text); font-size: 13px; line-height: 1.65; }
+.shinhan-identity__card, .shinhan-identity__result { padding: 18px; border-radius: 20px; background: #fff; box-shadow: var(--shinhan-card-shadow); }
+.shinhan-identity__row { display: flex; min-height: 64px; align-items: center; gap: 12px; border-top: 1px solid var(--shinhan-divider); }
+.shinhan-identity__row:first-child { border-top: 0; }
+.shinhan-identity__row-icon { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border-radius: 12px; background: #f0f5ff; color: var(--shinhan-blue); }
+.shinhan-identity__row-copy { display: grid; min-width: 0; flex: 1 1 auto; gap: 4px; }
+.shinhan-identity__row-copy strong { font-size: 13px; font-weight: 700; line-height: 1.4; }
+.shinhan-identity__row-copy small { color: var(--shinhan-muted); font-size: 11px; line-height: 1.5; }
+.shinhan-identity__row-trailing { color: var(--shinhan-blue); }
+.shinhan-identity__pill { display: inline-flex; flex: 0 0 auto; align-items: center; min-height: 24px; padding: 3px 8px; border-radius: 99px; background: #eaf0fe; color: #0759cf; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.shinhan-identity__detail-card { display: grid; gap: 0; }
+.shinhan-identity__detail-card > div, .shinhan-identity__result > div { display: flex; min-height: 40px; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--shinhan-divider); }
+.shinhan-identity__detail-card > div:first-child { border-top: 0; }
+.shinhan-identity__detail-card span, .shinhan-identity__result > div span { flex: 0 0 auto; color: var(--shinhan-muted); font-size: 11px; }
+.shinhan-identity__detail-card strong, .shinhan-identity__result > div b { min-width: 0; font-size: 11px; font-weight: 700; text-align: right; }
+.shinhan-identity__consent { display: flex; align-items: flex-start; gap: 9px; margin-top: 17px; padding: 13px 14px; border: 1px solid var(--shinhan-blue-line); border-radius: 12px; background: #fff; cursor: pointer; }
+.shinhan-identity__consent input { width: 17px; height: 17px; flex: 0 0 17px; margin: 1px 0 0; accent-color: var(--shinhan-blue); }
+.shinhan-identity__consent span { font-size: 12px; line-height: 1.55; }
+.shinhan-identity__form { display: grid; gap: 11px; padding: 17px; border-radius: 20px; background: #fff; box-shadow: var(--shinhan-card-shadow); }
+.shinhan-identity__form label, .shinhan-identity__form-field { display: grid; gap: 6px; }
+.shinhan-identity__form label span, .shinhan-identity__form-field > span { color: var(--shinhan-text); font-size: 12px; font-weight: 700; }
+.shinhan-identity__form input, .shinhan-identity__field-button { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid #dce5f4; border-radius: 10px; background: #fff; color: var(--shinhan-ink); font: inherit; font-size: 13px; }
+.shinhan-identity__form input::placeholder { color: #9aa6b9; }
+.shinhan-identity__field-button { display: flex; align-items: center; justify-content: space-between; text-align: left; }
+.shinhan-identity__field-button strong { font-size: 13px; font-weight: 400; }
+.shinhan-identity__field-button strong[data-empty='true'] { color: #9aa6b9; }
+.shinhan-identity__sheet-layer { position: absolute; z-index: 20; inset: 0; display: flex; align-items: flex-end; }
+.shinhan-identity__sheet-scrim { position: absolute; inset: 0; width: 100%; border: 0; background: rgb(16 31 58 / 38%); }
+.shinhan-identity__carrier-sheet { position: relative; width: 100%; max-height: 85%; overflow-y: auto; padding: 10px 20px 22px; border-radius: 23px 23px 0 0; background: #fff; box-shadow: 0 -9px 32px rgb(24 44 81 / 17%); animation: shinhan-carrier-rise 270ms cubic-bezier(.22,.61,.36,1); }
+.shinhan-identity__sheet-handle { width: 36px; height: 4px; margin: 0 auto 12px; border-radius: 99px; background: #d9e0ed; }
+.shinhan-identity__carrier-sheet header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
+.shinhan-identity__carrier-sheet header h2 { font-size: 18px; }
+.shinhan-identity__carrier-sheet header button { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--shinhan-ink); }
+.shinhan-identity__carrier-options button { display: flex; width: 100%; min-height: 49px; align-items: center; justify-content: space-between; padding: 0 2px; border: 0; border-top: 1px solid var(--shinhan-divider); background: #fff; color: var(--shinhan-ink); font-size: 14px; text-align: left; }
+.shinhan-identity__carrier-options button:first-child { border-top: 0; }
+.shinhan-identity__carrier-options button[aria-pressed='true'] { color: var(--shinhan-blue); font-weight: 700; }
+.shinhan-identity__carrier-options button svg { color: var(--shinhan-blue); }
+@keyframes shinhan-carrier-rise { from { transform: translateY(18px); opacity: .75; } to { transform: translateY(0); opacity: 1; } }
+.shinhan-identity__note { margin: 13px 0 0; color: var(--shinhan-muted); font-size: 12px; line-height: 1.55; }
+.shinhan-identity__id-card { position: relative; overflow: hidden; min-height: 222px; padding: 19px 21px 18px; border: 1px solid rgb(255 255 255 / 31%); border-radius: 23px; background: radial-gradient(circle at 90% 10%, rgb(161 211 255 / 38%), transparent 43%), linear-gradient(133deg, #0d78f4 0%, #0959dc 58%, #354dd4 100%); color: #fff; box-shadow: 0 12px 29px rgb(20 74 160 / 20%); }
+.shinhan-identity__id-card::after { position: absolute; right: -42px; bottom: -88px; width: 190px; height: 190px; border: 1px solid rgb(255 255 255 / 15%); border-radius: 50%; content: ''; pointer-events: none; }
+.shinhan-identity__id-card-top { display: flex; align-items: center; gap: 8px; }
+.shinhan-identity__id-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 9px; background: #fff; color: #0c64e9; font-family: system-ui,sans-serif; font-size: 18px; font-weight: 800; }
+.shinhan-identity__id-card-top strong { font-family: system-ui,sans-serif; font-size: 12px; font-weight: 700; letter-spacing: .035em; }
+.shinhan-identity__id-card-top > span:last-child { margin-left: auto; padding: 5px 8px; border: 1px solid rgb(255 255 255 / 29%); border-radius: 99px; background: rgb(255 255 255 / 13%); font-size: 10px; font-weight: 700; }
+.shinhan-identity__id-card-person { display: flex; align-items: center; gap: 14px; margin: 24px 0 21px; }
+.shinhan-identity__id-avatar { display: grid; width: 68px; height: 68px; flex: 0 0 68px; place-items: center; border: 1px solid rgb(255 255 255 / 30%); border-radius: 19px; background: rgb(255 255 255 / 17%); }
+.shinhan-identity__id-card-person div { display: grid; min-width: 0; gap: 4px; }
+.shinhan-identity__id-card-person small { color: rgb(255 255 255 / 78%); font-size: 10px; }
+.shinhan-identity__id-card-person strong { overflow: hidden; font-size: 21px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.shinhan-identity__id-card-person div span { font-size: 12px; letter-spacing: .025em; }
+.shinhan-identity__id-card-number { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 12px; border-top: 1px solid rgb(255 255 255 / 29%); }
+.shinhan-identity__id-card-number span { color: rgb(255 255 255 / 78%); font-size: 10px; }
+.shinhan-identity__id-card-number code { font-family: ui-monospace,monospace; font-size: 11px; font-weight: 700; letter-spacing: .03em; }
+.shinhan-identity__overview-section { margin-top: 23px; }
+.shinhan-identity__overview-section h3 { display: flex; align-items: baseline; gap: 6px; margin: 0 0 11px; font-size: 16px; font-weight: 800; }
+.shinhan-identity__overview-section h3 span { color: var(--shinhan-blue); font-size: 14px; }
+.shinhan-identity__overview-section > p { margin: -3px 0 12px; color: var(--shinhan-muted); font-size: 11px; line-height: 1.55; }
+.shinhan-identity__overview-section .shinhan-identity__row-trailing { display: grid; place-items: center; }
+.shinhan-identity__empty { margin: 2px 0; padding: 15px 0; color: var(--shinhan-muted); font-size: 12px; }
+.shinhan-identity__wallet-list { display: grid; gap: 10px; }
+.shinhan-identity__wallet-option { display: flex; min-height: 94px; align-items: center; gap: 10px; padding: 12px; border: 1.5px solid #e2e8f3; border-radius: 16px; background: #fff; cursor: pointer; box-shadow: var(--shinhan-card-shadow); }
+.shinhan-identity__wallet-option[data-selected='true'] { border-color: var(--shinhan-blue); }
+.shinhan-identity__wallet-option input { width: 17px; height: 17px; flex: 0 0 17px; accent-color: var(--shinhan-blue); }
+.shinhan-identity__wallet-avatar { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border-radius: 12px; background: var(--shinhan-blue-soft); color: var(--shinhan-blue); }
+.shinhan-identity__wallet-option > span:nth-of-type(2) { display: grid; min-width: 0; flex: 1 1 auto; gap: 3px; }
+.shinhan-identity__wallet-option strong { font-size: 12px; }
+.shinhan-identity__wallet-option small { color: var(--shinhan-muted); font-size: 10px; }
+.shinhan-identity__wallet-option code { color: var(--shinhan-text); font-family: ui-monospace, monospace; font-size: 10px; }
+.shinhan-identity__text-action { display: inline-flex; min-height: 42px; align-items: center; gap: 5px; margin-top: 14px; padding: 0 2px; border: 0; background: transparent; color: var(--shinhan-blue); font-size: 12px; font-weight: 700; }
+.shinhan-identity__result > .shinhan-identity__pill { margin-bottom: 11px; }
+.shinhan-identity__result > strong { display: block; font-size: 17px; font-weight: 800; }
+.shinhan-identity__result > p { margin: 7px 0 17px; color: var(--shinhan-muted); font-size: 11px; line-height: 1.55; }
+.shinhan-identity__footer { display: grid; flex: 0 0 auto; gap: 8px; padding: 12px 20px 15px; border-top: 1px solid var(--shinhan-divider); background: #fff; }
+.shinhan-identity__button { width: 100%; min-height: 49px; padding: 10px 13px; border: 0; border-radius: 11px; background: var(--shinhan-blue); color: #fff; font-size: 14px; font-weight: 700; }
+.shinhan-identity__button:disabled { background: #c7d7ee; color: #fff; cursor: not-allowed; }
+.shinhan-identity__button--secondary { min-height: 43px; background: #f0f5ff; color: var(--shinhan-blue); }
+@media (prefers-reduced-motion: reduce) { .shinhan-identity__progress span { transition-duration: 0ms; } .shinhan-identity__carrier-sheet { animation: none; } }
