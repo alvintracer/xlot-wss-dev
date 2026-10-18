@@ -4,7 +4,7 @@ import type { DigitalIdentityHostAction, DigitalIdentityHostResult, DigitalIdent
 import './identity.css';
 import { useShinhanWalletTabs } from './ShinhanWalletTabs';
 
-const superSolLogo = new URL('../../app-logo.jpg', import.meta.url).href;
+const superSolLogo = new URL('../assets/preview/super-sol-app-mark.png', import.meta.url).href;
 
 type Stage = 'loading' | 'intro' | 'host-request' | 'checking' | 'secure-choice' | 'issuing' | 'overview' | 'issued' | 'wallet-select' | 'wallet-confirm' | 'proof-request' | 'proof-consent' | 'proof-result';
 type Request = (action: DigitalIdentityHostAction, walletId?: string) => Promise<DigitalIdentityHostResult>;

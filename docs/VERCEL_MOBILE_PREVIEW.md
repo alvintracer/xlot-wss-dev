@@ -132,6 +132,7 @@ committing them:
 - `WSS_SAR_V2_PHONE_SHARE_KEY`
 - `WSS_SAR_V2_EMAIL_SHARE_KEY`
 - `WSS_PHONE_LOOKUP_SECRET`
+- `WSS_DEV_IDENTITY_ISSUER_SEED_HEX` (Shinhan DID preview issuer)
 - `WSS_OTP_MAC_SECRET`
 - server-side price, KYT, RPC, and 0x variables used by the enabled modules
 

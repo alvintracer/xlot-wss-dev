@@ -91,7 +91,9 @@ export async function handleDevDigitalIdentity(input: {
 }): Promise<DigitalIdentityHostResult> {
   const { request, tenantId, customerRef, sessionToken, bffUrl, signWallet } = input;
   const base: DigitalIdentityHostResult = { type: 'took-wss:digital-identity-result', protocolVersion: 1, requestId: request.requestId, ok: false };
-  if (import.meta.env.PROD || tenantId !== 'shinhan') return { ...base, error: 'identity_unavailable' };
+  if (!(import.meta.env.DEV || import.meta.env.VITE_WSS_PUBLIC_PREVIEW === 'true') || tenantId !== 'shinhan') {
+    return { ...base, error: 'identity_unavailable' };
+  }
   try {
     const scope = `${tenantId}:${customerRef}`;
     if (request.action === 'status') {

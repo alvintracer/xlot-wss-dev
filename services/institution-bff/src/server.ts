@@ -82,7 +82,7 @@ const subjectHashSecret = requiredEnvironment('WSS_SUBJECT_HASH_SECRET', 'local-
 const institutionApiKey = requiredEnvironment('WSS_INSTITUTION_API_KEY', 'local-wss-development-only');
 const configuredWalletUrl = process.env.WSS_WALLET_URL?.trim();
 const previewAccessCode = process.env.WSS_PREVIEW_ACCESS_CODE?.trim() || '';
-const devDigitalIdentity = !isProduction && process.env.DATABASE_URL
+const devDigitalIdentity = (isDevelopmentPreview || !isProduction) && process.env.DATABASE_URL
   ? new DevelopmentDigitalIdentityService(process.env.DATABASE_URL) : null;
 if (isDevelopmentPreview && previewAccessCode.length < 12) {
   throw new Error('WSS_PREVIEW_ACCESS_CODE must contain at least 12 characters in development-preview mode.');

@@ -3,7 +3,7 @@ import { CaretLeft, Check, CheckCircle, Fingerprint, IdentificationCard, ShieldC
 import type { DigitalIdentityFlowProps } from '@took-wss/tenant-kiwoom-presentation';
 import './issuance.css';
 
-const superSolLogo = new URL('../../app-logo.jpg', import.meta.url).href;
+const superSolLogo = new URL('../assets/preview/super-sol-app-mark.png', import.meta.url).href;
 
 type Phase = 'intro' | 'host' | 'checking' | 'secure' | 'issuing' | 'issued';
 

@@ -1698,7 +1698,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
       const respond = (result: Partial<import('@took-wss/contracts').DigitalIdentityHostResult>) => frame.contentWindow?.postMessage({
         type: 'took-wss:digital-identity-result', protocolVersion: 1, requestId: request.requestId, ok: false, ...result,
       }, walletOrigin);
-      if (import.meta.env.PROD || !tenantOptions[tenantId].identityCredentialMode) {
+      if (!referenceHostEnabled || !tenantOptions[tenantId].identityCredentialMode) {
         respond({ error: 'identity_unavailable' });
         return;
       }
