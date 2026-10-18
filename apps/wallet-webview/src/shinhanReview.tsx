@@ -5,6 +5,7 @@ import type { ReadyWalletHomePayload, WalletProfileSummary } from '@took-wss/con
 import { ShinhanHostHeader, ShinhanHostNavigation, type ShinhanFinanceTab, type ShinhanRootTab } from '../../../tenants/shinhan/host-chrome/src';
 import { ShinhanSimplePasswordPreview } from '@took-wss/tenant-shinhan-host-chrome/simple-password-preview';
 import { ShinhanWalletSummary } from '../../../tenants/shinhan/presentation/src/ShinhanWalletSummary';
+import { ShinhanPaymentDeck } from '../../../tenants/shinhan/presentation/src/ShinhanPaymentDeck';
 import { ShinhanWalletTabsContext, type ShinhanWalletTab } from '../../../tenants/shinhan/presentation/src/ShinhanWalletTabs';
 import { ShinhanTransferPreview, type ShinhanTransferStage } from '@took-wss/tenant-shinhan-host-chrome/transfer-preview';
 import { ShinhanIdentityPreview, type ShinhanIdentityRecord } from './ShinhanIdentityPreview';
@@ -65,8 +66,8 @@ function WalletScene({ hidden, identityRecord, onToggleBalance, onSheet, onIdent
         <h2>신분/증명</h2>
         <button className="shinhan-live-identity-entry" type="button" onClick={onIdentity}><span className="shinhan-live-identity-entry__icon"><ShieldCheck size={24} weight="duotone" aria-hidden="true" /></span><span><strong>신한 DID</strong><small>{identityRecord ? `내 디지털 신원인증 · 연결된 지갑 ${identityRecord.connectedWallets.length}개` : '내 디지털 신원인증 만들기'}</small></span><CaretRight size={20} aria-hidden="true" /></button>
         <button className="shinhan-identity-home__row" type="button" onClick={() => onSheet('모바일 신분증')}><span className="shinhan-identity-home__icon"><IdentificationCard size={23} weight="duotone" aria-hidden="true" /></span><span><strong>모바일 신분증</strong><small>신분증을 간편하게 확인해요</small></span><CaretRight size={18} aria-hidden="true" /></button>
-        <h2>쏠편한 결제</h2>
-        <div className="shinhan-identity-home__pay"><button type="button" onClick={() => onSheet('쏠페이')}><span className="shinhan-identity-home__pay-mark">SOL</span><strong>쏠페이</strong><small>간편한 일상 결제</small></button><button type="button" onClick={() => setTab('assets')}><span className="shinhan-identity-home__pay-mark">SOL</span><strong>쏠지갑</strong><small>지갑 연결과 증명</small></button></div>
+        <h2>결제</h2>
+        <ShinhanPaymentDeck onEasy={() => onSheet('쏠편한 결제')} onSolPay={() => onSheet('SOL Pay 결제')} onWalletCard={() => onSheet('월렛 카드')} onWalletPos={() => onSheet('월렛 POS')} />
         <h2>전자문서 지갑</h2>
         <div className="shinhan-identity-home__menu">{[
           { label: '증명서 보관함', Icon: FolderOpen }, { label: '전자증명서', Icon: FileText }, { label: '받은 문서', Icon: Receipt }, { label: '결제 내역', Icon: CreditCard },

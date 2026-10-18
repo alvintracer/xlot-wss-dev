@@ -46,7 +46,8 @@ interface WalletHomeProps {
   onListPaymentRequests: (walletId: string) => Promise<WalletPaymentRequest[]>;
   onListSpentPayments: (walletId: string) => Promise<WalletPaymentRequest[]>;
   HomeSummary?: ComponentType<ReadyWalletSummaryProps>;
-  HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; wallets: WalletProfileSummary[]; onFocusedOverlayChange: (focused: boolean) => void }>;
+  HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; wallets: WalletProfileSummary[]; onFocusedOverlayChange: (focused: boolean) => void; onOpenPayment: (screen: 'card' | 'pos') => void }>;
+  WalletIcon?: ComponentType<{ wallet: WalletProfileSummary }>;
   onScanPhysicalCard?: () => Promise<import('@took-wss/contracts').PhysicalCardInfo | null>;
   onCancelPhysicalCardScan?: () => Promise<void>;
   hostCapabilities: HostCapabilities;
@@ -214,6 +215,7 @@ function ReadyWallet({
   onListSpentPayments,
   HomeSummary = DefaultWalletSummary,
   HomeServices,
+  WalletIcon,
   onScanPhysicalCard,
   onCancelPhysicalCardScan,
   hostCapabilities,
@@ -251,7 +253,8 @@ function ReadyWallet({
   onListPaymentRequests: WalletHomeProps['onListPaymentRequests'];
   onListSpentPayments: WalletHomeProps['onListSpentPayments'];
   HomeSummary?: ComponentType<ReadyWalletSummaryProps>;
-  HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; wallets: WalletProfileSummary[]; onFocusedOverlayChange: (focused: boolean) => void }>;
+  HomeServices?: ComponentType<{ walletId: string; walletLabel: string; walletAddress?: string; wallets: WalletProfileSummary[]; onFocusedOverlayChange: (focused: boolean) => void; onOpenPayment: (screen: 'card' | 'pos') => void }>;
+  WalletIcon?: ComponentType<{ wallet: WalletProfileSummary }>;
   onScanPhysicalCard?: WalletHomeProps['onScanPhysicalCard'];
   onCancelPhysicalCardScan?: WalletHomeProps['onCancelPhysicalCardScan'];
   hostCapabilities: HostCapabilities;
@@ -282,6 +285,7 @@ function ReadyWallet({
 }) {
   const [openAction, setOpenAction] = useState<OpenAction | null>(null);
   const [walletSelectorOpen, setWalletSelectorOpen] = useState(false);
+  const [paymentEntry, setPaymentEntry] = useState<{ id: number; screen: 'card' | 'pos' } | null>(null);
   const [balanceHidden, setBalanceHidden] = useState(false);
   const [activity, setActivity] = useState<TransferActivityItem[]>([]);
   const [activityState, setActivityState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -459,6 +463,7 @@ function ReadyWallet({
         paymentCoinLogoUrl={paymentCoinLogoUrl}
         walletHome={walletHome}
         incomingPaymentRequestId={incomingPaymentRequestId}
+        openScreenRequest={paymentEntry}
         onLoadWalletHome={onLoadWalletHome}
         onSelectWallet={onSelectWallet}
         onRequestRecipientPick={onRequestRecipientPick}
@@ -475,7 +480,7 @@ function ReadyWallet({
         onCancelPhysicalCardScan={onCancelPhysicalCardScan}
       />
 
-      {HomeServices ? <HomeServices walletId={walletHome.wallet.walletId} walletLabel={walletHome.wallet.label} walletAddress={walletHome.networks.find((network) => network.addressGroupId === 'evm' && network.addressStatus === 'ready')?.address} wallets={walletHome.wallets} onFocusedOverlayChange={onFocusedOverlayChange} /> : null}
+      {HomeServices ? <HomeServices walletId={walletHome.wallet.walletId} walletLabel={walletHome.wallet.label} walletAddress={walletHome.networks.find((network) => network.addressGroupId === 'evm' && network.addressStatus === 'ready')?.address} wallets={walletHome.wallets} onFocusedOverlayChange={onFocusedOverlayChange} onOpenPayment={(screen) => setPaymentEntry((current) => ({ id: (current?.id ?? 0) + 1, screen }))} /> : null}
 
       <section className="kw-card kw-transfer-activity" aria-labelledby="kw-transfer-activity-title">
         <div className="kw-transfer-activity__heading">
@@ -541,6 +546,7 @@ function ReadyWallet({
           onRemove={onRemoveWallet}
           onAdd={addWallet}
           onClose={closeWalletSelector}
+          WalletIcon={WalletIcon}
         />
       ) : null}
     </div>
@@ -586,6 +592,7 @@ export function WalletHome(props: WalletHomeProps) {
       onListSpentPayments={props.onListSpentPayments}
       HomeSummary={props.HomeSummary}
       HomeServices={props.HomeServices}
+      WalletIcon={props.WalletIcon}
       onScanPhysicalCard={props.onScanPhysicalCard}
       onCancelPhysicalCardScan={props.onCancelPhysicalCardScan}
       hostCapabilities={props.hostCapabilities}

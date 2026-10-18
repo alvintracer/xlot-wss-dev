@@ -1,6 +1,7 @@
 import { ArrowClockwise, CaretDown, Eye, EyeSlash, Plus } from '@phosphor-icons/react';
 import type { ReadyWalletSummaryProps } from '@took-wss/tenant-kiwoom-presentation';
 import { useShinhanWalletTabs } from './ShinhanWalletTabs';
+import { ShinhanWalletMark } from './ShinhanWalletMark';
 
 export function ShinhanWalletSummary({ walletHome, balanceHidden, onToggleBalance, onOpenWalletSelector, onAddWallet, onShowAction, onRefreshWallet }: ReadyWalletSummaryProps) {
   const { tab, setTab } = useShinhanWalletTabs();
@@ -12,7 +13,7 @@ export function ShinhanWalletSummary({ walletHome, balanceHidden, onToggleBalanc
   </nav>{tab === 'assets' ? <section className="shinhan-wallet-summary" aria-label="내 지갑 자산 요약">
     <div className="shinhan-wallet-summary__head">
       <button className="shinhan-wallet-summary__selector" type="button" onClick={onOpenWalletSelector}>
-        <span>{walletHome.wallet.label}</span><CaretDown size={18} aria-hidden="true" />
+        <ShinhanWalletMark wallet={walletHome.wallet} /><span>{walletHome.wallet.label}</span><CaretDown size={18} aria-hidden="true" />
       </button>
       <div className="shinhan-wallet-summary__tools">
         <button type="button" aria-label="금액 새로고침" onClick={onRefreshWallet}><ArrowClockwise size={19} aria-hidden="true" /></button>
@@ -25,7 +26,7 @@ export function ShinhanWalletSummary({ walletHome, balanceHidden, onToggleBalanc
     <strong className="shinhan-wallet-summary__amount">{balanceHidden ? '••••' : total}</strong>
     <p className="shinhan-wallet-summary__detail">{detail}</p>
     <div className="shinhan-wallet-summary__selected">
-      <span><small>선택한 지갑</small><strong>{walletHome.wallet.label}</strong></span>
+      <span className="shinhan-wallet-summary__selected-name"><ShinhanWalletMark wallet={walletHome.wallet} /><span><small>선택한 지갑</small><strong>{walletHome.wallet.label}</strong></span></span>
       <button type="button" aria-label="지갑 추가" onClick={onAddWallet}><Plus size={20} aria-hidden="true" /></button>
     </div>
     <div className="shinhan-wallet-summary__actions" aria-label="지갑 주요 기능">

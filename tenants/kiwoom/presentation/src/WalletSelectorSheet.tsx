@@ -1,5 +1,5 @@
 import { CaretRight, Check, DotsThree, PencilSimple, Plus, Trash, Wallet, X } from '@phosphor-icons/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import type { KeyAdapterId, WalletProfileSummary } from '@took-wss/contracts';
 import { BusyButtonLabel } from './BusyButtonLabel';
 
@@ -11,6 +11,7 @@ interface WalletSelectorSheetProps {
   onRemove: (walletId: string, onProgress: (phase: 'authenticating' | 'removing') => void) => Promise<void>;
   onAdd: () => void;
   onClose: () => void;
+  WalletIcon?: ComponentType<{ wallet: WalletProfileSummary }>;
 }
 
 const adapterLabels: Record<KeyAdapterId, string> = {
@@ -19,7 +20,7 @@ const adapterLabels: Record<KeyAdapterId, string> = {
   'fsl-mpc': '기관 연동',
 };
 
-export function WalletSelectorSheet({ wallets, selectedWalletId, onSelect, onRename, onRemove, onAdd, onClose }: WalletSelectorSheetProps) {
+export function WalletSelectorSheet({ wallets, selectedWalletId, onSelect, onRename, onRemove, onAdd, onClose, WalletIcon }: WalletSelectorSheetProps) {
   const [loadingWalletId, setLoadingWalletId] = useState<string | null>(null);
   const [actionWalletId, setActionWalletId] = useState<string | null>(null);
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null);
@@ -174,7 +175,7 @@ export function WalletSelectorSheet({ wallets, selectedWalletId, onSelect, onRen
                 aria-busy={loadingWalletId === wallet.walletId}
                 onClick={() => void selectWallet(wallet.walletId)}
               >
-                <span className="kw-wallet-choice__icon"><Wallet aria-hidden="true" /></span>
+                <span className="kw-wallet-choice__icon">{WalletIcon ? <WalletIcon wallet={wallet} /> : <Wallet aria-hidden="true" />}</span>
                 <span className="kw-wallet-choice__copy">
                   <strong>{wallet.label}</strong>
                   <small>{adapterLabels[wallet.keyAdapter]} · {wallet.origin === 'imported' ? '가져온 지갑' : '새로 만든 지갑'}</small>

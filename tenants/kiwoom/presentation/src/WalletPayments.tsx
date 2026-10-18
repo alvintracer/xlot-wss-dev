@@ -74,6 +74,7 @@ interface Props {
   paymentCoinLogoUrl?: string;
   walletHome: ReadyWalletHomePayload;
   incomingPaymentRequestId?: string;
+  openScreenRequest?: { id: number; screen: 'card' | 'pos' } | null;
   onLoadWalletHome: (walletId: string) => Promise<ReadyWalletHomePayload>;
   onSelectWallet: (walletId: string) => Promise<void>;
   onRequestRecipientPick: (mode: 'qr' | 'contacts', chainId: string) => Promise<HostRecipientPickResult>;
@@ -632,6 +633,9 @@ export function WalletPayments(props: Props) {
   const [checkoutId, setCheckoutId] = useState<string | null>(props.incomingPaymentRequestId ?? null);
   const [scanMessage, setScanMessage] = useState('');
   const [scanBusy, setScanBusy] = useState(false);
+  useEffect(() => {
+    if (props.openScreenRequest) setScreen(props.openScreenRequest.screen);
+  }, [props.openScreenRequest]);
   useEffect(() => { props.onFocusedOverlayChange(screen !== null); return () => props.onFocusedOverlayChange(false); }, [screen, props.onFocusedOverlayChange]);
   const close = useCallback(() => {
     setScreen(null); setCheckoutId(null);

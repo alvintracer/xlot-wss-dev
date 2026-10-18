@@ -154,13 +154,27 @@
 .shinhan-identity-home__row strong { font-size: 14px; }
 .shinhan-identity-home__row small { color: var(--shinhan-muted); font-size: 11px; }
 .shinhan-identity-home__row > svg { color: #8d98a9; }
-.shinhan-identity-home__pay { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.shinhan-identity-home__pay button { display: grid; min-height: 138px; align-content: center; justify-items: start; gap: 5px; padding: 17px; border: 0; border-radius: 18px; background: linear-gradient(140deg, #7365ed, #534bd5); color: #fff; text-align: left; box-shadow: var(--shinhan-card-shadow); }
-.shinhan-identity-home__pay button + button { background: linear-gradient(140deg, #273f75, #1d2f59); }
-.shinhan-identity-home__pay-mark { font-family: system-ui,sans-serif; font-size: 28px; font-style: italic; font-weight: 900; }
-.shinhan-identity-home__pay-mark { font-size: 24px; letter-spacing: -.08em; }
-.shinhan-identity-home__pay strong { font-size: 15px; }
-.shinhan-identity-home__pay small { color: rgb(255 255 255 / 75%); font-size: 11px; }
+.shinhan-identity-home__pay { overflow: hidden; padding: 7px 7px 0; border-radius: 27px 27px 0 0; background: #34435c; box-shadow: 0 13px 26px rgb(26 45 80 / 13%); }
+.shinhan-identity-home__pay-row { display: grid; min-height: 89px; grid-template-columns: 44px minmax(0, 1fr) 56px; align-items: center; gap: 10px; padding: 15px 15px; }
+.shinhan-identity-home__pay-row--easy { border-radius: 21px 21px 0 0; background: #fff; color: #121e33; }
+.shinhan-identity-home__pay-row--sol { min-height: 98px; border-radius: 21px 21px 0 0; background: linear-gradient(120deg, #7775fa, #686df3); color: #fff; }
+.shinhan-identity-home__pay-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px; }
+.shinhan-identity-home__pay-icon--easy { background: linear-gradient(145deg, #f9fbff, #e9effa); color: #506baf; box-shadow: 0 2px 4px rgb(28 48 91 / 16%); }
+.shinhan-identity-home__pay-icon--sol { background: linear-gradient(145deg, #fff, #e1e8fb); color: #5560bb; box-shadow: 0 2px 5px rgb(36 34 110 / 17%); }
+.shinhan-identity-home__pay-icon--wallet { background: linear-gradient(145deg, #fff, #d8e7fb); color: #1867ba; box-shadow: 0 2px 5px rgb(7 33 90 / 20%); }
+.shinhan-identity-home__pay-copy { display: grid; min-width: 0; gap: 4px; }
+.shinhan-identity-home__pay-copy strong { font-size: 16px; font-weight: 800; line-height: 1.25; }
+.shinhan-identity-home__pay-copy small { font-size: 11px; line-height: 1.35; word-break: keep-all; overflow-wrap: normal; }
+.shinhan-identity-home__pay-row--easy small { color: #586376; }
+.shinhan-identity-home__pay-row--sol small, .shinhan-identity-home__pay-row--wallet small { color: rgb(255 255 255 / 85%); }
+.shinhan-identity-home__pay-row button { min-height: 35px; padding: 0 8px; border: 1px solid #d9dfe7; border-radius: 10px; background: #fff; color: #172238; font-size: 13px; font-weight: 800; }
+.shinhan-identity-home__pay-row--sol button, .shinhan-identity-home__pay-row--wallet button { border-color: rgb(255 255 255 / 50%); background: rgb(255 255 255 / 8%); color: #fff; }
+.shinhan-identity-home__pay-wallet { padding: 14px 10px 13px; color: #fff; }
+.shinhan-identity-home__pay-wallet-label { display: inline-block; margin: 0 0 11px 6px; padding: 5px 11px; border-radius: 6px; background: rgb(18 36 68 / 38%); font-size: 12px; font-weight: 700; }
+.shinhan-identity-home__pay-row--wallet { min-height: 78px; padding: 10px 8px; border-top: 1px solid rgb(255 255 255 / 13%); }
+.shinhan-identity-home__pay-row--wallet:first-of-type { border-top: 0; }
+.shinhan-identity__wallet-avatar:has(.shinhan-wallet-mark) { border-radius: 50%; background: transparent; }
+.shinhan-identity__wallet-avatar .shinhan-wallet-mark { width: 34px; height: 34px; }
 .shinhan-identity-home__menu { overflow: hidden; border-radius: 18px; background: #fff; box-shadow: var(--shinhan-card-shadow); }
 .shinhan-identity-home__menu button { display: flex; width: 100%; min-height: 65px; align-items: center; gap: 13px; padding: 8px 15px; border: 0; border-top: 1px solid var(--shinhan-divider); background: transparent; color: var(--shinhan-ink); text-align: left; }
 .shinhan-identity-home__menu button:first-child { border-top: 0; }
