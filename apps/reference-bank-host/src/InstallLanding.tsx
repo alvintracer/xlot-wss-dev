@@ -11,6 +11,7 @@ export interface InstallLandingConfig {
   heading: string;
   description: string;
   iconFile: string;
+  launchSplash?: { image: string; background: string };
   fontFamily: string;
   colors: {
     canvas: string;

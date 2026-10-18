@@ -73,6 +73,8 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .app-entry button { min-height: 52px; margin-top: 22px; padding: 0 24px; border: 0; border-radius: 18px; background: var(--app-loading-primary); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
 .app-entry button:disabled { opacity: .6; cursor: wait; }
 .app-entry button:focus-visible { outline: 3px solid var(--app-loading-primary); outline-offset: 2px; }
+.app-entry--splash { background: var(--app-splash-background) var(--app-splash-image) center / cover no-repeat; }
+.app-entry--splash > :is(.app-entry-mark, h1, p) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @keyframes app-entry-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .app-entry-spinner { animation-duration: 0s; } }
 .bank-tabs { display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; border-top: 1px solid #ece8ef; background: #fff; color: #a39ca8; font-size: 9px; text-align: center; }

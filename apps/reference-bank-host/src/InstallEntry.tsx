@@ -18,7 +18,9 @@ export function mountInstallEntry(config: InstallLandingConfig): void {
     const [processingReturn, setProcessingReturn] = useState(returnClientId !== null);
     const [resumingCreation, setResumingCreation] = useState(false);
     const continueInBrowser = () => { rememberWebChoice(config); setShowInstall(false); };
-    if (processingReturn && returnClientId) return <Suspense fallback={<div className="install-landing__loading" style={{ background: config.colors.canvas, color: config.colors.ink, fontFamily: config.fontFamily, '--app-loading-primary': config.colors.primary, '--app-loading-primary-ink': config.colors.primaryInk } as CSSProperties} role="status"><div className="install-landing__loading-mark"><LockKey size={28} weight="duotone" /><span /></div><strong>계정을 연결하고 있어요</strong><p>잠시만 기다려 주세요.</p></div>}>
+    const loadingClassName = `install-landing__loading${config.launchSplash ? ' install-landing__loading--splash' : ''}`;
+    const loadingSplashStyle: CSSProperties = config.launchSplash ? { background: config.launchSplash.background, backgroundImage: `url("${config.launchSplash.image}")`, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundSize: 'cover' } : {};
+    if (processingReturn && returnClientId) return <Suspense fallback={<div className={loadingClassName} style={{ background: config.colors.canvas, color: config.colors.ink, fontFamily: config.fontFamily, '--app-loading-primary': config.colors.primary, '--app-loading-primary-ink': config.colors.primaryInk, ...loadingSplashStyle } as CSSProperties} role="status"><div className="install-landing__loading-mark"><LockKey size={28} weight="duotone" /><span /></div><strong>계정을 연결하고 있어요</strong><p>잠시만 기다려 주세요.</p></div>}>
       <PwaThirdwebReturn config={config} clientId={returnClientId} onComplete={(connected) => { setResumingCreation(connected && hasPendingPwaWalletCreation(config.tenantId)); setProcessingReturn(false); setShowInstall(false); }} />
     </Suspense>;
     if (processingReturn) return <div className="install-landing__loading" style={{ background: config.colors.canvas, color: config.colors.ink, fontFamily: config.fontFamily, '--app-loading-primary': config.colors.primary, '--app-loading-primary-ink': config.colors.primaryInk } as CSSProperties} role="alert">
@@ -27,7 +29,7 @@ export function mountInstallEntry(config: InstallLandingConfig): void {
     </div>;
     return showInstall
       ? <InstallLanding config={config} onContinue={continueInBrowser} />
-      : <Suspense fallback={<div className="install-landing__loading" style={{ background: config.colors.canvas, color: config.colors.ink, fontFamily: config.fontFamily, '--app-loading-primary': config.colors.primary } as CSSProperties} role="status"><div className="install-landing__loading-mark"><LockKey size={28} weight="duotone" /><span /></div><strong>{resumingCreation ? '새 지갑을 생성하고 있어요' : '안전한 지갑을 준비하고 있어요'}</strong><p>잠시만 기다려 주세요.</p></div>}><WalletHost resumingCreation={resumingCreation} /></Suspense>;
+      : <Suspense fallback={<div className={loadingClassName} style={{ background: config.colors.canvas, color: config.colors.ink, fontFamily: config.fontFamily, '--app-loading-primary': config.colors.primary, ...loadingSplashStyle } as CSSProperties} role="status"><div className="install-landing__loading-mark"><LockKey size={28} weight="duotone" /><span /></div><strong>{resumingCreation ? '새 지갑을 생성하고 있어요' : '안전한 지갑을 준비하고 있어요'}</strong><p>잠시만 기다려 주세요.</p></div>}><WalletHost resumingCreation={resumingCreation} /></Suspense>;
   }
 
   createRoot(document.getElementById('root')!).render(<StrictMode><Entry /></StrictMode>);

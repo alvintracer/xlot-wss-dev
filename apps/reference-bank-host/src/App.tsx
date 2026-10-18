@@ -91,6 +91,7 @@ const referenceHostSarKeyCore = new ReferenceHostSarKeyCore();
 
 function tenantOption(manifest: TenantManifest, landing?: {
   brandName: string; iconFile: string; fontFamily: string;
+  launchSplash?: { image: string; background: string };
   colors: { primary: string; primaryInk: string; ink: string };
 }) {
   return {
@@ -106,6 +107,7 @@ function tenantOption(manifest: TenantManifest, landing?: {
     loadingCanvas: manifest.brand.surfaceColor,
     loadingInk: manifest.brand.textColor,
     loadingPrimary: manifest.brand.primaryColor,
+    loadingSplash: landing?.launchSplash ?? null,
     exchangeRouterBrand: {
       name: landing?.brandName ?? manifest.walletName,
       iconFile: landing?.iconFile.replace(/-512\.png$/, '-192.png') ?? 'wss-preview-192.png',
@@ -410,7 +412,9 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
     const phone = stageRef.current?.querySelector('.phone') ?? null;
     const whiteSurface = shellMode === 'focus' || appSettingsOpen || identityPinRequest !== null || securityCeremony !== null || recipientPicker !== null || pendingExchangeSign !== null || checkingExchangeSign;
     const loadingSurface = !walletScreenReady || status === 'error';
-    const canvas = tenantOptions[tenantId].loadingCanvas;
+    const canvas = loadingSurface && status !== 'error'
+      ? tenantOptions[tenantId].loadingSplash?.background ?? tenantOptions[tenantId].loadingCanvas
+      : tenantOptions[tenantId].loadingCanvas;
     const topColor = whiteSurface ? '#ffffff' : loadingSurface ? canvas
       : computedHexColor(phone?.querySelector(':scope > header') ?? null, canvas);
     const bottomColor = whiteSurface ? '#ffffff' : loadingSurface ? canvas
@@ -1929,10 +1933,12 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
             onBiometricChange={setAppBiometricEnabled}
             onClose={() => setAppSettingsOpen(false)} /> : null}
           {appOnlyPreview && (!walletScreenReady || status === 'error') ? (
-            <div className="app-entry" role="status" aria-live="polite" style={{
+            <div className={`app-entry${status !== 'error' && tenantOptions[tenantId].loadingSplash ? ' app-entry--splash' : ''}`} role="status" aria-live="polite" style={{
               '--app-loading-canvas': tenantOptions[tenantId].loadingCanvas,
               '--app-loading-ink': tenantOptions[tenantId].loadingInk,
               '--app-loading-primary': tenantOptions[tenantId].loadingPrimary,
+              '--app-splash-background': tenantOptions[tenantId].loadingSplash?.background,
+              '--app-splash-image': tenantOptions[tenantId].loadingSplash ? `url("${tenantOptions[tenantId].loadingSplash.image}")` : undefined,
             } as CSSProperties}>
               <div className="app-entry-mark" aria-hidden="true"><LockKey size={28} weight="duotone" />{status !== 'error' ? <span className="app-entry-spinner" /> : null}</div>
               <h1>{status === 'error' ? '지갑을 열지 못했어요' : resumingCreation ? '새 지갑을 생성하고 있어요' : '안전한 지갑을 준비하고 있어요'}</h1>

@@ -78,12 +78,7 @@ public class MainActivity extends BridgeActivity {
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
         ));
         setSystemBarSurfaces(SPLASH_BLUE, SPLASH_BLUE);
-        splash.postDelayed(() -> {
-            content.removeView(splash);
-            if (getWindow().getStatusBarColor() == SPLASH_BLUE) {
-                setSystemBarSurfaces(DEFAULT_TOP_COLOR, DEFAULT_BOTTOM_COLOR);
-            }
-        }, 1400);
+        splash.postDelayed(() -> content.removeView(splash), 1400);
     }
 
     public void setSystemBarSurfaces(int topColor, int bottomColor) {

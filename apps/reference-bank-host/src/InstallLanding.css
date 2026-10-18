@@ -44,6 +44,7 @@
 .install-landing__loading p { margin: 0; opacity: .66; font-size: 13px; line-height: 1.6; }
 .install-landing__loading > button { min-height: 48px; margin-top: 12px; padding: 0 20px; border: 0; border-radius: 12px; background: var(--app-loading-primary); color: var(--app-loading-primary-ink); font: inherit; font-weight: 700; }
 .install-landing__loading > button:focus-visible { outline: 3px solid var(--app-loading-primary); outline-offset: 3px; }
+.install-landing__loading--splash > :is(.install-landing__loading-mark, strong, p) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @keyframes install-landing-spin { to { transform: rotate(360deg); } }
 @media (max-height: 700px) { .install-landing__content { min-height: calc(100dvh - 44px); } .install-landing__hero { padding: 24px 0; } .install-landing__icon { width: 112px; margin-bottom: 15px; } }
 @media (prefers-reduced-motion: reduce) { .install-landing *, .install-landing *::before, .install-landing *::after { scroll-behavior: auto !important; transition-duration: 0s !important; animation-duration: 0s !important; } .install-landing__loading-mark span { animation-duration: 0s; } }
