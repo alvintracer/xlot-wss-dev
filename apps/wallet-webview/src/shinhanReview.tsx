@@ -20,8 +20,8 @@ const reviewHome: ReadyWalletHomePayload = {
   status: 'ready', wallet: reviewWallet, wallets: [reviewWallet], source: 'wallet-query',
   totalFiat: { currency: 'KRW', display: '280,000원', asOf: '2026-10-18T00:00:00.000Z', stale: false },
   assets: [
-    { assetId: 'sample-a', symbol: 'SYN', name: '예시 자산 A', network: 'review', balanceAtomic: '0', balanceDisplay: '1.25개' },
-    { assetId: 'sample-b', symbol: 'SYN', name: '예시 자산 B', network: 'review', balanceAtomic: '0', balanceDisplay: '14개' },
+    { assetId: 'sample-a', symbol: 'SYN', name: '자산 A', network: 'review', balanceAtomic: '0', balanceDisplay: '1.25개' },
+    { assetId: 'sample-b', symbol: 'SYN', name: '자산 B', network: 'review', balanceAtomic: '0', balanceDisplay: '14개' },
   ],
   receiveAssets: [], networks: [], valuation: { currency: 'KRW', provider: 'review', status: 'sandbox', asOf: '2026-10-18T00:00:00.000Z' },
   recovery: { profile: 'sar-2-of-3', status: 'ready', policyVersion: 1 },
@@ -30,9 +30,9 @@ const reviewHome: ReadyWalletHomePayload = {
 function FinanceBankPane({ onEdit, onDetails, onTransfer }: { onEdit: () => void; onDetails: () => void; onTransfer: () => void }) {
   return <div className="shinhan-review-finance-pane" data-testid="shinhan-bank-pane">
     <div className="shinhan-review-amount-line"><span>금액</span><span className="shinhan-review-toggle" aria-label="금액 표시됨"><span>₩</span></span><button type="button" onClick={onEdit}>편집 <CaretRight size={17} aria-hidden="true" /></button></div>
-    <section className="shinhan-review-account-card" aria-label="예시 계좌">
+    <section className="shinhan-review-account-card" aria-label="계좌">
       <div className="shinhan-review-account-card__head"><h2>계좌</h2><button type="button" onClick={onDetails}>전체계좌 <CaretRight size={17} aria-hidden="true" /></button></div>
-      <div className="shinhan-review-account-card__account"><span className="shinhan-review-account-card__bank-mark" aria-hidden="true">H</span><div><strong>입출금 예시 계좌</strong><small>예시은행 · 계좌번호 끝 1234</small></div><span aria-hidden="true">⚙</span></div>
+      <div className="shinhan-review-account-card__account"><span className="shinhan-review-account-card__bank-mark" aria-hidden="true">S</span><div><strong>입출금 계좌</strong><small>신한은행 · 계좌번호 끝 1234</small></div><span aria-hidden="true">⚙</span></div>
       <strong className="shinhan-review-account-card__amount">1,250,000원</strong>
       <button className="shinhan-review-account-card__action" type="button" onClick={onTransfer}>이체</button>
     </section>
@@ -61,7 +61,7 @@ function WalletScene({ hidden, identityRecord, onToggleBalance, onSheet, onIdent
     <div className="shinhan-review-wallet__tabs"><button type="button" onClick={onIdentity}>신원·결제</button><strong>디지털자산</strong></div>
     <div className="shinhan-review-wallet__canvas"><ShinhanWalletSummary walletHome={reviewHome} balanceHidden={hidden} onToggleBalance={onToggleBalance} onOpenWalletSelector={() => onSheet('지갑 선택')} onAddWallet={() => onSheet('지갑 추가')} onSelectWallet={async () => {}} onShowAction={(action) => onSheet(action === 'receive' ? '받기' : action === 'send' ? '보내기' : '바꾸기')} onRefreshWallet={() => onSheet('새로고침')} onNavigate={() => {}} />
       <button className="shinhan-review-identity-entry" type="button" onClick={onIdentity}><span className="shinhan-review-identity-entry__icon"><IdentificationCard size={23} aria-hidden="true" /></span><span><strong>내 디지털 신원인증</strong><small>{identityRecord ? `발급 완료 · 연결된 지갑 ${identityRecord.connectedWallets.length}개` : '내 정보를 확인하고 디지털 ID를 발급해요'}</small></span><CaretRight size={20} aria-hidden="true" /></button>
-      <section className="shinhan-review-holdings"><h2>보유 자산</h2><div><span className="shinhan-review-holdings__icon">A</span><span><strong>예시 자산 A</strong><small>1.25개</small></span><b>{hidden ? '••••' : '180,000원'}</b></div><div><span className="shinhan-review-holdings__icon">B</span><span><strong>예시 자산 B</strong><small>14개</small></span><b>{hidden ? '••••' : '100,000원'}</b></div></section>
+      <section className="shinhan-review-holdings"><h2>보유 자산</h2><div><span className="shinhan-review-holdings__icon">A</span><span><strong>자산 A</strong><small>1.25개</small></span><b>{hidden ? '••••' : '180,000원'}</b></div><div><span className="shinhan-review-holdings__icon">B</span><span><strong>자산 B</strong><small>14개</small></span><b>{hidden ? '••••' : '100,000원'}</b></div></section>
       <section className="shinhan-review-activity"><h2>최근 내역</h2><p>아직 내역이 없어요.</p></section>
     </div>
   </div>;
@@ -111,16 +111,16 @@ function ReviewApp() {
   const transferStage = scene.startsWith('transfer-') ? scene.slice('transfer-'.length) as ShinhanTransferStage : null;
   const closeTransfer = () => { setScene('finance'); setAmountDigits(''); };
   const backTransfer = () => { if (scene === 'transfer-amount' || scene === 'transfer-favorites') setScene('transfer-recipient'); else if (scene === 'transfer-confirm') setScene('transfer-amount'); else if (scene === 'simple-password') setScene('transfer-confirm'); else closeTransfer(); };
-  const onRootTab = (tab: ShinhanRootTab) => { if (tab === 'finance') setScene('finance'); else openSheet(`${tab === 'home' ? '홈' : tab === 'products' ? '상품' : tab === 'benefits' ? '혜택' : '주식'} 미리보기`); };
+  const onRootTab = (tab: ShinhanRootTab) => { if (tab === 'finance') setScene('finance'); else openSheet(tab === 'home' ? '홈' : tab === 'products' ? '상품' : tab === 'benefits' ? '혜택' : '주식'); };
   return <main className="shinhan-review-page">
     <aside className="shinhan-review-controls"><small>SHINHAN · SCREEN FLOW</small><h1>Super SOL 화면</h1><p>금융 화면부터 쏠지갑과 신원인증까지 이어지는 흐름을 살펴보세요.</p><div role="group" aria-label="화면 선택">{([['finance','금융'],['exchange','환전'],['wallet','내 지갑'],['identity','신원인증 흐름'],['transfer-recipient','이체 화면'],['transfer-amount','금액 입력'],['transfer-confirm','보내기 확인'],['transfer-favorites','자주쓰는 계좌'],['simple-password','간편비밀번호'],['splash','스플래시']] as const).map(([id,label])=><button key={id} type="button" aria-pressed={scene===id} onClick={()=>setScene(id)}>{label}</button>)}</div><p className="shinhan-review-controls__note">{reviewWidth} × {Math.round(reviewWidth*13/6)} CSS px</p></aside>
     <section className="shinhan-review-device shinhan-ui" data-scene={scene} data-testid="shinhan-review-device" aria-label="신한 슈퍼쏠 화면" style={{ width: reviewWidth, height: Math.round(reviewWidth*13/6) }}>
       {scene === 'splash' ? <div className="shinhan-review-splash"><div className="shinhan-review-status"><span>9:41</span><span>● ▰ ▰</span></div><img src={wordmark} alt="super SOL" /><div className="shinhan-review-system-nav" aria-hidden="true"><i /><i /><i /></div></div> : <>
         <div className="shinhan-review-status"><span>9:41</span><span>● ▰ ▰</span></div>
-        {section ? <ShinhanHostHeader section={section} financeTab={financeTab} onFinanceTab={setFinanceTab} onBack={() => setScene('finance')} onAction={(action) => { if (action === 'wallet') setScene('wallet'); else if (action === 'home') setScene('finance'); else openSheet('서비스 미리보기'); }} /> : null}
+        {section ? <ShinhanHostHeader section={section} financeTab={financeTab} onFinanceTab={setFinanceTab} onBack={() => setScene('finance')} onAction={(action) => { if (action === 'wallet') setScene('wallet'); else if (action === 'home') setScene('finance'); else openSheet('서비스'); }} /> : null}
         <div className="shinhan-review-content" data-scene={scene}>
           {scene === 'finance' ? <div className="shinhan-review-finance-viewport"><div className="shinhan-review-finance-track" style={{ transform: `translateX(-${financeTabs.indexOf(financeTab)*25}%)` }}>{financeTabs.map(tab => <div key={tab} className="shinhan-review-finance-track__pane">{tab === 'bank' ? <FinanceBankPane onEdit={() => openSheet('금액 편집')} onDetails={() => openSheet('계좌 상세')} onTransfer={() => setScene('transfer-recipient')} /> : <FinanceOtherPane tab={tab} />}</div>)}</div></div> : null}
-          {scene === 'exchange' ? <ExchangeScene loading={loading} onRefresh={refresh} onStart={() => openSheet('환전 미리보기')} /> : null}
+          {scene === 'exchange' ? <ExchangeScene loading={loading} onRefresh={refresh} onStart={() => openSheet('환전')} /> : null}
           {scene === 'wallet' ? <WalletScene hidden={hidden} identityRecord={identityRecord} onToggleBalance={() => setHidden(value=>!value)} onSheet={openSheet} onIdentity={() => setScene('identity')} /> : null}
           {scene === 'identity' ? <ShinhanIdentityPreview record={identityRecord} onRecordChange={setIdentityRecord} onClose={() => setScene('wallet')} /> : null}
           {transferStage ? <ShinhanTransferPreview stage={transferStage} onStage={(stage) => setScene(`transfer-${stage}`)} onClose={closeTransfer} onPin={() => setScene('simple-password')} amountDigits={amountDigits} onAmountDigits={setAmountDigits} onBack={backTransfer} onPreviewAction={openSheet} /> : null}

@@ -406,7 +406,7 @@ export function CreateWalletFlow({
           <span>인증번호</span>
           <input autoFocus value={verificationCode} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))} />
         </label>
-        {developmentCode ? <p className="kw-development-code kw-mt-16">개발 확인용 인증번호 <strong>{developmentCode}</strong></p> : null}
+        {developmentCode ? <p className="kw-development-code kw-mt-16">{manifest.identity.digitalCredential ? '인증번호' : '개발 확인용 인증번호'} <strong>{developmentCode}</strong></p> : null}
         <button className="kw-text-action kw-mt-20" type="button" disabled={busy} aria-busy={busy && phoneCodeAction === 'resend'} onClick={() => void resendPhoneCode()}>{busy && phoneCodeAction === 'resend' ? <BusyButtonLabel>인증번호를 다시 보내고 있어요</BusyButtonLabel> : '인증번호 다시 받기'}</button>
         {error ? <p className="kw-error kw-mt-12" role="alert">{error}</p> : null}
       </FlowShell>
