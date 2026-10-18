@@ -113,7 +113,31 @@
 .shinhan-identity__button { width: 100%; min-height: 49px; padding: 10px 13px; border: 0; border-radius: 11px; background: var(--shinhan-blue); color: #fff; font-size: 14px; font-weight: 700; }
 .shinhan-identity__button:disabled { background: #c7d7ee; color: #fff; cursor: not-allowed; }
 .shinhan-identity__button--secondary { min-height: 43px; background: #f0f5ff; color: var(--shinhan-blue); }
+.shinhan-identity__verification { display: flex; min-height: min(570px, 100%); flex-direction: column; align-items: center; justify-content: center; padding: 20px 4px 52px; text-align: center; }
+.shinhan-identity__verification-scene { position: relative; display: grid; width: 206px; height: 196px; place-items: center; margin-bottom: 28px; }
+.shinhan-identity__verification-halo { position: absolute; inset: 5px 12px; border: 1px solid #dbeaff; border-radius: 50%; background: radial-gradient(circle, #edf5ff 12%, #fff 70%); box-shadow: 0 0 0 14px rgb(224 239 255 / 36%); animation: shinhan-id-halo 2.5s ease-in-out infinite; }
+.shinhan-identity__verification-card { position: relative; display: flex; width: 144px; height: 164px; flex-direction: column; align-items: flex-start; overflow: hidden; padding: 15px; border: 1px solid #d3e4fd; border-radius: 20px; background: linear-gradient(150deg, #fff 8%, #eef6ff 100%); box-shadow: 0 18px 33px rgb(15 94 206 / 16%), inset 0 1px 0 #fff; animation: shinhan-id-float 2.8s ease-in-out infinite; }
+.shinhan-identity__verification-mark { color: var(--shinhan-blue); }
+.shinhan-identity__verification-avatar { display: grid; width: 49px; height: 49px; place-items: center; margin-top: 11px; border-radius: 15px; background: #dfeeff; color: #5798e8; }
+.shinhan-identity__verification-lines { display: grid; width: 100%; gap: 6px; margin-top: 13px; }
+.shinhan-identity__verification-lines i { width: 72%; height: 5px; border-radius: 99px; background: #b4d3fb; }
+.shinhan-identity__verification-lines i:nth-child(2) { width: 93%; background: #d3e5fa; }
+.shinhan-identity__verification-lines i:nth-child(3) { width: 54%; background: #d3e5fa; }
+.shinhan-identity__verification-scan { position: absolute; top: -25%; left: 0; width: 100%; height: 33px; border-bottom: 2px solid #1586fa; background: linear-gradient(180deg, transparent, rgb(40 158 255 / 23%)); box-shadow: 0 5px 16px rgb(32 145 255 / 28%); animation: shinhan-id-scan 2.2s ease-in-out infinite; }
+.shinhan-identity__verification-seal { position: absolute; right: 10px; bottom: 14px; display: grid; width: 52px; height: 52px; place-items: center; border: 4px solid #fff; border-radius: 18px; background: linear-gradient(145deg, #168bff, #0759e9); color: #fff; box-shadow: 0 8px 18px rgb(2 74 182 / 19%); animation: shinhan-id-seal 2.2s ease-in-out infinite; }
+.shinhan-identity__verification h2 { font-size: 23px; }
+.shinhan-identity__verification p { margin: 12px 0 0; color: var(--shinhan-text); font-size: 13px; line-height: 1.6; }
+.shinhan-identity__verification-track { width: min(235px, 75%); height: 6px; overflow: hidden; margin-top: 34px; border-radius: 99px; background: #e6effd; }
+.shinhan-identity__verification-track span { display: block; width: 88%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0b62ef, #42b3ff, #9bdcff); box-shadow: 0 0 8px rgb(28 143 255 / 50%); transform-origin: left; animation: shinhan-id-progress 7s cubic-bezier(.15,.68,.2,1) both, shinhan-id-bar-glow 1.8s ease-in-out infinite; }
+.shinhan-identity__verification small { margin-top: 15px; color: var(--shinhan-muted); font-size: 11px; }
+@keyframes shinhan-id-halo { 50% { transform: scale(1.045); opacity: .72; } }
+@keyframes shinhan-id-float { 50% { transform: translateY(-7px) rotate(2deg); } }
+@keyframes shinhan-id-scan { 0% { transform: translateY(-38px); } 50%, 80% { transform: translateY(186px); } 100% { transform: translateY(-38px); } }
+@keyframes shinhan-id-seal { 50% { transform: scale(1.07); } }
+@keyframes shinhan-id-progress { from { transform: scaleX(.08); } to { transform: scaleX(1); } }
+@keyframes shinhan-id-bar-glow { 50% { filter: brightness(1.2); } }
 @media (prefers-reduced-motion: reduce) { .shinhan-identity__progress span { transition-duration: 0ms; } .shinhan-identity__carrier-sheet { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .shinhan-identity__verification-halo, .shinhan-identity__verification-card, .shinhan-identity__verification-scan, .shinhan-identity__verification-seal, .shinhan-identity__verification-track span { animation: none; } .shinhan-identity__verification-scan { top: 52%; } }
 
 .shinhan-identity-home { padding: 20px 20px 32px; background: var(--shinhan-canvas); }
 .shinhan-identity-home h2 { margin: 5px 0 15px; font-size: 18px; font-weight: 800; }

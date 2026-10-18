@@ -454,7 +454,7 @@ export function useWssRuntime(): RuntimeResult {
         pendingDigitalIdentity.current.delete(requestId);
         resolve({ type: 'took-wss:digital-identity-result', protocolVersion: 1, requestId,
           ok: false, error: 'identity_request_timeout' });
-      }, 120_000);
+      }, action === 'authorize-proof' ? 300_000 : 120_000);
       pendingDigitalIdentity.current.set(requestId, { resolve, timeout });
       postToHost(hostOrigin.current!, { type: 'took-wss:digital-identity-request', protocolVersion: 1,
         requestId, action, ...(walletId ? { walletId } : {}) });

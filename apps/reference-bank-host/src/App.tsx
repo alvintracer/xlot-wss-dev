@@ -47,11 +47,12 @@ import { handleNativeDeviceRequest, isTrustedNativeDeviceRequest, type ExchangeP
 import { ExchangeSignLoading, ExchangeSignPanel } from './ExchangeSignPanel';
 import { HostAppSettings } from './HostAppSettings';
 import { PreviewKeypadProvider } from './PreviewKeypadContext';
-import { authorizeDigitalIdentityBiometric, biometricPinEnabled, readBiometricPin } from './nativeBiometricPin';
+import { authorizeDigitalIdentityBiometric, biometricPinAvailable, biometricPinEnabled, readBiometricPin } from './nativeBiometricPin';
 import { computedHexColor, setNativeSystemBarSurface } from './nativeSystemBars';
 import { handleDevDigitalIdentity } from './devDigitalIdentity';
 import type { DigitalIdentityHostRequest } from '@took-wss/contracts';
 import { ShinhanSimplePasswordPreview } from '@took-wss/tenant-shinhan-host-chrome/simple-password-preview';
+import { ShinhanBiometricConnectPrompt } from '@took-wss/tenant-shinhan-host-chrome/biometric-connect-prompt';
 
 const publicPreviewEnabled = import.meta.env.VITE_WSS_PUBLIC_PREVIEW === 'true';
 const previewTenant = import.meta.env.VITE_WSS_PREVIEW_TENANT || 'kiwoom';
@@ -314,7 +315,10 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
   const [keyAdapter, setKeyAdapter] = useState<KeyAdapterId>(tenantOptions[previewTenant as TenantId].defaultAdapter);
   const [hostTab, setHostTab] = useState(() => getHostChromeProfile(tenantOptions[previewTenant as TenantId].presentationProfileId).initialTab);
   const [appSettingsOpen, setAppSettingsOpen] = useState(false);
+  const [appSettingsFlow, setAppSettingsFlow] = useState<'default' | 'biometric-link'>('default');
   const [identityPinRequest, setIdentityPinRequest] = useState<{ resolve: (approved: boolean) => void } | null>(null);
+  const [identityBiometricRequest, setIdentityBiometricRequest] = useState<{ resolve: (approved: boolean) => void } | null>(null);
+  const [identityBiometricSetup, setIdentityBiometricSetup] = useState<{ resolve: (approved: boolean) => void } | null>(null);
   const identityPersonCheck = useRef<{ token: string; expiresAt: number } | null>(null);
   const identityAuthorization = useRef<{ token: string; expiresAt: number } | null>(null);
   const [appBiometricEnabled, setAppBiometricEnabled] = useState(false);
@@ -412,7 +416,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
   useEffect(() => {
     if (!appOnlyPreview) return;
     const phone = stageRef.current?.querySelector('.phone') ?? null;
-    const whiteSurface = shellMode === 'focus' || appSettingsOpen || identityPinRequest !== null || securityCeremony !== null || recipientPicker !== null || pendingExchangeSign !== null || checkingExchangeSign;
+    const whiteSurface = shellMode === 'focus' || appSettingsOpen || identityPinRequest !== null || identityBiometricRequest !== null || securityCeremony !== null || recipientPicker !== null || pendingExchangeSign !== null || checkingExchangeSign;
     const loadingSurface = !walletScreenReady || status === 'error';
     const canvas = loadingSurface && status !== 'error'
       ? tenantOptions[tenantId].loadingSplash?.background ?? tenantOptions[tenantId].loadingCanvas
@@ -422,7 +426,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
     const bottomColor = whiteSurface ? '#ffffff' : loadingSurface ? canvas
       : computedHexColor(phone?.querySelector(':scope > nav') ?? null, canvas);
     void setNativeSystemBarSurface(topColor, bottomColor).catch(() => undefined);
-  }, [appSettingsOpen, checkingExchangeSign, hostTab, identityPinRequest, pendingExchangeSign, recipientPicker, securityCeremony, shellMode, status, tenantId, walletScreenReady]);
+  }, [appSettingsOpen, checkingExchangeSign, hostTab, identityBiometricRequest, identityPinRequest, pendingExchangeSign, recipientPicker, securityCeremony, shellMode, status, tenantId, walletScreenReady]);
 
   useEffect(() => {
     if (!appOnlyPreview) return;
@@ -1414,6 +1418,10 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
   const resetIdentityApproval = () => {
     identityPinRequest?.resolve(false);
     setIdentityPinRequest(null);
+    identityBiometricRequest?.resolve(false);
+    setIdentityBiometricRequest(null);
+    identityBiometricSetup?.resolve(false);
+    setIdentityBiometricSetup(null);
     identityPersonCheck.current = null;
     identityAuthorization.current = null;
   };
@@ -1702,7 +1710,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
         || !event.data || event.data.type !== 'took-wss:digital-identity-request'
         || event.data.protocolVersion !== 1 || typeof event.data.requestId !== 'string'
         || !/^[0-9a-f-]{36}$/i.test(event.data.requestId)
-        || !['status', 'verify-person', 'authorize', 'issue', 'bind-wallet', 'verify', 'open-biometric-settings'].includes(event.data.action)
+        || !['status', 'verify-person', 'authorize', 'authorize-proof', 'issue', 'bind-wallet', 'verify', 'open-biometric-settings'].includes(event.data.action)
         || (event.data.walletId !== undefined && typeof event.data.walletId !== 'string')) return;
       const request = event.data as DigitalIdentityHostRequest;
       const respond = (result: Partial<import('@took-wss/contracts').DigitalIdentityHostResult>) => frame.contentWindow?.postMessage({
@@ -1731,22 +1739,28 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
           return;
         }
         if (request.action === 'open-biometric-settings') {
+          setAppSettingsFlow('default');
           setAppSettingsOpen(true);
           respond({ ok: true });
           return;
         }
-        if (request.action === 'authorize') {
+        if (request.action === 'authorize' || request.action === 'authorize-proof') {
           void (async () => {
             try {
               const scope = appPinScope(tenantId, token);
               if (await biometricPinEnabled(scope)) {
                 await authorizeDigitalIdentityBiometric(scope);
                 identityAuthorization.current = { token, expiresAt: Date.now() + 120_000 };
-                respond({ ok: true, authorizationMethod: 'biometric' });
+                respond({ ok: true, authorizationMethod: 'biometric', biometricEnabled: true });
               } else {
                 const approved = await new Promise<boolean>((resolve) => setIdentityPinRequest({ resolve }));
-                if (approved) identityAuthorization.current = { token, expiresAt: Date.now() + 120_000 };
-                respond(approved ? { ok: true, authorizationMethod: 'simple-password-preview' } : { error: 'authorization_cancelled' });
+                if (!approved) { respond({ error: 'authorization_cancelled' }); return; }
+                if (request.action === 'authorize-proof' && await biometricPinAvailable()) {
+                  const connected = await new Promise<boolean>((resolve) => setIdentityBiometricRequest({ resolve }));
+                  if (!connected) { respond({ error: 'authorization_cancelled' }); return; }
+                }
+                identityAuthorization.current = { token, expiresAt: Date.now() + 120_000 };
+                respond({ ok: true, authorizationMethod: 'simple-password-preview', biometricEnabled: await biometricPinEnabled(scope) });
               }
             } catch { respond({ error: 'authorization_cancelled' }); }
           })();
@@ -1923,7 +1937,7 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
           data-host-tab={hostTab}
         >
           {!appOnlyPreview ? <div className="phone-status"><span>9:41</span><span>● ● ▰</span></div> : null}
-          {showRootChrome ? <HostHeader onAction={setHostFeedback} onOpenWalletSettings={() => setAppSettingsOpen(true)} activeTab={hostTab} onSelectTab={setHostTab} customerName={customerName} /> : null}
+          {showRootChrome ? <HostHeader onAction={setHostFeedback} onOpenWalletSettings={() => { setAppSettingsFlow('default'); setAppSettingsOpen(true); }} activeTab={hostTab} onSelectTab={setHostTab} customerName={customerName} /> : null}
           {session ? (
             <>
               <iframe ref={frameRef} src={incomingClaimCode ? `${session.walletUrl}#claim=${encodeURIComponent(incomingClaimCode)}` : incomingPaymentRequestId ? `${session.walletUrl}#payment=${encodeURIComponent(incomingPaymentRequestId)}` : session.walletUrl} title={`${tenantOptions[tenantId].label} WebView`} allow="clipboard-write" style={!showWallet ? { display: 'none' } : appOnlyPreview && !walletScreenReady ? { visibility: 'hidden' } : undefined} />
@@ -1945,11 +1959,14 @@ export function App({ resumingCreation = false }: { resumingCreation?: boolean }
             prompt="신한 DID에 사용할 비밀번호 6자리를 입력해주세요"
             onClose={() => { identityPinRequest.resolve(false); setIdentityPinRequest(null); }}
             onComplete={() => { identityPinRequest.resolve(true); setIdentityPinRequest(null); }} /></div> : null}
-          {appSettingsOpen ? <HostAppSettings scope={session ? appPinScope(tenantId, session.sessionToken) : null}
+          {identityBiometricRequest ? <div className="shinhan-host-identity-pin"><ShinhanBiometricConnectPrompt
+            onLater={() => { identityBiometricRequest.resolve(true); setIdentityBiometricRequest(null); }}
+            onConnect={() => { setIdentityBiometricSetup(identityBiometricRequest); setIdentityBiometricRequest(null); setAppSettingsFlow('biometric-link'); setAppSettingsOpen(true); }} /></div> : null}
+          {appSettingsOpen ? <HostAppSettings key={appSettingsFlow} flow={appSettingsFlow} scope={session ? appPinScope(tenantId, session.sessionToken) : null}
             keypadLayout={tenantOptions[tenantId].secureKeypadLayout}
             hasPin={session ? hasAppPin(appPinScope(tenantId, session.sessionToken)) : false}
-            onBiometricChange={setAppBiometricEnabled}
-            onClose={() => setAppSettingsOpen(false)} /> : null}
+            onBiometricChange={(enabled) => { setAppBiometricEnabled(enabled); if (enabled && identityBiometricSetup) { identityBiometricSetup.resolve(true); setIdentityBiometricSetup(null); setAppSettingsOpen(false); } }}
+            onClose={() => { identityBiometricSetup?.resolve(true); setIdentityBiometricSetup(null); setAppSettingsOpen(false); }} /> : null}
           {appOnlyPreview && (!walletScreenReady || status === 'error') ? (
             <div className={`app-entry${status !== 'error' && !HostLoading && tenantOptions[tenantId].loadingSplash ? ' app-entry--splash' : ''}`} role="status" aria-live="polite" style={{
               '--app-loading-canvas': tenantOptions[tenantId].loadingCanvas,

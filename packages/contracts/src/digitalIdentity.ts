@@ -45,7 +45,7 @@ export interface DigitalIdentitySummary {
   connectedWallets: Array<{ walletId: string; label: string; address: string }>;
 }
 
-export type DigitalIdentityHostAction = 'status' | 'verify-person' | 'authorize' | 'issue' | 'bind-wallet' | 'verify' | 'open-biometric-settings';
+export type DigitalIdentityHostAction = 'status' | 'verify-person' | 'authorize' | 'authorize-proof' | 'issue' | 'bind-wallet' | 'verify' | 'open-biometric-settings';
 
 export interface DigitalIdentityHostRequest {
   type: 'took-wss:digital-identity-request';

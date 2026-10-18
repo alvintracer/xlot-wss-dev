@@ -6,7 +6,7 @@ import { useShinhanWalletTabs } from './ShinhanWalletTabs';
 
 const superSolLogo = new URL('../assets/preview/super-sol-app-mark.png', import.meta.url).href;
 
-type Stage = 'loading' | 'intro' | 'host-request' | 'checking' | 'secure-choice' | 'issuing' | 'overview' | 'issued' | 'wallet-select' | 'wallet-confirm' | 'proof-request' | 'proof-consent' | 'proof-result';
+type Stage = 'loading' | 'intro' | 'host-request' | 'checking' | 'secure-choice' | 'issuing' | 'overview' | 'issued' | 'wallet-select' | 'wallet-confirm' | 'proof-request' | 'proof-consent' | 'proof-verifying' | 'proof-result';
 type Request = (action: DigitalIdentityHostAction, walletId?: string) => Promise<DigitalIdentityHostResult>;
 
 function CredentialCard({ summary }: { summary: DigitalIdentitySummary }) {
@@ -15,6 +15,25 @@ function CredentialCard({ summary }: { summary: DigitalIdentitySummary }) {
     <div className="shinhan-identity__id-card-person"><span className="shinhan-identity__id-avatar"><UserCircle size={54} weight="thin" aria-hidden="true" /></span><div><small>내 디지털 신원인증</small><strong>{summary.name}</strong><span>{summary.birthDate.replace(/-/g, '.')}</span></div></div>
     <div className="shinhan-identity__id-card-number"><span>디지털 ID · 입력 정보 기반</span><code>SOL-{summary.credentialId.slice(0, 8).toUpperCase()}</code></div>
   </section>;
+}
+
+function ProofVerification() {
+  return <div className="shinhan-identity__verification" role="status" aria-live="polite">
+    <div className="shinhan-identity__verification-scene" aria-hidden="true">
+      <div className="shinhan-identity__verification-halo" />
+      <div className="shinhan-identity__verification-card">
+        <span className="shinhan-identity__verification-mark"><IdentificationCard size={22} weight="duotone" /></span>
+        <span className="shinhan-identity__verification-avatar"><UserCircle size={44} weight="thin" /></span>
+        <span className="shinhan-identity__verification-lines"><i /><i /><i /></span>
+        <span className="shinhan-identity__verification-scan" />
+      </div>
+      <span className="shinhan-identity__verification-seal"><ShieldCheck size={27} weight="fill" /></span>
+    </div>
+    <h2>증명서를 확인하고 있어요</h2>
+    <p>디지털 ID와 이 기기의 소유 여부를 확인해요.</p>
+    <div className="shinhan-identity__verification-track" aria-hidden="true"><span /></div>
+    <small>확인이 끝나면 결과를 보여드릴게요</small>
+  </div>;
 }
 
 export function ShinhanDigitalIdentityEntry({ walletId, wallets, onFocusedOverlayChange, onRequest }: {
@@ -75,17 +94,21 @@ export function ShinhanDigitalIdentityEntry({ walletId, wallets, onFocusedOverla
     setBusy(true); setError(null);
     try {
       if (action === 'verify') {
-        const authorization = await onRequest('authorize');
+        setStage('proof-verifying');
+        const authorization = await onRequest('authorize-proof');
         if (!authorization.ok) throw new Error(authorization.error || 'authorization_cancelled');
         setAuthorizationMethod(authorization.authorizationMethod ?? null);
+        setBiometricEnabled(Boolean(authorization.biometricEnabled));
       }
       const result = await onRequest(action, targetWalletId);
       if (!result.ok) throw new Error(result.error || 'identity_unavailable');
       if (result.summary) setSummary(result.summary);
       if (action === 'verify' && !result.verified) throw new Error('credential_invalid');
+      if (action === 'verify') await new Promise((resolve) => window.setTimeout(resolve, 850));
       setStage(next);
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : '';
+      if (action === 'verify') setStage('proof-consent');
       if (code === 'authorization_cancelled') return;
       setError(code === 'identity_session_unavailable' || code === 'request_rejected'
         ? '연결 시간이 지나 신원인증을 확인하지 못했어요. 다시 시도해 주세요.'
@@ -140,6 +163,7 @@ export function ShinhanDigitalIdentityEntry({ walletId, wallets, onFocusedOverla
     else if (!event.shiftKey && document.activeElement === controls.at(-1)) { event.preventDefault(); controls[0]?.focus(); }
   };
   const back = () => {
+    if (busy) return;
     if (stage === 'wallet-confirm') setStage('wallet-select');
     else if (stage === 'proof-consent') setStage('proof-request');
     else if (stage === 'host-request') setStage('intro');
@@ -181,10 +205,11 @@ export function ShinhanDigitalIdentityEntry({ walletId, wallets, onFocusedOverla
         {stage === 'wallet-confirm' ? <><div className="shinhan-identity__hero-icon"><LinkSimple size={31} weight="duotone" aria-hidden="true" /></div><h2>이 지갑을 연결할게요</h2><p className="shinhan-identity__lead">지갑에서 서명해 주소를 직접 통제하는지 확인해요. 자산 이동은 일어나지 않아요.</p><div className="shinhan-identity__card shinhan-identity__detail-card"><div><span>연결할 지갑</span><strong>{selectedWallet?.label ?? '선택한 지갑'}</strong></div><div><span>확인 방법</span><strong>일회성 서명</strong></div></div></> : null}
         {stage === 'proof-request' ? <><div className="shinhan-identity__hero-icon"><ShieldCheck size={31} weight="duotone" aria-hidden="true" /></div><h2>신원인증을 확인할게요</h2><p className="shinhan-identity__lead">발급된 디지털 ID와 이름·생년월일이 일치하는지 확인해요.</p><div className="shinhan-identity__card shinhan-identity__detail-card"><div><span>확인할 정보</span><strong>이름 · 생년월일</strong></div><div><span>추가 확인</span><strong>이 기기의 증명서 소유</strong></div><div><span>연결된 지갑</span><strong>{linked.size}개</strong></div></div><p className="shinhan-identity__note">이 확인은 쏠지갑 안에서 진행돼요.</p></> : null}
         {stage === 'proof-consent' ? <><div className="shinhan-identity__hero-icon"><ShieldCheck size={31} weight="duotone" aria-hidden="true" /></div><h2>증명서 확인을 허용할까요?</h2><p className="shinhan-identity__lead">발급 서명과 이 기기의 소유 서명을 확인해요.</p><div className="shinhan-identity__card shinhan-identity__detail-card"><div><span>확인할 정보</span><strong>이름 · 생년월일</strong></div><div><span>확인 방식</span><strong>발급 서명 · 기기 서명</strong></div></div><label className="shinhan-identity__consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span>이번 증명서 확인에 동의해요.</span></label></> : null}
+        {stage === 'proof-verifying' ? <ProofVerification /> : null}
         {stage === 'proof-result' ? <><div className="shinhan-identity__hero-icon"><CheckCircle size={33} weight="duotone" aria-hidden="true" /></div><h2>신원인증을 확인했어요</h2><p className="shinhan-identity__lead">서명된 증명서와 이 기기의 소유 확인을 마쳤어요.</p><div className="shinhan-identity__result"><span className="shinhan-identity__pill">확인 완료</span><strong>디지털 ID 확인 완료</strong><p>이름·생년월일 일치와 발급 서명을 확인했어요.</p><div><span>발급 서명</span><b>유효</b></div><div><span>기기 소유</span><b>확인</b></div><div><span>이름 · 생년월일</span><b>일치</b></div></div></> : null}
         {error ? <p className="shinhan-live-identity-error" role="alert">{error}</p> : null}</div>
       </div>
-      {!['loading', 'checking', 'issuing'].includes(stage) ? <footer className="shinhan-identity__footer">
+      {!['loading', 'checking', 'issuing', 'proof-verifying'].includes(stage) ? <footer className="shinhan-identity__footer">
         {stage === 'intro' ? <button className="shinhan-identity__button" type="button" onClick={() => setStage('host-request')}>신한 DID 발급하기</button> : null}
         {stage === 'host-request' ? <button className="shinhan-identity__button" type="button" disabled={busy} onClick={() => void verifyWithHost()}>슈퍼쏠에서 확인하기</button> : null}
         {stage === 'secure-choice' ? <button className="shinhan-identity__button" type="button" disabled={!consent || busy} onClick={() => void authorizeAndIssue()}>동의하고 안전하게 발급하기</button> : null}
@@ -193,7 +218,7 @@ export function ShinhanDigitalIdentityEntry({ walletId, wallets, onFocusedOverla
         {stage === 'wallet-select' ? <button className="shinhan-identity__button" type="button" disabled={!selectedWalletId} onClick={() => setStage('wallet-confirm')}>선택한 지갑 연결하기</button> : null}
         {stage === 'wallet-confirm' ? <button className="shinhan-identity__button" type="button" disabled={busy} onClick={() => void run('bind-wallet', 'overview', selectedWalletId)}>{busy ? '지갑을 확인하고 있어요' : '서명하고 연결하기'}</button> : null}
         {stage === 'proof-request' ? <button className="shinhan-identity__button" type="button" onClick={() => { setConsent(false); setStage('proof-consent'); }}>요청 내용 확인하기</button> : null}
-        {stage === 'proof-consent' ? <><button className="shinhan-identity__button" type="button" disabled={!consent || busy} onClick={() => void run('verify', 'proof-result')}>{busy ? '확인하고 있어요' : '동의하고 확인하기'}</button><button className="shinhan-identity__button shinhan-identity__button--secondary" type="button" onClick={() => setStage('overview')}>동의하지 않기</button></> : null}
+        {stage === 'proof-consent' ? <><button className="shinhan-identity__button" type="button" disabled={!consent || busy} onClick={() => void run('verify', 'proof-result')}>동의하고 확인하기</button><button className="shinhan-identity__button shinhan-identity__button--secondary" type="button" onClick={() => setStage('overview')}>동의하지 않기</button></> : null}
         {stage === 'proof-result' ? <button className="shinhan-identity__button" type="button" onClick={() => setStage('overview')}>내 신원인증으로 돌아가기</button> : null}
       </footer> : null}
     </section> : null}

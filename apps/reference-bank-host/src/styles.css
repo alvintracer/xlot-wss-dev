@@ -236,6 +236,11 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-inline .host-pin-preview-prompt { padding-top: 8px; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-dots span.is-filled { border-color: #0565f5; background: #0565f5; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-keypad button:focus-visible { outline-color: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-app-settings--biometric-link .host-pin-sheet { padding-bottom: 0; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-app-settings--biometric-link .host-pin-sheet .host-pin-keypad { width: 100%; min-height: min(38vh, 310px); align-content: stretch; padding: 8px 18px max(10px, env(safe-area-inset-bottom)); background: #0750eb; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-app-settings--biometric-link .host-pin-sheet .host-pin-keypad button { color: #fff; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-app-settings--biometric-link .host-pin-sheet .host-pin-keypad button[aria-label='한 자리 지우기'] { color: #9dd3ff; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-app-settings--biometric-link .host-pin-sheet .host-pin-keypad button:active { background: rgb(255 255 255 / 15%); }
 @keyframes host-pin-rise { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .host-pin-sheet { animation: none; } }
 .host-recovery-secret { width: 100%; min-height: 134px; margin-top: 22px; padding: 16px; border: 1px solid #dcd6e1; border-radius: 12px; background: #f8f6fa; color: #211d25; font: 600 14px/1.9 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; resize: vertical; }

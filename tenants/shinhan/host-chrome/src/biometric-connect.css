@@ -1,0 +1,18 @@
+.shinhan-biometric-connect { display: flex; width: 100%; height: 100%; flex-direction: column; background: #fff; color: #172132; font-family: ShinhanPreviewNanumSquareAC, 'Apple SD Gothic Neo', sans-serif; word-break: keep-all; }
+.shinhan-biometric-connect * { box-sizing: border-box; }
+.shinhan-biometric-connect header { display: grid; height: 58px; flex: 0 0 58px; grid-template-columns: 42px 1fr 42px; align-items: center; padding: 0 18px; }
+.shinhan-biometric-connect header strong { font-size: 17px; font-weight: 800; text-align: center; }
+.shinhan-biometric-connect header button { display: grid; width: 42px; height: 42px; place-items: center; border: 0; background: transparent; color: #172132; }
+.shinhan-biometric-connect__content { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; padding: 16px 28px 28px; text-align: center; }
+.shinhan-biometric-connect__symbol { position: relative; display: grid; width: 134px; height: 134px; place-items: center; margin-bottom: 33px; border-radius: 42px; background: radial-gradient(circle at 34% 28%, #fff 0, #eaf4ff 45%, #dceaff 100%); box-shadow: 0 14px 30px rgb(14 91 208 / 12%); }
+.shinhan-biometric-connect__symbol > span { display: grid; width: 96px; height: 96px; place-items: center; border: 1px solid #b9d7fe; border-radius: 32px; color: #0864ec; }
+.shinhan-biometric-connect__symbol > i { position: absolute; right: 6px; bottom: 3px; display: grid; width: 39px; height: 39px; place-items: center; border: 3px solid #fff; border-radius: 14px; background: #0864ec; color: #fff; font-style: normal; }
+.shinhan-biometric-connect h2 { margin: 0; font-size: 23px; font-weight: 800; line-height: 1.42; letter-spacing: -.035em; }
+.shinhan-biometric-connect p { max-width: 295px; margin: 16px 0 0; color: #606e83; font-size: 13px; line-height: 1.65; }
+.shinhan-biometric-connect__note { display: flex; max-width: 310px; align-items: flex-start; gap: 9px; margin-top: 33px; padding: 15px; border: 1px solid #dce9fd; border-radius: 15px; background: #f5f9ff; color: #36638f; font-size: 12px; line-height: 1.55; text-align: left; }
+.shinhan-biometric-connect__note svg { flex: 0 0 19px; color: #0864ec; }
+.shinhan-biometric-connect footer { display: grid; gap: 5px; flex: 0 0 auto; padding: 12px 20px max(18px, env(safe-area-inset-bottom)); }
+.shinhan-biometric-connect footer button { min-height: 50px; border: 0; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 700; }
+.shinhan-biometric-connect__primary { background: #0565f5; color: #fff; }
+.shinhan-biometric-connect__later { background: transparent; color: #66758c; }
+.shinhan-biometric-connect button:focus-visible { outline: 2px solid #0565f5; outline-offset: 2px; }

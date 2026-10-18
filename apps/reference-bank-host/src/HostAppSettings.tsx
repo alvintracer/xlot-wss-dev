@@ -8,12 +8,13 @@ interface Props {
   scope: string | null;
   keypadLayout: 'four-column' | 'three-column';
   hasPin: boolean;
+  flow?: 'default' | 'biometric-link';
   onBiometricChange?: (enabled: boolean) => void;
   onClose: () => void;
 }
 
-export function HostAppSettings({ scope, keypadLayout, hasPin, onBiometricChange, onClose }: Props) {
-  const [page, setPage] = useState<'home' | 'password' | 'create' | 'confirm' | 'enable'>('home');
+export function HostAppSettings({ scope, keypadLayout, hasPin, flow = 'default', onBiometricChange, onClose }: Props) {
+  const [page, setPage] = useState<'home' | 'password' | 'create' | 'confirm' | 'enable'>(flow === 'biometric-link' ? hasPin ? 'enable' : 'create' : 'home');
   const isPinPage = page === 'create' || page === 'confirm' || page === 'enable';
   const [pinReady, setPinReady] = useState(hasPin);
   const [firstPin, setFirstPin] = useState('');
@@ -40,7 +41,7 @@ export function HostAppSettings({ scope, keypadLayout, hasPin, onBiometricChange
     if (page === 'create') { setFirstPin(pin); setPin(''); setError(''); setPage('confirm'); return; }
     if (pin !== firstPin) { setPin(''); setError('두 번 입력한 비밀번호가 달라요. 다시 확인해 주세요.'); return; }
     setBusy(true); setError('');
-    try { await ensureAppPin(scope, pin); setPinReady(true); setFirstPin(''); setPin(''); setPage('password'); }
+    try { await ensureAppPin(scope, pin); setPinReady(true); setFirstPin(''); setPin(''); setPage(flow === 'biometric-link' ? 'enable' : 'password'); }
     catch { setPin(''); setFirstPin(''); setPage('create'); setError('앱 비밀번호를 설정하지 못했어요. 다시 시도해 주세요.'); }
     finally { setBusy(false); }
   };
@@ -59,7 +60,7 @@ export function HostAppSettings({ scope, keypadLayout, hasPin, onBiometricChange
     catch { setError('생체 인증을 해제하지 못했어요. 다시 시도해 주세요.'); }
     finally { setBusy(false); }
   };
-  return <section className="host-security-layer host-app-settings" role="dialog" aria-modal="true" aria-labelledby="host-app-settings-title"
+  return <section className={`host-security-layer host-app-settings${flow === 'biometric-link' ? ' host-app-settings--biometric-link' : ''}`} role="dialog" aria-modal="true" aria-labelledby="host-app-settings-title"
     onKeyDown={(event) => {
       if (event.key === 'Escape') { event.preventDefault(); page === 'home' ? onClose() : back(); return; }
       if (event.key !== 'Tab') return;
@@ -70,7 +71,7 @@ export function HostAppSettings({ scope, keypadLayout, hasPin, onBiometricChange
     }}>
     <header className="host-app-settings__header">
       {page !== 'home' ? <button type="button" aria-label="뒤로" onClick={back}><ArrowLeft size={22} aria-hidden="true" /></button> : <span />}
-      <strong id="host-app-settings-title">{page === 'home' ? '설정' : '앱 비밀번호 설정'}</strong>
+      <strong id="host-app-settings-title">{flow === 'biometric-link' ? '생체인증 연결' : page === 'home' ? '설정' : '앱 비밀번호 설정'}</strong>
       <button ref={closeRef} type="button" aria-label="설정 닫기" onClick={onClose}><X size={22} aria-hidden="true" /></button>
     </header>
     <div className={`host-app-settings__content${isPinPage ? ' host-app-settings__content--pin' : ''}`}>
@@ -85,7 +86,7 @@ export function HostAppSettings({ scope, keypadLayout, hasPin, onBiometricChange
         <div className="host-app-settings__row host-app-settings__row--static"><span className="host-app-settings__icon"><Fingerprint size={23} aria-hidden="true" /></span><span><strong>생체 인증 사용</strong><small>{available ? pinReady ? '자가복구 월렛 서명에 지문이나 얼굴을 사용해요' : '앱 비밀번호 설정 후 사용할 수 있어요' : '이 기기에서는 아직 사용할 수 없어요'}</small></span><button type="button" className="host-app-settings__switch" role="switch" aria-label="생체 인증 사용" aria-checked={enabled} disabled={!available || !pinReady || busy} onClick={() => void (enabled ? disable() : setPage('enable'))}><span /></button></div>
       </> : <>
         <h2>{page === 'create' ? '앱 비밀번호를 만들어 주세요' : page === 'confirm' ? '한 번 더 입력해 주세요' : '앱 비밀번호를 확인해 주세요'}</h2>
-        <p>{page === 'create' ? '자가복구 월렛에 사용할 숫자 6자리를 정해 주세요. 기존 월렛은 첫 사용 때 이전 비밀번호로 연결해요.' : page === 'confirm' ? '방금 입력한 숫자 6자리를 다시 입력해 주세요.' : '현재 사용 중인 숫자 6자리를 입력한 뒤 기기의 생체 인증을 연결해요.'}</p>
+        <p>{page === 'create' ? flow === 'biometric-link' ? '생체인증 연결에 사용할 앱 비밀번호 6자리를 정해 주세요.' : '자가복구 월렛에 사용할 숫자 6자리를 정해 주세요. 기존 월렛은 첫 사용 때 이전 비밀번호로 연결해요.' : page === 'confirm' ? '방금 입력한 숫자 6자리를 다시 입력해 주세요.' : '현재 사용 중인 앱 비밀번호 6자리를 입력하면 기기의 생체인증을 연결해요.'}</p>
         <div className="host-app-settings__pin-entry">
           <SecurePinKeypad key={page} value={pin} onChange={setPin} disabled={busy} layout={keypadLayout} />
           {error ? <p className="host-app-settings__error" role="alert">{error}</p> : null}
