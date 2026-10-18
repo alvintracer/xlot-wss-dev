@@ -8,6 +8,8 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowCompat;
 import android.graphics.Color;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,6 +22,10 @@ public class MainActivity extends BridgeActivity {
     private static final int SPLASH_BLUE = Color.rgb(7, 57, 250);
     private View navigationBarBackdrop;
     private int navigationBarInset;
+    private final Handler launchHandler = new Handler(Looper.getMainLooper());
+    private ImageView launchSplash;
+    private int launchChecks;
+    private boolean launchErrorVisible;
 
     @Override
     protected void onCreate(android.os.Bundle savedInstanceState) {
@@ -34,7 +40,7 @@ public class MainActivity extends BridgeActivity {
         showLaunchSplash(content);
 
         // Preserve the Shinhan palette when the device is in dark mode.
-        android.webkit.WebView webView = getBridge().getWebView();
+        android.webkit.WebView webView = getBridge() == null ? null : getBridge().getWebView();
         if (webView != null) {
             // Keep the host viewport between transparent Android system bars.
             ViewCompat.setOnApplyWindowInsetsListener(webView, (view, insets) -> {
@@ -70,15 +76,65 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void showLaunchSplash(FrameLayout content) {
-        ImageView splash = new ImageView(this);
-        splash.setImageResource(R.drawable.shinhan_splash_full);
-        splash.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        splash.setBackgroundColor(SPLASH_BLUE);
-        content.addView(splash, new FrameLayout.LayoutParams(
+        launchSplash = new ImageView(this);
+        launchSplash.setImageResource(R.drawable.shinhan_splash_full);
+        launchSplash.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        launchSplash.setBackgroundColor(SPLASH_BLUE);
+        content.addView(launchSplash, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
         ));
         setSystemBarSurfaces(SPLASH_BLUE, SPLASH_BLUE);
-        splash.postDelayed(() -> content.removeView(splash), 1400);
+        launchHandler.postDelayed(this::checkLaunchReady, 1400);
+    }
+
+    private void checkLaunchReady() {
+        if (launchSplash == null || isFinishing() || isDestroyed()) return;
+        android.webkit.WebView webView = getBridge().getWebView();
+        if (webView == null) {
+            launchHandler.postDelayed(this::checkLaunchReady, 100);
+            return;
+        }
+        webView.evaluateJavascript(
+            "(function(){var root=document.getElementById('root');return !!(root&&root.firstElementChild)})()",
+            ready -> {
+                if (launchSplash == null || isFinishing() || isDestroyed()) return;
+                if ("true".equals(ready)) {
+                    FrameLayout content = findViewById(android.R.id.content);
+                    content.removeView(launchSplash);
+                    launchSplash = null;
+                    return;
+                }
+                launchChecks++;
+                if (launchChecks == 80) webView.reload();
+                if (launchChecks >= 180) {
+                    showLaunchError(webView);
+                } else {
+                    launchHandler.postDelayed(this::checkLaunchReady, 100);
+                }
+            }
+        );
+    }
+
+    private void showLaunchError(android.webkit.WebView webView) {
+        if (launchErrorVisible) return;
+        launchErrorVisible = true;
+        new android.app.AlertDialog.Builder(this)
+            .setMessage("화면을 불러오지 못했어요. 네트워크를 확인한 뒤 다시 시도해 주세요.")
+            .setPositiveButton("다시 시도", (dialog, which) -> {
+                launchErrorVisible = false;
+                launchChecks = 0;
+                webView.reload();
+                launchHandler.postDelayed(this::checkLaunchReady, 100);
+            })
+            .setNegativeButton("닫기", (dialog, which) -> finish())
+            .setCancelable(false)
+            .show();
+    }
+
+    @Override
+    public void onDestroy() {
+        launchHandler.removeCallbacksAndMessages(null);
+        super.onDestroy();
     }
 
     public void setSystemBarSurfaces(int topColor, int bottomColor) {
