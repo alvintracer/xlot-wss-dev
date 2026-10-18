@@ -330,7 +330,7 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .host-page[data-tenant='shinhan'] .host-recipient-file:focus-within { outline-color: #0565f5; }
 
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-backdrop { align-items: stretch; background: #fff; }
-.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign { display: flex; max-width: none; max-height: none; flex-direction: column; min-height: 100%; padding: 55px 20px max(20px,env(safe-area-inset-bottom)); border-radius: 0; box-shadow: none; color: #172132; font-family: ShinhanPreviewNanumSquareAC, 'Apple SD Gothic Neo', sans-serif; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign { --exchange-sign-color: #0565f5; display: flex; max-width: none; max-height: none; flex-direction: column; min-height: 100%; padding: 55px 20px max(20px,env(safe-area-inset-bottom)); border-radius: 0; box-shadow: none; color: #172132; font-family: ShinhanPreviewNanumSquareAC, 'Apple SD Gothic Neo', sans-serif; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-close { top: 10px; right: 14px; background: #f4f7fc; color: #172132; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-icon { margin-bottom: 25px; background: #e8f0ff url('../../../tenants/shinhan/presentation/assets/preview/bank-mark-preview.png') center / 32px no-repeat; color: #0565f5; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-icon svg { display: none; }
