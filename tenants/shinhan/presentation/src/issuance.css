@@ -7,7 +7,7 @@
 .shinhan-did-issuance__page { min-height: 100%; animation: shinhan-did-page-in 260ms cubic-bezier(.22,.68,.28,1) both; }
 @keyframes shinhan-did-page-in { from { opacity: .62; transform: translateX(17px); } to { opacity: 1; transform: translateX(0); } }
 .shinhan-did-issuance h1 { margin: 0; font-size: 25px; font-weight: 800; letter-spacing: -.04em; line-height: 1.38; }
-.shinhan-did-issuance p { margin: 17px 0 0; color: var(--shinhan-muted); font-size: 13px; line-height: 1.65; }
+.shinhan-did-issuance .shinhan-did-issuance__page > p { margin: 17px 0 0; color: var(--shinhan-muted); font-size: 13px; line-height: 1.65; }
 .shinhan-did-issuance__mark { display: grid; width: 72px; height: 72px; place-items: center; margin: 16px 0 30px; border-radius: 22px; background: linear-gradient(145deg, #0794ff, #0655ed); box-shadow: 0 12px 24px rgb(5 101 245 / 19%); color: #fff; font-family: system-ui,sans-serif; font-size: 44px; font-style: italic; font-weight: 900; }
 .shinhan-did-issuance__mark img { display: block; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .shinhan-did-issuance__steps { display: grid; margin: 33px 0 0; padding: 0; list-style: none; }
@@ -25,7 +25,7 @@
 .shinhan-did-issuance__consent span { font-size: 13px; font-weight: 700; line-height: 1.5; }
 .shinhan-did-issuance__busy { display: grid; min-height: 65vh; align-content: center; justify-items: center; gap: 14px; text-align: center; }
 .shinhan-did-issuance__busy strong { font-size: 18px; }
-.shinhan-did-issuance__busy p { margin: 0; }
+.shinhan-did-issuance .shinhan-did-issuance__busy p { margin: 0; color: var(--shinhan-muted); font-size: 13px; line-height: 1.65; }
 .shinhan-did-issuance__spinner { width: 31px; height: 31px; margin-bottom: 20px; border: 4px solid #d6dae2; border-right-color: #737e90; border-radius: 50%; animation: shinhan-did-spin 900ms linear infinite; }
 @keyframes shinhan-did-spin { to { transform: rotate(360deg); } }
 .shinhan-did-issuance__complete { display: grid; width: 65px; height: 65px; place-items: center; margin: 56px 0 31px; border-radius: 50%; background: var(--shinhan-blue); color: #fff; box-shadow: 0 9px 20px rgb(5 101 245 / 18%); }

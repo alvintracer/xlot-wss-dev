@@ -33,7 +33,7 @@
 .shinhan-identity__complete-icon { display: grid; width: 62px; height: 62px; place-items: center; margin: 42px 0 29px; border-radius: 50%; background: #176cf2; color: #fff; box-shadow: 0 8px 20px rgb(5 101 245 / 16%); }
 .shinhan-identity__security-row--issued { margin-top: 20px; }
 .shinhan-identity h2 { margin: 0; font-size: 23px; font-weight: 800; letter-spacing: -.035em; line-height: 1.38; }
-.shinhan-identity__lead { margin: 16px 0 30px; color: var(--shinhan-text); font-size: 13px; line-height: 1.65; }
+.shinhan-identity .shinhan-identity__lead { margin: 16px 0 30px; color: var(--shinhan-text); font-size: 13px; line-height: 1.65; }
 .shinhan-identity__page > h2:first-child { margin-top: 16px; }
 .shinhan-identity__card, .shinhan-identity__result { padding: 18px; border-radius: 20px; background: #fff; box-shadow: var(--shinhan-card-shadow); }
 .shinhan-identity__row { display: flex; min-height: 64px; align-items: center; gap: 12px; border-top: 1px solid var(--shinhan-divider); }
@@ -72,7 +72,7 @@
 .shinhan-identity__carrier-options button[aria-pressed='true'] { color: var(--shinhan-blue); font-weight: 700; }
 .shinhan-identity__carrier-options button svg { color: var(--shinhan-blue); }
 @keyframes shinhan-carrier-rise { from { transform: translateY(18px); opacity: .75; } to { transform: translateY(0); opacity: 1; } }
-.shinhan-identity__note { margin: 22px 0 0; color: var(--shinhan-muted); font-size: 12px; line-height: 1.55; }
+.shinhan-identity .shinhan-identity__note { margin: 22px 0 0; color: var(--shinhan-muted); font-size: 12px; line-height: 1.55; }
 .shinhan-identity__id-card { position: relative; overflow: hidden; min-height: 222px; padding: 19px 21px 18px; border: 1px solid rgb(255 255 255 / 31%); border-radius: 23px; background: radial-gradient(circle at 90% 10%, rgb(161 211 255 / 38%), transparent 43%), linear-gradient(145deg, #116ce8 0%, #1b7ef8 58%, #37a4f4 100%); color: #fff; box-shadow: 0 12px 29px rgb(20 74 160 / 20%); }
 .shinhan-identity__id-card::after { position: absolute; right: -42px; bottom: -88px; width: 190px; height: 190px; border: 1px solid rgb(255 255 255 / 15%); border-radius: 50%; content: ''; pointer-events: none; }
 .shinhan-identity__id-card::before { position: absolute; right: -32px; top: 29px; width: 214px; height: 214px; background: url('../assets/preview/bank-mark-preview.png') center / contain no-repeat; opacity: .14; content: ''; pointer-events: none; }
@@ -93,9 +93,9 @@
 .shinhan-identity__overview-section { margin-top: 23px; }
 .shinhan-identity__overview-section h3 { display: flex; align-items: baseline; gap: 6px; margin: 0 0 11px; font-size: 16px; font-weight: 800; }
 .shinhan-identity__overview-section h3 span { color: var(--shinhan-blue); font-size: 14px; }
-.shinhan-identity__overview-section > p { margin: -3px 0 12px; color: var(--shinhan-muted); font-size: 11px; line-height: 1.55; }
+.shinhan-identity .shinhan-identity__overview-section > p { margin: -3px 0 12px; color: var(--shinhan-muted); font-size: 11px; line-height: 1.55; }
 .shinhan-identity__overview-section .shinhan-identity__row-trailing { display: grid; place-items: center; }
-.shinhan-identity__empty { margin: 2px 0; padding: 15px 0; color: var(--shinhan-muted); font-size: 12px; }
+.shinhan-identity .shinhan-identity__empty { margin: 2px 0; padding: 15px 0; color: var(--shinhan-muted); font-size: 12px; }
 .shinhan-identity__wallet-list { display: grid; gap: 10px; }
 .shinhan-identity__wallet-option { display: flex; min-height: 94px; align-items: center; gap: 10px; padding: 12px; border: 1.5px solid #e2e8f3; border-radius: 16px; background: #fff; cursor: pointer; box-shadow: var(--shinhan-card-shadow); }
 .shinhan-identity__wallet-option[data-selected='true'] { border-color: var(--shinhan-blue); }
@@ -108,7 +108,7 @@
 .shinhan-identity__text-action { display: inline-flex; min-height: 42px; align-items: center; gap: 5px; margin-top: 14px; padding: 0 2px; border: 0; background: transparent; color: var(--shinhan-blue); font-size: 12px; font-weight: 700; }
 .shinhan-identity__result > .shinhan-identity__pill { margin-bottom: 11px; }
 .shinhan-identity__result > strong { display: block; font-size: 17px; font-weight: 800; }
-.shinhan-identity__result > p { margin: 7px 0 17px; color: var(--shinhan-muted); font-size: 11px; line-height: 1.55; }
+.shinhan-identity .shinhan-identity__result > p { margin: 7px 0 17px; color: var(--shinhan-muted); font-size: 11px; line-height: 1.55; }
 .shinhan-identity__footer { display: grid; flex: 0 0 auto; gap: 8px; padding: 12px 20px 15px; border-top: 1px solid var(--shinhan-divider); background: #fff; }
 .shinhan-identity__button { width: 100%; min-height: 49px; padding: 10px 13px; border: 0; border-radius: 11px; background: var(--shinhan-blue); color: #fff; font-size: 14px; font-weight: 700; }
 .shinhan-identity__button:disabled { background: #c7d7ee; color: #fff; cursor: not-allowed; }
@@ -156,6 +156,6 @@
 .shinhan-identity--live { position: fixed; z-index: 30; inset: 0; height: 100%; max-height: 100dvh; }
 .shinhan-live-identity-loading { display: grid; min-height: 240px; place-content: center; justify-items: center; gap: 14px; color: var(--shinhan-muted); font-size: 13px; }
 .shinhan-live-identity-spinner { display: block; width: 32px; height: 32px; border: 3px solid #dde5f1; border-top-color: #7488a8; border-radius: 50%; animation: shinhan-live-identity-spin 900ms linear infinite; }
-.shinhan-live-identity-error { margin: 20px 0 0; color: #c32943; font-size: 12px; line-height: 1.5; }
+.shinhan-identity .shinhan-live-identity-error { margin: 20px 0 0; color: #c32943; font-size: 12px; line-height: 1.5; }
 @keyframes shinhan-live-identity-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .shinhan-live-identity-spinner { animation-duration: 2.5s; } .shinhan-identity__page { animation: none; } }
