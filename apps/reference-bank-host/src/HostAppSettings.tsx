@@ -2,7 +2,7 @@ import { ArrowLeft, CaretRight, Fingerprint, LockKey, X } from '@phosphor-icons/
 import { useEffect, useRef, useState } from 'react';
 import { SecurePinKeypad } from './SecurePinKeypad';
 import { ensureAppPin } from './appPin';
-import { biometricPinAvailable, biometricPinEnabled, disableBiometricPin, enableBiometricPin } from './nativeBiometricPin';
+import { authorizeDigitalIdentityBiometric, biometricPinAvailable, biometricPinEnabled, disableBiometricPin, enableBiometricPin } from './nativeBiometricPin';
 
 interface Props {
   scope: string | null;
@@ -48,7 +48,14 @@ export function HostAppSettings({ scope, keypadLayout, hasPin, flow = 'default',
   const enable = async () => {
     if (!scope || !/^\d{6}$/.test(pin)) { setError('앱 비밀번호 6자리를 입력해 주세요.'); return; }
     setBusy(true); setError('');
-    try { await enableBiometricPin(scope, pin); setEnabled(true); onBiometricChange?.(true); setPage('password'); setPin(''); }
+    try {
+      await enableBiometricPin(scope, pin);
+      if (flow === 'biometric-link') {
+        try { await authorizeDigitalIdentityBiometric(scope); }
+        catch (cause) { await disableBiometricPin(scope); throw cause; }
+      }
+      setEnabled(true); onBiometricChange?.(true); setPage('password'); setPin('');
+    }
     catch (caught) { setError(caught instanceof Error && caught.message === 'app_pin_invalid'
       ? '앱 비밀번호가 일치하지 않아요.' : '생체 인증을 연결하지 못했어요. 기기 설정을 확인해 주세요.'); setPin(''); }
     finally { setBusy(false); }
