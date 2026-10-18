@@ -1,8 +1,8 @@
 {
   "id": "/shinhan/app",
-  "name": "신한 슈퍼쏠 개발 미리보기",
-  "short_name": "슈퍼쏠 미리보기",
-  "description": "신한 슈퍼쏠 내 쏠지갑 개발 미리보기",
+  "name": "신한 슈퍼쏠",
+  "short_name": "슈퍼쏠",
+  "description": "신한 슈퍼쏠 쏠지갑",
   "start_url": "/shinhan/app",
   "scope": "/shinhan/",
   "display": "standalone",

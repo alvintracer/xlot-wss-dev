@@ -311,8 +311,11 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-password-strength { --host-password-safe: #0565f5; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-vault-factor-pairs label { border-color: #dce6fa; border-radius: 12px; background: #fff; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-vault-factor-pairs input { accent-color: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-vault-panel .host-vault-contact { background: #f4f8ff; color: #394459 !important; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] :is(.host-vault-recovery-options button,.host-vault-skip-local) { color: #416cad; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-dots span { border-color: #cbd8ee; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-dots span.is-filled { border-color: #0565f5; background: #0565f5; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-pin-keypad :is(button[aria-label='전체 지우기'],button[aria-label='한 자리 지우기']) { color: #0565f5; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-footer { border-top-color: #edf0f5; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-footer button { border-radius: 11px; font-family: ShinhanPreviewNanumSquareAC, 'Apple SD Gothic Neo', sans-serif; font-weight: 700; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-security-secondary { background: #f0f2f6; color: #394459; }
@@ -343,6 +346,7 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-entry { display: flex; flex: 1; flex-direction: column; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-inline { margin-top: auto; border-top-color: #edf0f5; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-keypad button { color: #172132; font-family: inherit; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-keypad :is(button[aria-label='전체 지우기'],button[aria-label='한 자리 지우기']) { color: #0565f5; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-keypad button:active { background: #eaf0fe; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-step .host-pin-erase { color: #0565f5; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-pin-hint { color: #748093; }
