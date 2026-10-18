@@ -244,7 +244,7 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .host-security-error { margin: 18px 0 0; color: #c03838; font-size: 11px; font-weight: 700; line-height: 1.5; }
 /* Host-owned copy follows the same mobile Korean wrapping rule for every tenant.
    Secret fields, account data and transaction values retain their separate overflow rules. */
-.host-page:is([data-tenant='kiwoom'], [data-tenant='jb'], [data-tenant='namu']) :is(
+.host-page:is([data-tenant='kiwoom'], [data-tenant='jb'], [data-tenant='namu'], [data-tenant='shinhan']) :is(
   .app-entry h1, .app-entry p, .host-recipient-head h2, .host-recipient-layer p,
   .host-security-content h2, .host-vault-panel h3,
   .host-security-content > p:not(.host-security-kicker, .host-vault-contact),
@@ -255,8 +255,8 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
   overflow-wrap: normal;
   text-wrap: wrap;
 }
-.host-page:is([data-tenant='kiwoom'], [data-tenant='jb'], [data-tenant='namu']) .host-recipient-layer p { text-wrap: balance; }
-.host-page:is([data-tenant='kiwoom'], [data-tenant='jb'], [data-tenant='namu']) .host-security-error { overflow-wrap: break-word; }
+.host-page:is([data-tenant='kiwoom'], [data-tenant='jb'], [data-tenant='namu'], [data-tenant='shinhan']) .host-recipient-layer p { text-wrap: balance; }
+.host-page:is([data-tenant='kiwoom'], [data-tenant='jb'], [data-tenant='namu'], [data-tenant='shinhan']) .host-security-error { overflow-wrap: break-word; }
 .host-security-footer { display: flex; flex: 0 0 auto; gap: 9px; padding: 12px 20px max(18px, env(safe-area-inset-bottom)); border-top: 1px solid #f0edf2; background: #fff; }
 .host-security-footer button { min-height: 52px; border: 0; border-radius: 18px; font-size: 14px; font-weight: 800; cursor: pointer; }
 .host-security-primary { flex: 1; background: #7d3bdd; color: #fff; }
@@ -325,6 +325,9 @@ select { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(-
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-recovery-secret { border-color: #dce6fa; background: #f8faff; color: #172132; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-recovery-secret:focus-visible,
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] :is(.host-vault-recovery-options button,.host-vault-skip-local,.host-vault-factor-pairs input):focus-visible { outline-color: #9dc5ff; }
+.phone[data-host-chrome='shinhan-super-sol-preview-v1'] :is(.host-pin-dots,.host-pin-sheet__head button,.host-pin-keypad button,.host-pin-erase):focus-visible { outline-color: #0565f5; }
+.host-page[data-tenant='shinhan'] .host-recipient-file { background: #0565f5; font-family: ShinhanPreviewNanumSquareAC, 'Apple SD Gothic Neo', sans-serif; }
+.host-page[data-tenant='shinhan'] .host-recipient-file:focus-within { outline-color: #0565f5; }
 
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign-backdrop { align-items: stretch; background: #fff; }
 .phone[data-host-chrome='shinhan-super-sol-preview-v1'] .host-exchange-sign { display: flex; max-width: none; max-height: none; flex-direction: column; min-height: 100%; padding: 55px 20px max(20px,env(safe-area-inset-bottom)); border-radius: 0; box-shadow: none; color: #172132; font-family: ShinhanPreviewNanumSquareAC, 'Apple SD Gothic Neo', sans-serif; }
